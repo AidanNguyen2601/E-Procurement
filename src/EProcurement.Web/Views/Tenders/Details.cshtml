@@ -246,6 +246,28 @@
                     <div class="pre"><b>@(c.IsAmendment ? "Nội dung:" : "Trả lời:")</b> @c.Answer</div></li>
             }
         </ul>
+        @{ var pendingQ = Model.Questions.Where(q => q.ClarificationId == null).OrderBy(q => q.AskedAt).ToList(); }
+        @if (pendingQ.Any())
+        {
+            <div class="card-body border-top bg-warning-subtle"><div class="fw-semibold small mb-2">Đề nghị làm rõ từ nhà thầu chờ trả lời (@pendingQ.Count)</div>
+            @foreach (var q in pendingQ)
+            {
+                <div class="small mb-2 pb-2 border-bottom"><span class="text-muted">@q.AskedAt.ToDateTime() · @q.Vendor?.Name (không công khai tên)</span>
+                    <div class="pre">@q.Content</div>
+                    @if (buyer && s == TenderStatus.Published && !closed)
+                    {
+                        <form asp-action="AddClarification" asp-route-id="@Model.Id" method="post" class="row g-1 mt-1">
+                            <input type="hidden" name="questionId" value="@q.Id" />
+                            <div class="col-12"><input name="question" value="@q.Content" maxlength="2000" class="form-control form-control-sm" title="Câu hỏi đăng công khai – có thể biên tập lại, bỏ thông tin nhận diện nhà thầu" /></div>
+                            <div class="col-md-8"><textarea name="answer" rows="2" class="form-control form-control-sm" placeholder="Trả lời (đăng công khai cho mọi nhà thầu)" required></textarea></div>
+                            <div class="col-md-2 d-flex align-items-center"><label class="small"><input type="checkbox" name="isAmendment" value="true" class="form-check-input" /> Sửa đổi HSMT</label></div>
+                            <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Trả lời</button></div>
+                        </form>
+                    }
+                </div>
+            }
+            </div>
+        }
         @if (buyer && s == TenderStatus.Published && !closed)
         {
             <div class="card-body border-top"><form asp-action="AddClarification" asp-route-id="@Model.Id" method="post" class="row g-2">

@@ -236,7 +236,7 @@ public class DirectAwardLineInput
 }
 
 /// <summary>File đính kèm hiển thị (không nạp nội dung file)</summary>
-public record AttachmentInfo(int Id, string FileName, long Size, string? Note, string UploadedBy, DateTime UploadedAt);
+public record AttachmentInfo(int Id, string FileName, long Size, string? Note, string UploadedBy, DateTime UploadedAt, bool IsPublic = false);
 
 /// <summary>Model cho partial _Attachments</summary>
 public record AttachmentPanel(DocType DocumentType, int DocumentId, bool CanEdit, List<AttachmentInfo> Files, string ReturnUrl);

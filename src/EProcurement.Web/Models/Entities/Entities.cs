@@ -576,6 +576,8 @@ public class Attachment
     public long Size { get; set; }
     public byte[] Data { get; set; } = Array.Empty<byte>();
     [StringLength(300)] public string? Note { get; set; }
+    /// <summary>Gói thầu: file thuộc HSMT, nhà thầu tải được trên cổng NCC. HSDT mở niêm phong không bao giờ công khai.</summary>
+    public bool IsPublic { get; set; }
     public int UploadedById { get; set; }
     public AppUser? UploadedBy { get; set; }
     public DateTime UploadedAt { get; set; } = DateTime.Now;

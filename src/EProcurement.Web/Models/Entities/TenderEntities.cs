@@ -61,6 +61,7 @@ public class Tender
     public ICollection<TenderCommitteeMember> Committee { get; set; } = new List<TenderCommitteeMember>();
     public ICollection<TenderClarification> Clarifications { get; set; } = new List<TenderClarification>();
     public ICollection<TenderComplaint> Complaints { get; set; } = new List<TenderComplaint>();
+    public ICollection<TenderQuestion> Questions { get; set; } = new List<TenderQuestion>();
 }
 
 public class TenderLine
@@ -162,6 +163,26 @@ public class TenderClarification
     public int CreatedById { get; set; }
     public AppUser? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
+/// Đề nghị làm rõ HSMT nhà thầu gửi qua cổng NCC. Bên mời thầu trả lời bằng một TenderClarification công khai
+/// (không nêu tên nhà thầu hỏi); câu hỏi chỉ nhà thầu hỏi và bên mời thầu thấy.
+/// </summary>
+public class TenderQuestion
+{
+    public int Id { get; set; }
+    public int TenderId { get; set; }
+    public Tender? Tender { get; set; }
+    public int VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+    public int VendorUserId { get; set; }
+    public VendorUser? VendorUser { get; set; }
+    [Required, StringLength(2000)][Display(Name = "Nội dung đề nghị làm rõ")] public string Content { get; set; } = string.Empty;
+    public DateTime AskedAt { get; set; } = DateTime.Now;
+    /// <summary>Nội dung làm rõ đã đăng tải để trả lời câu hỏi này</summary>
+    public int? ClarificationId { get; set; }
+    public TenderClarification? Clarification { get; set; }
 }
 
 /// <summary>Kiến nghị của nhà thầu về kết quả lựa chọn</summary>

@@ -87,3 +87,20 @@ document.addEventListener('submit', function (e) {
     t.addEventListener('click', () => document.body.classList.toggle('nav-open'));
     document.querySelector('.nav-backdrop')?.addEventListener('click', () => document.body.classList.remove('nav-open'));
 })();
+
+// Đếm ngược: <span data-countdown="số giây còn lại"> (tính từ server, không phụ thuộc múi giờ máy khách)
+(function () {
+    const els = document.querySelectorAll('[data-countdown]');
+    if (!els.length) return;
+    const start = Date.now();
+    function tick() {
+        els.forEach(el => {
+            const left = Math.max(0, Math.floor(parseInt(el.getAttribute('data-countdown'), 10) - (Date.now() - start) / 1000));
+            const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60;
+            el.textContent = left === 0 ? 'đã hết giờ' : (d ? d + ' ngày ' : '') + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            el.classList.toggle('text-danger', left < 86400);
+        });
+    }
+    tick();
+    setInterval(tick, 1000);
+})();

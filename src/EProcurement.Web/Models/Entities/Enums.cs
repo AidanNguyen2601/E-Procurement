@@ -180,6 +180,16 @@ public enum SubmissionKind
     [Display(Name = "Hồ sơ dự thầu")] Bid = 2
 }
 
+/// <summary>Thành phần file của HSDT nộp online</summary>
+public enum BidFileKind
+{
+    [Display(Name = "Đề xuất kỹ thuật")] Technical = 1,
+    [Display(Name = "Đề xuất tài chính")] Financial = 2,
+    [Display(Name = "Bảo đảm dự thầu (bản scan)")] BidSecurity = 3,
+    [Display(Name = "Năng lực, kinh nghiệm")] Qualification = 4,
+    [Display(Name = "Tài liệu khác")] Other = 9
+}
+
 public enum InvoiceStatus
 {
     [Display(Name = "Chờ đối chiếu")] Received = 1,

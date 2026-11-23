@@ -27,7 +27,7 @@ public class AttachmentsController : ProcControllerBase
     [Authorize(Roles = AppRoles.Purchasing)]
     [HttpPost, ValidateAntiForgeryToken]
     [RequestSizeLimit(64 * 1024 * 1024)]
-    public async Task<IActionResult> Upload(DocType documentType, int documentId, IFormFile? file, string? note, string? returnUrl)
+    public async Task<IActionResult> Upload(DocType documentType, int documentId, IFormFile? file, string? note, string? returnUrl, bool isPublic = false)
     {
         var back = Back(returnUrl);
         if (!await CanEditAsync(documentType, documentId)) { TempData["Error"] = "Chứng từ không còn ở trạng thái cho phép đính kèm."; return back; }
@@ -44,9 +44,9 @@ public class AttachmentsController : ProcControllerBase
             DocumentType = documentType, DocumentId = documentId, FileName = name.Length > 260 ? name[^260..] : name,
             ContentType = string.IsNullOrEmpty(file.ContentType) ? "application/octet-stream" : file.ContentType,
             Size = file.Length, Data = ms.ToArray(), Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
-            UploadedById = Me, UploadedAt = DateTime.Now
+            IsPublic = isPublic && documentType == DocType.Tender, UploadedById = Me, UploadedAt = DateTime.Now
         });
-        Log(documentType, documentId, "Đính kèm file", name);
+        Log(documentType, documentId, isPublic && documentType == DocType.Tender ? "Đăng tải file HSMT cho nhà thầu" : "Đính kèm file", name);
         await Db.SaveChangesAsync();
         TempData["Success"] = $"Đã đính kèm {name}.";
         return back;
@@ -63,6 +63,20 @@ public class AttachmentsController : ProcControllerBase
         Log(a.DocumentType, a.DocumentId, "Xóa file đính kèm", a.FileName);
         await Db.SaveChangesAsync();
         TempData["Success"] = $"Đã xóa {a.FileName}.";
+        return Back(returnUrl);
+    }
+
+    /// <summary>Gói thầu: chuyển file giữa "HSMT công khai cho nhà thầu" và "nội bộ" (chỉ trước đóng thầu)</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> TogglePublic(int id, string? returnUrl)
+    {
+        var a = await Db.Attachments.FirstOrDefaultAsync(x => x.Id == id && x.DocumentType == DocType.Tender);
+        if (a == null) return NotFound();
+        if (!await CanEditAsync(a.DocumentType, a.DocumentId)) { TempData["Error"] = "Gói thầu đã đóng thầu – không đổi được."; return Back(returnUrl); }
+        a.IsPublic = !a.IsPublic;
+        Log(a.DocumentType, a.DocumentId, a.IsPublic ? "Công khai file HSMT cho nhà thầu" : "Ngừng công khai file", a.FileName);
+        await Db.SaveChangesAsync();
         return Back(returnUrl);
     }
 

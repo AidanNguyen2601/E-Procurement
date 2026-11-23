@@ -281,22 +281,32 @@ public class TendersController : ProcControllerBase
     /// <summary>Trả lời làm rõ / sửa đổi HSMT (công khai). Sửa đổi sát hạn → bắt buộc gia hạn đóng thầu.</summary>
     [Authorize(Roles = AppRoles.Purchasing)]
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddClarification(int id, string? question, string? answer, bool isAmendment, DateTime? newClosingAt)
+    public async Task<IActionResult> AddClarification(int id, string? question, string? answer, bool isAmendment, DateTime? newClosingAt, int? questionId)
     {
         var t = await Db.Tenders.FindAsync(id);
         if (t == null) return NotFound();
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
         if (t.Status != TenderStatus.Published || DateTime.Now > t.ClosingAt) return Fail("Chỉ làm rõ / sửa đổi HSMT trước thời điểm đóng thầu.");
         if (string.IsNullOrWhiteSpace(answer)) return Fail("Nhập nội dung trả lời / sửa đổi.");
+        // Trả lời đề nghị làm rõ nhà thầu gửi qua cổng NCC: đăng công khai câu hỏi, không nêu tên nhà thầu
+        TenderQuestion? asked = null;
+        if (questionId.HasValue)
+        {
+            asked = await Db.TenderQuestions.FirstOrDefaultAsync(q => q.Id == questionId && q.TenderId == id && q.ClarificationId == null);
+            if (asked == null) return Fail("Đề nghị làm rõ không tồn tại hoặc đã được trả lời.");
+            if (string.IsNullOrWhiteSpace(question)) question = asked.Content;
+        }
         var oldClosing = t.ClosingAt;
         if (newClosingAt.HasValue && newClosingAt > t.ClosingAt) t.ClosingAt = newClosingAt.Value;
         if (isAmendment && t.ClosingAt < DateTime.Now.AddDays(Settings.TenderAmendmentMinDays))
             return Fail($"Sửa đổi HSMT phải trước thời điểm đóng thầu tối thiểu {Settings.TenderAmendmentMinDays} ngày – gia hạn đóng thầu đến sau {DateTime.Now.AddDays(Settings.TenderAmendmentMinDays).ToDateTime()}.");
-        Db.TenderClarifications.Add(new TenderClarification
+        var clar = new TenderClarification
         {
             TenderId = id, IsAmendment = isAmendment, Question = string.IsNullOrWhiteSpace(question) ? null : question.Trim(),
             Answer = answer.Trim(), CreatedById = Me, CreatedAt = DateTime.Now
-        });
+        };
+        Db.TenderClarifications.Add(clar);
+        if (asked != null) asked.Clarification = clar;
         Log(DocType.Tender, id, isAmendment ? "Sửa đổi HSMT" : "Làm rõ HSMT", answer.Trim());
         if (t.ClosingAt != oldClosing) Log(DocType.Tender, id, $"Gia hạn đóng thầu {oldClosing.ToDateTime()} → {t.ClosingAt.ToDateTime()}");
         await Db.SaveChangesAsync();
@@ -742,6 +752,7 @@ public class TendersController : ProcControllerBase
             .Include(t => t.Committee).ThenInclude(m => m.User)
             .Include(t => t.Clarifications)
             .Include(t => t.Complaints).ThenInclude(c => c.Vendor)
+            .Include(t => t.Questions).ThenInclude(q => q.Vendor)
             .AsSplitQuery();
         var t = track ? await q.FirstOrDefaultAsync(x => x.Id == id) : await q.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (t != null) t.Lines = t.Lines.OrderBy(l => l.SortOrder).ToList();

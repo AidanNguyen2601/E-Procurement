@@ -1,4 +1,5 @@
 @model AttachmentPanel
+@{ var tender = Model.DocumentType == DocType.Tender; }
 <div class="card mb-3">
     <div class="card-header">Tài liệu đính kèm (@Model.Files.Count)</div>
     <ul class="list-group list-group-flush">
@@ -8,10 +9,18 @@
                 <span>
                     <a asp-controller="Attachments" asp-action="Download" asp-route-id="@f.Id">@f.FileName</a>
                     <span class="small text-muted">· @((f.Size / 1024m).ToString("N0")) KB · @f.UploadedBy · @f.UploadedAt.ToDateTime()</span>
+                    @if (tender) { @if (f.IsPublic) { <span class="badge bg-success-subtle text-success">HSMT – nhà thầu tải được</span> } else { <span class="badge bg-light text-muted border">Nội bộ</span> } }
                     @if (!string.IsNullOrEmpty(f.Note)) { <div class="small">@f.Note</div> }
                 </span>
                 @if (Model.CanEdit)
                 {
+                    @if (tender)
+                    {
+                        <form asp-controller="Attachments" asp-action="TogglePublic" asp-route-id="@f.Id" method="post" class="ms-auto">
+                            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                            <button class="btn btn-sm btn-outline-secondary">@(f.IsPublic ? "Ngừng công khai" : "Công khai cho nhà thầu")</button>
+                        </form>
+                    }
                     <form asp-controller="Attachments" asp-action="Delete" asp-route-id="@f.Id" method="post" data-confirm="Xóa file @f.FileName?">
                         <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
                         <button class="btn btn-sm btn-outline-danger">Xóa</button>
@@ -30,6 +39,7 @@
                 <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
                 <input type="file" name="file" class="form-control form-control-sm" style="max-width:320px" required />
                 <input name="note" class="form-control form-control-sm" style="width:auto;flex:1" placeholder="Mô tả (vd: Giấy xác nhận phân phối độc quyền)" />
+                @if (tender) { <label class="small d-flex align-items-center gap-1"><input type="checkbox" name="isPublic" value="true" class="form-check-input mt-0" checked /> Thuộc HSMT – công khai cho nhà thầu</label> }
                 <button class="btn btn-sm btn-outline-primary">Tải lên</button>
             </form>
         </div>

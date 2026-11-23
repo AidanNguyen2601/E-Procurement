@@ -382,34 +382,113 @@ public class PortalRfqsController : PortalControllerBase
     }
 }
 
-/// <summary>Đấu thầu online: xem thông báo mời thầu, đăng ký nhận HSMT, nộp HSDT niêm phong</summary>
+/// <summary>
+/// Đấu thầu online: thông báo mời thầu, tải HSMT, đề nghị làm rõ HSMT, nộp HSDT niêm phong (nhiều thành phần),
+/// biên nhận, biên bản mở thầu, kết quả đánh giá của mình, kiến nghị kết quả.
+/// </summary>
 public class PortalTendersController : PortalControllerBase
 {
     private readonly SealingService _seal;
     public PortalTendersController(EProcDbContext db, SealingService seal) : base(db) => _seal = seal;
 
-    public async Task<IActionResult> Index()
+    private ProcurementSettings Settings => HttpContext.RequestServices.GetRequiredService<IOptions<ProcurementSettings>>().Value;
+
+    public record PublicFile(int Id, string FileName, long Size, string? Note, DateTime UploadedAt);
+    public record TenderRow(Tender Tender, TenderBidder? Bidder, DateTime? LastAmendment)
     {
-        ViewBag.Mine = await Db.TenderBidders.AsNoTracking().Where(b => b.VendorId == MyVendor.Id).Select(b => b.TenderId).ToListAsync();
-        ViewData["Title"] = "Gói thầu";
-        return View(await Db.Tenders.AsNoTracking().Include(t => t.AwardedVendor)
-            .Where(t => t.Status == TenderStatus.Published || t.Bidders.Any(b => b.VendorId == MyVendor.Id))
-            .OrderByDescending(t => t.Status == TenderStatus.Published).ThenBy(t => t.ClosingAt).ToListAsync());
+        public bool AmendedAfterSubmit => Bidder?.SubmittedAt != null && LastAmendment > Bidder.SubmittedAt;
     }
+
+    public class TenderPage
+    {
+        public Tender Tender { get; set; } = null!;
+        public TenderBidder? Bidder { get; set; }
+        public List<VendorSubmission> Submissions { get; set; } = new();
+        public VendorSubmission? Latest => Submissions.FirstOrDefault(s => s.IsLatest && !s.IsWithdrawn);
+        public bool Open { get; set; }
+        public bool CanTrade { get; set; }
+        public List<PublicFile> Files { get; set; } = new();
+        public List<TenderQuestion> MyQuestions { get; set; } = new();
+        public DateTime QuestionDeadline { get; set; }
+        public bool CanAsk { get; set; }
+        public List<TenderClarification> AmendmentsAfterSubmit { get; set; } = new();
+        public bool PricesVisible { get; set; }
+        public BidResult? MyResult { get; set; }
+        public List<TenderComplaint> MyComplaints { get; set; } = new();
+        public bool CanComplain { get; set; }
+        public int MaxFileMb { get; set; }
+    }
+
+    // ------------------------------------------------------------------ Danh sách
+    public async Task<IActionResult> Index(string? tab, string? q)
+    {
+        var v = MyVendor.Id;
+        var query = Db.Tenders.AsNoTracking().Include(t => t.AwardedVendor)
+            .Where(t => t.Status == TenderStatus.Published || t.Bidders.Any(b => b.VendorId == v));
+        tab = tab is "open" or "mine" ? tab : "all";
+        if (tab == "open") query = query.Where(t => t.Status == TenderStatus.Published && t.ClosingAt > DateTime.Now);
+        if (tab == "mine") query = query.Where(t => t.Bidders.Any(b => b.VendorId == v));
+        if (!string.IsNullOrWhiteSpace(q)) { var k = q.Trim(); query = query.Where(t => t.Number.Contains(k) || t.Title.Contains(k)); }
+        var tenders = await query.OrderByDescending(t => t.Status == TenderStatus.Published).ThenBy(t => t.ClosingAt).ToListAsync();
+        var ids = tenders.Select(t => t.Id).ToList();
+        var mine = await Db.TenderBidders.AsNoTracking().Where(b => b.VendorId == v && ids.Contains(b.TenderId)).ToDictionaryAsync(b => b.TenderId);
+        var amended = await Db.TenderClarifications.Where(c => c.IsAmendment && ids.Contains(c.TenderId))
+            .GroupBy(c => c.TenderId).Select(g => new { g.Key, At = g.Max(c => c.CreatedAt) }).ToDictionaryAsync(x => x.Key, x => x.At);
+        ViewBag.Tab = tab; ViewBag.Q = q;
+        ViewData["Title"] = "Gói thầu";
+        return View(tenders.Select(t => new TenderRow(t, mine.GetValueOrDefault(t.Id), amended.TryGetValue(t.Id, out var a) ? a : null)).ToList());
+    }
+
+    // ------------------------------------------------------------------ Chi tiết
+    /// <summary>Gói thầu nhà thầu được xem: đã đăng tải (không hủy), hoặc đã tham gia</summary>
+    private IQueryable<Tender> Visible() => Db.Tenders.Where(x =>
+        x.Status >= TenderStatus.Published && (x.Status != TenderStatus.Cancelled || x.Bidders.Any(b => b.VendorId == MyVendor.Id)));
 
     public async Task<IActionResult> Details(int id)
     {
-        var t = await Db.Tenders.AsNoTracking().Include(x => x.Lines).Include(x => x.Clarifications).Include(x => x.AwardedVendor)
-            .FirstOrDefaultAsync(x => x.Id == id && (x.Status >= TenderStatus.Published && x.Status != TenderStatus.Cancelled || x.Bidders.Any(b => b.VendorId == MyVendor.Id)));
-        if (t == null || t.Status < TenderStatus.Published) return NotFound();
-        var me = await Db.TenderBidders.AsNoTracking().FirstOrDefaultAsync(b => b.TenderId == id && b.VendorId == MyVendor.Id);
-        ViewBag.Bidder = me;
-        ViewBag.Submissions = me == null ? new List<VendorSubmission>() : await Db.VendorSubmissions.AsNoTracking().Where(s => s.TenderBidderId == me.Id)
-            .OrderByDescending(s => s.Revision).Select(s => new VendorSubmission { Id = s.Id, Revision = s.Revision, SubmittedAt = s.SubmittedAt, Sha256 = s.Sha256, IsLatest = s.IsLatest, IsWithdrawn = s.IsWithdrawn, FileName = s.FileName, UnsealedAt = s.UnsealedAt }).ToListAsync();
-        ViewBag.Open = t.Status == TenderStatus.Published && DateTime.Now < t.ClosingAt;
-        ViewBag.CanTrade = CanTrade;
+        var t = await Visible().AsNoTracking().AsSplitQuery().Include(x => x.Lines).Include(x => x.Clarifications).Include(x => x.AwardedVendor).Include(x => x.Buyer)
+            .Include(x => x.Bidders).ThenInclude(b => b.Vendor)
+            .Include(x => x.Bidders).ThenInclude(b => b.Scores)
+            .Include(x => x.Committee)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        if (t == null) return NotFound();
+        t.Lines = t.Lines.OrderBy(l => l.SortOrder).ToList();
+        var me = t.Bidders.FirstOrDefault(b => b.VendorId == MyVendor.Id);
+        var now = DateTime.Now;
+        var s = Settings;
+        var vm = new TenderPage
+        {
+            Tender = t, Bidder = me, CanTrade = CanTrade, MaxFileMb = s.MaxAttachmentMb,
+            Open = t.Status == TenderStatus.Published && now < t.ClosingAt,
+            Files = await Db.Attachments.AsNoTracking().Where(a => a.DocumentType == DocType.Tender && a.DocumentId == id && a.IsPublic).OrderBy(a => a.UploadedAt)
+                .Select(a => new PublicFile(a.Id, a.FileName, a.Size, a.Note, a.UploadedAt)).ToListAsync(),
+            QuestionDeadline = TenderEvaluation.QuestionDeadline(t, s.TenderQuestionMinDays),
+            PricesVisible = TenderEvaluation.PricesVisible(t)
+        };
+        vm.CanAsk = vm.Open && me != null && CanTrade && now <= vm.QuestionDeadline;
+        if (me != null)
+        {
+            vm.Submissions = await Db.VendorSubmissions.AsNoTracking().Where(x => x.TenderBidderId == me.Id).OrderByDescending(x => x.Revision)
+                .Select(x => new VendorSubmission { Id = x.Id, Revision = x.Revision, SubmittedAt = x.SubmittedAt, Sha256 = x.Sha256, IsLatest = x.IsLatest, IsWithdrawn = x.IsWithdrawn, FileName = x.FileName, FileSize = x.FileSize, UnsealedAt = x.UnsealedAt })
+                .ToListAsync();
+            vm.MyQuestions = await Db.TenderQuestions.AsNoTracking().Include(x => x.Clarification).Where(x => x.TenderId == id && x.VendorId == MyVendor.Id)
+                .OrderByDescending(x => x.AskedAt).ToListAsync();
+            vm.MyComplaints = await Db.TenderComplaints.AsNoTracking().Where(c => c.TenderId == id && c.VendorId == MyVendor.Id).OrderBy(c => c.ReceivedAt).ToListAsync();
+            vm.AmendmentsAfterSubmit = vm.Open ? TenderEvaluation.AmendmentsAfter(t, me.SubmittedAt) : new();
+            vm.CanComplain = CanTrade && TenderEvaluation.CanComplain(t, me, now);
+            if (t.Status is TenderStatus.Awarded or TenderStatus.Contracted)
+                vm.MyResult = TenderEvaluation.Evaluate(t).FirstOrDefault(r => r.Bid.VendorId == MyVendor.Id);
+        }
         ViewData["Title"] = t.Number;
-        return View(t);
+        return View(vm);
+    }
+
+    /// <summary>Tải file HSMT (chỉ file bên mời thầu đánh dấu công khai)</summary>
+    public async Task<IActionResult> Document(int id, int fileId)
+    {
+        if (!await Visible().AnyAsync(t => t.Id == id)) return NotFound();
+        var a = await Db.Attachments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == fileId && x.DocumentType == DocType.Tender && x.DocumentId == id && x.IsPublic);
+        return a == null ? NotFound() : File(a.Data, a.ContentType, a.FileName);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -424,14 +503,38 @@ public class PortalTendersController : PortalControllerBase
             await Db.SaveChangesAsync();
             await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} nhận HSMT gói thầu {t.Number} qua cổng NCC", null, $"/Tenders/Details/{t.Id}");
         }
-        TempData["Success"] = "Đã đăng ký nhận HSMT. Bạn có thể nộp HSDT online trước thời điểm đóng thầu.";
+        TempData["Success"] = "Đã đăng ký nhận HSMT. Bạn có thể tải HSMT, gửi đề nghị làm rõ và nộp HSDT online trước thời điểm đóng thầu.";
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    // ------------------------------------------------------------------ Làm rõ HSMT
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Ask(int id, string? content)
+    {
+        var t = await Db.Tenders.FirstOrDefaultAsync(x => x.Id == id);
+        var b = await Db.TenderBidders.AnyAsync(x => x.TenderId == id && x.VendorId == MyVendor.Id);
+        IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
+        if (t == null || !b) return Back("Đăng ký nhận HSMT trước khi gửi đề nghị làm rõ.");
+        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
+        var deadline = TenderEvaluation.QuestionDeadline(t, Settings.TenderQuestionMinDays);
+        if (t.Status != TenderStatus.Published || DateTime.Now > deadline)
+            return Back($"Đã hết hạn gửi đề nghị làm rõ HSMT ({deadline.ToDateTime()} – {Settings.TenderQuestionMinDays} ngày trước đóng thầu).");
+        if (string.IsNullOrWhiteSpace(content)) return Back("Nhập nội dung đề nghị làm rõ.");
+        var text = content.Trim();
+        if (text.Length > 2000) return Back("Nội dung tối đa 2000 ký tự.");
+        Db.TenderQuestions.Add(new TenderQuestion { TenderId = id, VendorId = MyVendor.Id, VendorUserId = Me.Id, Content = text, AskedAt = DateTime.Now });
+        await Db.SaveChangesAsync();
+        await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} đề nghị làm rõ HSMT gói {t.Number}", text, $"/Tenders/Details/{t.Id}");
+        TempData["Success"] = "Đã gửi đề nghị làm rõ. Nội dung trả lời được đăng công khai cho mọi nhà thầu (không nêu tên nhà thầu hỏi).";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // ------------------------------------------------------------------ Nộp / rút HSDT
     [HttpPost, ValidateAntiForgeryToken]
     [RequestSizeLimit(60 * 1024 * 1024)]
     public async Task<IActionResult> Submit(int id, List<decimal> prices, decimal discountPercent, decimal vatPercent, int? leadTimeDays, int? validityDays,
-        decimal bidSecurityAmount, string? bidSecurityRef, DateTime? bidSecurityExpiry, string? note, IFormFile? file)
+        decimal bidSecurityAmount, string? bidSecurityRef, DateTime? bidSecurityExpiry, string? note,
+        IFormFile? techFile, IFormFile? finFile, IFormFile? securityFile, IFormFile? qualFile, List<IFormFile>? otherFiles)
     {
         var t = await Db.Tenders.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id);
         var b = await Db.TenderBidders.FirstOrDefaultAsync(x => x.TenderId == id && x.VendorId == MyVendor.Id);
@@ -441,22 +544,34 @@ public class PortalTendersController : PortalControllerBase
         if (t.Status != TenderStatus.Published || DateTime.Now >= t.ClosingAt) return Back($"Đã quá thời điểm đóng thầu {t.ClosingAt:dd/MM/yyyy HH:mm} – không nhận HSDT.");
         var lines = t.Lines.OrderBy(l => l.SortOrder).ToList();
         if (prices.Count != lines.Count || prices.Any(p => p <= 0)) return Back("Nhập đơn giá dự thầu cho tất cả các dòng.");
-        if (discountPercent is < 0 or > 100 || vatPercent is < 0 or > 20) return Back("Giảm giá / VAT không hợp lệ.");
-        if (file == null || file.Length == 0) return Back("Đính kèm file HSDT (đề xuất kỹ thuật, năng lực…).");
-        if (CheckFile(file) is string ferr) return Back(ferr);
+        if (discountPercent is < 0 or >= 100 || vatPercent is < 0 or > 20) return Back("Giảm giá / VAT không hợp lệ.");
+        if (leadTimeDays is null or < 0 or > 3650) return Back("Nhập tiến độ thực hiện (ngày).");
+        var problems = TenderEvaluation.BidProblems(t, bidSecurityAmount, bidSecurityRef, bidSecurityExpiry, validityDays);
+        if (problems.Count > 0) return Back("HSDT chưa đáp ứng HSMT: " + string.Join("; ", problems) + ".");
 
+        if (techFile == null || techFile.Length == 0) return Back("Đính kèm file đề xuất kỹ thuật.");
+        var parts = new List<(BidFileKind Kind, IFormFile File)> { (BidFileKind.Technical, techFile) };
+        if (finFile is { Length: > 0 }) parts.Add((BidFileKind.Financial, finFile));
+        if (securityFile is { Length: > 0 }) parts.Add((BidFileKind.BidSecurity, securityFile));
+        if (qualFile is { Length: > 0 }) parts.Add((BidFileKind.Qualification, qualFile));
+        parts.AddRange((otherFiles ?? new()).Where(f => f.Length > 0).Take(5).Select(f => (BidFileKind.Other, f)));
+        foreach (var (kind, f) in parts) if (CheckFile(f) is string ferr) return Back($"{kind.GetDisplayName()}: {ferr}");
+
+        var files = new List<BidFilePayload>();
+        foreach (var (kind, f) in parts)
+            files.Add(new BidFilePayload(kind, Path.GetFileName(f.FileName), f.ContentType, Convert.ToBase64String(await ReadAsync(f))));
         var payload = new BidPayload(b.Id, discountPercent, vatPercent, leadTimeDays, validityDays, bidSecurityAmount, bidSecurityRef?.Trim(), bidSecurityExpiry, note?.Trim(),
-            lines.Select((l, i) => new BidLinePayload(l.Id, Math.Round(prices[i], 0))).ToList(),
-            Path.GetFileName(file.FileName), file.ContentType, Convert.ToBase64String(await ReadAsync(file)));
+            lines.Select((l, i) => new BidLinePayload(l.Id, Math.Round(prices[i], 0))).ToList(), null, null, null, files);
+        var names = string.Join("; ", files.Select(f => f.FileName));
         var prev = await Db.VendorSubmissions.Where(s => s.TenderBidderId == b.Id).ToListAsync();
         foreach (var p in prev) p.IsLatest = false;
-        var sub = _seal.Seal(payload, SubmissionKind.Bid, Me.Id, null, b.Id, prev.Count + 1, payload.FileName, file.Length);
+        var sub = _seal.Seal(payload, SubmissionKind.Bid, Me.Id, null, b.Id, prev.Count + 1, names.Length > 260 ? names[..259] + "…" : names, parts.Sum(p => p.File.Length));
         Db.VendorSubmissions.Add(sub);
         b.Submitted = true; b.SubmittedAt = sub.SubmittedAt; // nội dung (kể cả giá) chỉ đưa vào khi mở thầu
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} đã nộp HSDT online gói {t.Number}" + (sub.Revision > 1 ? $" (lần {sub.Revision})" : ""),
             "HSDT được niêm phong đến thời điểm mở thầu.", $"/Tenders/Details/{t.Id}");
-        TempData["Success"] = $"Đã nộp HSDT lúc {sub.SubmittedAt:dd/MM/yyyy HH:mm:ss}. Mã biên nhận: {sub.Sha256}. HSDT được niêm phong đến khi mở thầu.";
+        TempData["Success"] = $"Đã nộp HSDT lúc {sub.SubmittedAt:dd/MM/yyyy HH:mm:ss} ({files.Count} file). Mã biên nhận: {sub.Sha256}. HSDT được niêm phong đến khi mở thầu.";
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -471,6 +586,54 @@ public class PortalTendersController : PortalControllerBase
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} đã rút HSDT gói {t.Number}", null, $"/Tenders/Details/{t.Id}");
         TempData["Success"] = "Đã rút HSDT.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Biên nhận nộp HSDT (in / lưu PDF)</summary>
+    public async Task<IActionResult> Receipt(int id, int submissionId)
+    {
+        var s = await Db.VendorSubmissions.AsNoTracking().Include(x => x.VendorUser).Include(x => x.TenderBidder).ThenInclude(b => b!.Tender)
+            .FirstOrDefaultAsync(x => x.Id == submissionId && x.TenderBidder!.TenderId == id && x.TenderBidder.VendorId == MyVendor.Id);
+        if (s == null) return NotFound();
+        s.SealedPayload = string.Empty; // không đưa nội dung niêm phong ra view
+        ViewBag.Vendor = MyVendor;
+        ViewData["Title"] = $"Biên nhận HSDT {s.TenderBidder!.Tender!.Number} – lần {s.Revision}";
+        return View(s);
+    }
+
+    // ------------------------------------------------------------------ Sau đóng thầu
+    /// <summary>Thông báo kết quả lựa chọn nhà thầu gửi quý công ty</summary>
+    public async Task<IActionResult> ResultNotice(int id)
+    {
+        var t = await Visible().AsNoTracking().AsSplitQuery().Include(x => x.Buyer).Include(x => x.AwardedVendor)
+            .Include(x => x.Bidders).ThenInclude(b => b.Vendor).Include(x => x.Bidders).ThenInclude(b => b.Scores).Include(x => x.Committee)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        if (t == null || t.Status is not (TenderStatus.Awarded or TenderStatus.Contracted)) return NotFound();
+        var r = TenderEvaluation.Evaluate(t).FirstOrDefault(x => x.Bid.VendorId == MyVendor.Id);
+        if (r == null) return NotFound();
+        ViewBag.Result = r;
+        ViewBag.PortalLayout = true;
+        return View("~/Views/Tenders/ResultNotice.cshtml", t);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Complain(int id, string? content)
+    {
+        var t = await Db.Tenders.FirstOrDefaultAsync(x => x.Id == id);
+        var b = await Db.TenderBidders.AsNoTracking().FirstOrDefaultAsync(x => x.TenderId == id && x.VendorId == MyVendor.Id);
+        IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
+        if (t == null || b == null) return NotFound();
+        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
+        if (!TenderEvaluation.CanComplain(t, b, DateTime.Now))
+            return Back(t.ComplaintDeadline.HasValue && DateTime.Now > t.ComplaintDeadline ? $"Đã hết thời hạn kiến nghị ({t.ComplaintDeadline.ToDateTime()})." : "Chỉ nhà thầu đã nộp HSDT được kiến nghị sau khi công bố kết quả.");
+        if (string.IsNullOrWhiteSpace(content)) return Back("Nhập nội dung kiến nghị.");
+        var text = content.Trim();
+        if (text.Length > 2000) return Back("Nội dung tối đa 2000 ký tự.");
+        Db.TenderComplaints.Add(new TenderComplaint { TenderId = id, VendorId = MyVendor.Id, Content = text, ReceivedAt = DateTime.Now });
+        await Db.SaveChangesAsync();
+        var directors = await Db.Users.Where(u => u.IsActive && u.Role == AppRoles.Director).Select(u => u.Id).ToListAsync();
+        await NotifyBuyersAsync(directors.Append(t.BuyerId), $"{MyVendor.Name} kiến nghị kết quả gói thầu {t.Number}", text, $"/Tenders/Details/{t.Id}");
+        TempData["Success"] = "Đã gửi kiến nghị. Hợp đồng chưa được ký cho tới khi kiến nghị được giải quyết.";
         return RedirectToAction(nameof(Details), new { id });
     }
 }

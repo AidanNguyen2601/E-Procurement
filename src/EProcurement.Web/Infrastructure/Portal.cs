@@ -42,10 +42,15 @@ public record QuotePayload(int RfqVendorId, int? LeadTimeDays, string? PaymentTe
     List<QuoteLinePayload> Lines, string? FileName, string? ContentType, string? FileBase64);
 public record QuoteLinePayload(int RfqLineId, decimal UnitPrice, string? Note);
 
+/// <summary>
+/// HSDT niêm phong. FileName/ContentType/FileBase64: bản cũ một file (vẫn đọc được). Files: các thành phần HSDT –
+/// file tài chính của gói hai túi chỉ được mở cùng hồ sơ tài chính.
+/// </summary>
 public record BidPayload(int TenderBidderId, decimal DiscountPercent, decimal VatPercent, int? LeadTimeDays, int? ValidityDays,
     decimal BidSecurityAmount, string? BidSecurityRef, DateTime? BidSecurityExpiry, string? Note,
-    List<BidLinePayload> Lines, string? FileName, string? ContentType, string? FileBase64);
+    List<BidLinePayload> Lines, string? FileName, string? ContentType, string? FileBase64, List<BidFilePayload>? Files = null);
 public record BidLinePayload(int TenderLineId, decimal UnitPrice);
+public record BidFilePayload(BidFileKind Kind, string FileName, string? ContentType, string Base64);
 
 /// <summary>
 /// Niêm phong báo giá / HSDT nộp online bằng ASP.NET Data Protection (khóa lưu ở volume, không nằm trong database);
@@ -123,10 +128,14 @@ public class SealingService
                 b.LeadTimeDays = p.LeadTimeDays; b.ValidityDays = p.ValidityDays; b.BidSecurityAmount = p.BidSecurityAmount;
                 b.BidSecurityRef = p.BidSecurityRef; b.BidSecurityExpiry = p.BidSecurityExpiry; b.Note = p.Note; b.VatPercent = p.VatPercent;
                 if (p.FileBase64 != null) AddFile(DocType.Tender, t.Id, p.FileName, p.ContentType, p.FileBase64, actorId, $"HSDT online của {b.Vendor?.Name}");
+                foreach (var f in (p.Files ?? new()).Where(f => f.Kind != BidFileKind.Financial))
+                    AddFile(DocType.Tender, t.Id, f.FileName, f.ContentType, f.Base64, actorId, $"HSDT online của {b.Vendor?.Name} – {f.Kind.GetDisplayName()}");
                 notes.Add($"{b.Vendor?.Name}: HSDT online lần {s.Revision} nộp {s.SubmittedAt:dd/MM/yyyy HH:mm:ss}, mã băm {s.Sha256[..12]}… {(ok ? "khớp" : "KHÔNG KHỚP")}");
             }
             if (includePrices)
             {
+                foreach (var f in (p.Files ?? new()).Where(f => f.Kind == BidFileKind.Financial))
+                    AddFile(DocType.Tender, t.Id, f.FileName, f.ContentType, f.Base64, actorId, $"HSDT online của {b.Vendor?.Name} – {f.Kind.GetDisplayName()}");
                 b.DiscountPercent = p.DiscountPercent;
                 b.Lines.Clear();
                 foreach (var l in p.Lines.Where(l => t.Lines.Any(x => x.Id == l.TenderLineId)))

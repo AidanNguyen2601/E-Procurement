@@ -290,6 +290,11 @@ public static class DbSeeder
             // RFQ đã chọn NCC từ trước: coi như đã mở và các báo giá đã đạt kỹ thuật
             "UPDATE Rfqs SET OpenedAt = ISNULL(OpenedAt, Deadline) WHERE Status = 3 AND OpenedAt IS NULL",
             "UPDATE rv SET TechnicalPass = 1 FROM RfqVendors rv JOIN Rfqs r ON r.Id = rv.RfqId WHERE r.Status = 3 AND rv.Responded = 1 AND rv.TechnicalPass IS NULL",
+            // Cổng NCC: file HSMT công khai cho nhà thầu. Dữ liệu cũ: file gói thầu tải lên trước đóng thầu (không phải HSDT mở niêm phong) coi là HSMT.
+            "IF COL_LENGTH('Attachments','IsPublic') IS NULL BEGIN " +
+                "ALTER TABLE Attachments ADD IsPublic bit NOT NULL CONSTRAINT DF_Attachments_IsPublic DEFAULT 0; " +
+                "EXEC('UPDATE a SET IsPublic = 1 FROM Attachments a JOIN Tenders t ON a.DocumentType = 5 AND a.DocumentId = t.Id " +
+                "WHERE a.UploadedAt < t.ClosingAt AND (a.Note IS NULL OR a.Note NOT LIKE N''HSDT online%'')') END",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"

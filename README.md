@@ -32,7 +32,7 @@ Hệ thống mua sắm điện tử cơ bản, số hóa quy trình từ đề n
 | Giai đoạn | Tính năng |
 |---|---|
 | 1. Vận hành | **Thông báo** trong hệ thống + email (SMTP), nhắc hạn tự động · **Ngân sách** phòng ban × nhóm hàng × năm, kiểm soát khi gửi / duyệt PR · **Hạn mức duyệt** theo phòng ban, **ủy quyền** duyệt khi vắng mặt |
-| 2. Cổng NCC (`/PortalAccount/Login`) | NCC tự đăng ký, hồ sơ pháp lý (xác minh, cảnh báo hết hạn) · **báo giá / HSDT online niêm phong** (mã hóa đến khi mở, biên nhận SHA-256) · xác nhận PO, báo giao hàng, gửi hóa đơn · khóa tài khoản khi sai mật khẩu nhiều lần |
+| 2. Cổng NCC (`/PortalAccount/Login`) | NCC tự đăng ký, hồ sơ pháp lý (xác minh, cảnh báo hết hạn) · **báo giá / HSDT online niêm phong** (mã hóa đến khi mở, biên nhận SHA-256 in được, lịch sử các lần nộp) · dự thầu: tải file HSMT, gửi đề nghị làm rõ, cảnh báo HSMT sửa đổi sau khi đã nộp, đếm ngược đóng thầu, HSDT nhiều thành phần (kỹ thuật / tài chính – gói hai túi chỉ mở file tài chính khi mở hồ sơ tài chính / bảo đảm / năng lực) có tự tính giá và kiểm tra bảo đảm dự thầu, hiệu lực HSDT trước khi nộp · biên bản mở thầu, kết quả đánh giá của mình, thông báo kết quả, kiến nghị online · xác nhận PO, báo giao hàng, gửi hóa đơn · khóa tài khoản khi sai mật khẩu nhiều lần |
 | 3. Mua hàng → thanh toán | **Hóa đơn & đối chiếu 3 bên** PO – phiếu nhận – hóa đơn · đề nghị thanh toán (phạt chậm giao, khấu trừ tạm ứng) · hợp đồng nâng cao (phụ lục, lịch thanh toán, bảo lãnh) · **REST API** `/api/v1` cho ERP (API key) |
 | 4. Tối ưu & tuân thủ | **Kế hoạch mua sắm năm** + gom nhu cầu · **mua theo hợp đồng khung** (catalog) · phân tích giá & cảnh báo rủi ro · **ký xác nhận** quyết định phê duyệt (mật khẩu + mã băm nội dung) · giao diện điện thoại, cài như ứng dụng |
 
@@ -55,6 +55,7 @@ Ngưỡng duyệt cấu hình trong `appsettings.json`:
   "MaxAttachmentMb": 10,                   // Dung lượng tối đa mỗi file đính kèm
   "TenderMinBiddingDays": 10,              // Đấu thầu: từ phát hành HSMT đến đóng thầu tối thiểu N ngày
   "TenderAmendmentMinDays": 3,             // Đấu thầu: sửa đổi HSMT sát hạn hơn N ngày thì bắt buộc gia hạn đóng thầu
+  "TenderQuestionMinDays": 3,              // Đấu thầu: nhà thầu gửi đề nghị làm rõ HSMT qua cổng chậm nhất N ngày trước đóng thầu
   "TenderMinCommittee": 3,                 // Đấu thầu: số thành viên tổ chuyên gia tối thiểu
   "TenderComplaintDays": 5,                // Đấu thầu: thời gian nhà thầu kiến nghị kết quả trước khi ký hợp đồng
   "BudgetControl": "Warn",                 // Off / Warn (duyệt vượt phải ghi lý do) / Block (chặn)

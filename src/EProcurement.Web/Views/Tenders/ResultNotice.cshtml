@@ -1,5 +1,6 @@
 @model Tender
 @{
+    if ((ViewBag.PortalLayout as bool?) == true) Layout = "_PortalLayout";
     var r = (BidResult)ViewBag.Result;
     var won = Model.AwardedVendorId == r.Bid.VendorId;
     ViewData["Title"] = $"Thông báo kết quả {Model.Number} – {r.Bid.Vendor?.Name}";

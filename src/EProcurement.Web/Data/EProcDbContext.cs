@@ -35,6 +35,7 @@ public class EProcDbContext : DbContext
     public DbSet<TenderScore> TenderScores => Set<TenderScore>();
     public DbSet<TenderClarification> TenderClarifications => Set<TenderClarification>();
     public DbSet<TenderComplaint> TenderComplaints => Set<TenderComplaint>();
+    public DbSet<TenderQuestion> TenderQuestions => Set<TenderQuestion>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ContractLine> ContractLines => Set<ContractLine>();
     public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
@@ -79,6 +80,7 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<TenderBidder>().HasIndex(x => new { x.TenderId, x.VendorId }).IsUnique();
         modelBuilder.Entity<TenderCommitteeMember>().HasIndex(x => new { x.TenderId, x.UserId }).IsUnique();
         modelBuilder.Entity<TenderScore>().HasIndex(x => new { x.TenderBidderId, x.MemberUserId }).IsUnique();
+        modelBuilder.Entity<TenderQuestion>().HasIndex(x => new { x.TenderId, x.ClarificationId });
         modelBuilder.Entity<Contract>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<CatalogEntry>().HasIndex(x => new { x.Type, x.Name }).IsUnique();
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.ReadAt });

@@ -44,6 +44,8 @@ public class ProcurementSettings
     public int TenderMinBiddingDays { get; set; } = 10;
     /// <summary>Sửa đổi HSMT phải trước thời điểm đóng thầu tối thiểu N ngày; nếu không phải gia hạn</summary>
     public int TenderAmendmentMinDays { get; set; } = 3;
+    /// <summary>Nhà thầu gửi đề nghị làm rõ HSMT qua cổng NCC chậm nhất N ngày trước thời điểm đóng thầu</summary>
+    public int TenderQuestionMinDays { get; set; } = 3;
     /// <summary>Số thành viên tổ chuyên gia tối thiểu</summary>
     public int TenderMinCommittee { get; set; } = 3;
     /// <summary>Thời gian nhà thầu được kiến nghị kết quả (ngày) – chưa hết hạn / còn kiến nghị chưa giải quyết thì chưa ký HĐ</summary>

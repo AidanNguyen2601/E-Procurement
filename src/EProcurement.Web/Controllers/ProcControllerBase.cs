@@ -63,7 +63,7 @@ public abstract class ProcControllerBase : Controller
     protected async Task<AttachmentPanel> AttachmentPanelAsync(DocType type, int id, bool canEdit) =>
         new(type, id, canEdit,
             await Db.Attachments.AsNoTracking().Where(a => a.DocumentType == type && a.DocumentId == id).OrderBy(a => a.UploadedAt)
-                .Select(a => new AttachmentInfo(a.Id, a.FileName, a.Size, a.Note, a.UploadedBy!.FullName, a.UploadedAt)).ToListAsync(),
+                .Select(a => new AttachmentInfo(a.Id, a.FileName, a.Size, a.Note, a.UploadedBy!.FullName, a.UploadedAt, a.IsPublic)).ToListAsync(),
             Request.Path + Request.QueryString);
 
     /// <summary>Danh mục hàng hóa (JSON) cho bộ soạn dòng chứng từ</summary>

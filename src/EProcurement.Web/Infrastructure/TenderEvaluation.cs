@@ -86,4 +86,23 @@ public static class TenderEvaluation
         if (b.ValidityDays < t.BidValidityDays) p.Add($"Hiệu lực HSDT {b.ValidityDays} ngày < yêu cầu {t.BidValidityDays} ngày");
         return p;
     }
+
+    /// <summary>Kiểm tra HSDT trước khi nhận online: thiếu số bảo lãnh / bảo đảm, hiệu lực HSDT ngắn hơn HSMT yêu cầu…</summary>
+    public static List<string> BidProblems(Tender t, decimal bidSecurityAmount, string? bidSecurityRef, DateTime? bidSecurityExpiry, int? validityDays)
+    {
+        var p = SecurityProblems(t, new TenderBidder { BidSecurityAmount = bidSecurityAmount, BidSecurityExpiry = bidSecurityExpiry, ValidityDays = validityDays ?? 0 });
+        if (t.BidSecurityAmount > 0 && string.IsNullOrWhiteSpace(bidSecurityRef)) p.Add("Nhập số bảo lãnh / chứng từ bảo đảm dự thầu");
+        return p;
+    }
+
+    /// <summary>Hạn nhà thầu gửi đề nghị làm rõ HSMT</summary>
+    public static DateTime QuestionDeadline(Tender t, int minDays) => t.ClosingAt.AddDays(-minDays);
+
+    /// <summary>Sửa đổi HSMT đăng tải sau thời điểm nhà thầu nộp HSDT – nhà thầu cần xem lại và nộp lại nếu cần</summary>
+    public static List<TenderClarification> AmendmentsAfter(Tender t, DateTime? submittedAt) =>
+        submittedAt == null ? new() : t.Clarifications.Where(c => c.IsAmendment && c.CreatedAt > submittedAt).OrderBy(c => c.CreatedAt).ToList();
+
+    /// <summary>Nhà thầu được kiến nghị: đã nộp HSDT, kết quả đã công bố và còn trong thời hạn kiến nghị</summary>
+    public static bool CanComplain(Tender t, TenderBidder? b, DateTime now) =>
+        b?.Submitted == true && t.Status == TenderStatus.Awarded && t.ComplaintDeadline.HasValue && now <= t.ComplaintDeadline;
 }
