@@ -38,17 +38,20 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body data-sign="@(ProcOptions.Value.RequireSignature ? "1" : "0")">
+<script>try { var s = localStorage.getItem("eproc.nav"); if (s === "mini" || s === "hidden") document.body.classList.add("nav-" + s); } catch (e) { }</script>
 <div class="nav-backdrop"></div>
 <div class="app">
     <aside class="sidebar">
-        <a class="brand" asp-controller="Home" asp-action="Index">e<span>Procurement</span></a>
+        <div class="brand-row"><a class="brand" asp-controller="Home" asp-action="Index" title="eProcurement">e<span>Procurement</span></a>
+            <button type="button" class="sb-btn" data-nav-mini title="Rút gọn / mở rộng menu (Ctrl+B)" aria-label="Rút gọn menu">@Icon.Svg("chevron-down", 16)</button></div>
+        <div class="nav-search"><input type="search" id="nav-search" placeholder="Tìm chức năng…" autocomplete="off" aria-label="Tìm chức năng trong menu" /></div>
         <nav>
             <div class="nav-group">Tổng quan</div>
             <a class="@Active("Home")" asp-controller="Home" asp-action="Index">@Icon.Svg("dashboard")<span>Dashboard</span></a>
             @if (approver) { <a class="@Active("Approvals")" asp-controller="Approvals" asp-action="Index">@Icon.Svg("inbox")<span>Chờ tôi duyệt</span></a> }
 
             @* ===== Cây menu nghiệp vụ mua sắm ===== *@
-            <details class="nav-tree" open>
+            <details class="nav-tree" open data-key="req">
                 <summary>@Icon.Svg("file-text")<span>Quản lý yêu cầu mua sắm</span></summary>
                 <a class="lvl1 @On("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">@Icon.Svg("cart", 15)<span>Yêu cầu mua sắm</span></a>
                 @if (purchasing || director)
@@ -58,27 +61,27 @@
                 }
             </details>
 
-            <details class="nav-tree" open>
+            <details class="nav-tree" open data-key="buy">
                 <summary>@Icon.Svg("building")<span>Quản lý mua hàng</span></summary>
                 @if (purchasing || director)
                 {
-                    <details open>
+                    <details open data-key="buy-direct">
                         <summary class="lvl1">@Icon.Svg("award", 15)<span>Mua sắm trực tiếp</span></summary>
                         <a class="lvl2 @On("DirectAwards")" asp-controller="DirectAwards" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ chào giá chỉ định</span></a>
                         <a class="lvl2 @On("q-direct")" asp-controller="Quotes" asp-action="Direct">@Icon.Svg("receipt", 14)<span>Báo giá nhà cung cấp</span></a>
                     </details>
-                    <details open>
+                    <details open data-key="buy-cq">
                         <summary class="lvl1">@Icon.Svg("send", 15)<span>Chào giá cạnh tranh</span></summary>
                         <a class="lvl2 @On("Rfqs")" asp-controller="Rfqs" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ chào giá cạnh tranh</span></a>
                         <a class="lvl2 @On("q-comp")" asp-controller="Quotes" asp-action="Competitive">@Icon.Svg("receipt", 14)<span>Báo giá chào hàng cạnh tranh</span></a>
                         <a class="lvl2 @On("q-eval")" asp-controller="Quotes" asp-action="Evaluations">@Icon.Svg("scale", 14)<span>Đánh giá hồ sơ chào giá</span></a>
                     </details>
                 }
-                <details open>
+                <details open data-key="buy-td">
                     <summary class="lvl1">@Icon.Svg("gavel", 15)<span>Đấu thầu@(purchasing || director ? "" : " (tổ chuyên gia)")</span></summary>
                     <a class="lvl2 @On("td")" asp-controller="Tenders" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ mời thầu / Hồ sơ yêu cầu</span></a>
                     <a class="lvl2 @On("td-eval")" asp-controller="Tenders" asp-action="Evaluations">@Icon.Svg("scale", 14)<span>Đánh giá HSDT/HSCG</span></a>
-                    <details open>
+                    <details open data-key="buy-td-sel">
                         <summary class="lvl2">@Icon.Svg("trophy", 14)<span>Lựa chọn nhà thầu</span></summary>
                         <a class="lvl3 @On("td-neg")" asp-controller="Tenders" asp-action="Negotiations">@Icon.Svg("users", 13)<span>Đàm phán hợp đồng</span></a>
                         <a class="lvl3 @On("td-report")" asp-controller="Tenders" asp-action="EvaluationReports">@Icon.Svg("bar-chart", 13)<span>Báo cáo đánh giá LCNT</span></a>
@@ -103,7 +106,7 @@
 
             @if (purchasing || director)
             {
-                <details class="nav-tree" open>
+                <details class="nav-tree" open data-key="src">
                     <summary>@Icon.Svg("network")<span>Quản lý nguồn cung</span></summary>
                     <a class="lvl1 @On("Prequalifications")" asp-controller="Prequalifications" asp-action="Index">@Icon.Svg("clipboard", 15)<span>Quản lý NCC đăng ký sơ tuyển</span></a>
                     <a class="lvl1 @On("SupplierEvaluations")" asp-controller="SupplierEvaluations" asp-action="Index">@Icon.Svg("users", 15)<span>Đánh giá nhà cung cấp</span></a>
@@ -148,10 +151,15 @@
                 <a class="@Active("SampleData")" asp-controller="SampleData" asp-action="Index">@Icon.Svg("database")<span>Dữ liệu mẫu</span></a>
             }
         </nav>
+        <div class="sidebar-foot">
+            <button type="button" class="sb-btn" data-nav-expand-all title="Mở rộng tất cả nhóm">⊞ <span>Mở rộng</span></button>
+            <button type="button" class="sb-btn" data-nav-collapse-all title="Thu gọn tất cả nhóm">⊟ <span>Thu gọn</span></button>
+            <button type="button" class="sb-btn ms-auto" data-nav-hide title="Ẩn menu (Ctrl+B để hiện lại)">⇤ <span>Ẩn</span></button>
+        </div>
     </aside>
     <div class="main">
         <header class="topbar">
-            <button type="button" class="btn btn-light nav-toggle" data-nav-toggle aria-label="Mở menu">@Icon.Svg("menu", 18)</button>
+            <button type="button" class="btn btn-light nav-toggle" data-nav-toggle aria-label="Ẩn / hiện menu" title="Ẩn / hiện menu (Ctrl+B)">@Icon.Svg("menu", 18)</button>
             <h1 class="page-title d-flex align-items-center gap-2">@if (pageIcon != null) { <span class="text-primary d-inline-flex">@Icon.Svg(pageIcon, 20)</span> }@ViewData["Title"]</h1>
             <div class="d-flex align-items-center gap-2">
                 <a class="btn btn-primary btn-sm" asp-controller="PurchaseRequests" asp-action="Create">@Icon.Svg("plus", 14)<span>Đề nghị mua hàng</span></a>
