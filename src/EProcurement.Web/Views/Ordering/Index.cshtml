@@ -1,0 +1,31 @@
+@model List<Contract>
+@{ var avail = (Dictionary<int, Dictionary<int, EProcurement.Web.Controllers.CatalogLine>>)ViewBag.Availability; }
+<p class="small text-muted">Hàng hóa có hợp đồng khung đang hiệu lực: đặt theo đơn giá đã lựa chọn qua đấu thầu, không phải chào giá lại.
+    Đề nghị vẫn qua bước duyệt của phòng ban (và kiểm soát ngân sách); sau khi duyệt, mua hàng lập đơn đặt hàng đợt ngay.</p>
+@foreach (var c in Model)
+{
+    var a = avail[c.Id];
+    <form asp-action="Order" method="post" class="card mb-3">
+        <input type="hidden" name="contractId" value="@c.Id" />
+        <div class="card-header d-flex flex-wrap justify-content-between gap-2">
+            <span><b>@c.Title</b> <span class="small text-muted">· @c.Number · @c.Vendor?.Name</span></span>
+            <span class="small @(c.EndDate < DateTime.Today.AddDays(30) ? "text-danger" : "text-muted")">Hiệu lực đến @c.EndDate.ToDate()</span>
+        </div>
+        <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+            <thead><tr><th>Hàng hóa</th><th>ĐVT</th><th class="money">Đơn giá HĐ (chưa VAT)</th><th class="money">Còn đặt được</th><th style="width:130px">Số lượng đặt</th></tr></thead><tbody>
+            @foreach (var l in c.Lines.OrderBy(x => x.SortOrder))
+            {
+                var x = a[l.Id];
+                <tr class="@(x.Available <= 0 ? "text-muted" : "")"><td>@l.Description @if (l.Item?.Specification != null) { <div class="small text-muted">@l.Item.Specification</div> }</td><td>@l.Unit</td>
+                    <td class="money">@l.UnitPrice.ToMoney()</td><td class="money">@x.Available.ToQty() <div class="small text-muted">/ @l.Quantity.ToQty()@(x.Pending > 0 ? $" · {x.Pending.ToQty()} đang chờ" : "")</div></td>
+                    <td><input type="hidden" name="lineIds" value="@l.Id" /><input name="quantities" type="number" min="0" max="@x.Available.ToString(System.Globalization.CultureInfo.InvariantCulture)" step="1" value="0" class="form-control form-control-sm text-end" @(x.Available <= 0 ? "readonly" : "") /></td></tr>
+            }
+        </tbody></table></div></div>
+        <div class="card-footer d-flex flex-wrap gap-2 align-items-center">
+            <input name="purpose" maxlength="1000" class="form-control form-control-sm" style="max-width:420px" placeholder="Mục đích sử dụng" />
+            <label class="small">Cần hàng <input name="neededDate" type="date" value="@DateTime.Today.AddDays(10).ToString("yyyy-MM-dd")" class="form-control form-control-sm d-inline-block" style="width:auto" /></label>
+            <button class="btn btn-sm btn-primary ms-auto">Tạo đề nghị mua hàng</button>
+        </div>
+    </form>
+}
+@if (!Model.Any()) { <div class="alert alert-light border">Hiện không có hợp đồng khung đang hiệu lực.</div> }

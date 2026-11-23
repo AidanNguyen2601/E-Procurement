@@ -51,6 +51,7 @@ public class LineInput
     [StringLength(30)] public string? Unit { get; set; }
     [Range(0, 10_000_000)] public decimal Quantity { get; set; } = 1;
     [Range(0, 100_000_000_000)] public decimal Price { get; set; }
+    [Range(1, 4)] public int Quarter { get; set; } = 1;
 }
 
 public class PrFormViewModel

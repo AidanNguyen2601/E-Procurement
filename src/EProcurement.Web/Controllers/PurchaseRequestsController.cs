@@ -56,6 +56,12 @@ public class PurchaseRequestsController : ProcControllerBase
             ViewBag.Budget = await HttpContext.RequestServices.GetRequiredService<BudgetService>().CheckAsync(pr);
             ViewBag.BudgetMode = Settings.BudgetControl;
         }
+        // Đối chiếu kế hoạch mua sắm năm đã duyệt của phòng ban
+        var plan = await Db.ProcurementPlans.AsNoTracking().Include(p => p.Lines)
+            .FirstOrDefaultAsync(p => p.Year == pr.RequestDate.Year && p.Department == pr.Department && p.Status == PlanStatus.Approved);
+        if (plan != null && !plan.Lines.Any(l => l.PurchaseRequestId == pr.Id))
+            ViewBag.OutOfPlan = pr.Lines.Where(l => !plan.Lines.Any(p => (l.ItemId.HasValue && p.ItemId == l.ItemId) || string.Equals(p.Description.Trim(), l.Description.Trim(), StringComparison.OrdinalIgnoreCase)))
+                .Select(l => l.Description).ToList();
         ViewBag.Rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
         ViewBag.Orders = await Db.PurchaseOrders.Include(p => p.Vendor).Where(p => p.PurchaseRequestId == id).ToListAsync();
         ViewBag.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Where(d => d.PurchaseRequestId == id).ToListAsync();

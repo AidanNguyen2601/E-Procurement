@@ -54,6 +54,8 @@ public class EProcDbContext : DbContext
     public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
     public DbSet<ContractGuarantee> ContractGuarantees => Set<ContractGuarantee>();
     public DbSet<ApiClient> ApiClients => Set<ApiClient>();
+    public DbSet<ProcurementPlan> ProcurementPlans => Set<ProcurementPlan>();
+    public DbSet<ProcurementPlanLine> ProcurementPlanLines => Set<ProcurementPlanLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,6 +90,9 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<PoShipment>().HasIndex(x => x.PurchaseOrderId);
         modelBuilder.Entity<Invoice>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<ApiClient>().HasIndex(x => x.KeyHash).IsUnique();
+        modelBuilder.Entity<ProcurementPlan>().HasIndex(x => new { x.Year, x.Department }).IsUnique();
+        modelBuilder.Entity<ProcurementPlan>().HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById);
+        modelBuilder.Entity<ProcurementPlan>().HasOne(x => x.ApprovedBy).WithMany().HasForeignKey(x => x.ApprovedById);
         modelBuilder.Entity<Invoice>().HasIndex(x => new { x.VendorId, x.InvoiceNo, x.Series });
         modelBuilder.Entity<Payment>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<Payment>().HasIndex(x => new { x.Status, x.RequestedAt });

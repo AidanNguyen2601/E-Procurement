@@ -56,6 +56,8 @@ public static class SampleDataSeeder
         await db.PurchaseOrders.Where(x => !poIds.Contains(x.Id) && x.RfqId != null && rfqIds.Contains(x.RfqId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.RfqId, (int?)null));
         await db.PurchaseOrders.Where(x => !poIds.Contains(x.Id) && x.PurchaseRequestId != null && prIds.Contains(x.PurchaseRequestId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PurchaseRequestId, (int?)null));
         await db.Rfqs.Where(x => !rfqIds.Contains(x.Id) && x.PurchaseRequestId != null && prIds.Contains(x.PurchaseRequestId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PurchaseRequestId, (int?)null));
+        await db.PurchaseRequests.Where(x => x.ContractId != null && contractIds.Contains(x.ContractId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.ContractId, (int?)null));
+        await db.ProcurementPlanLines.Where(x => x.PurchaseRequestId != null && prIds.Contains(x.PurchaseRequestId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PurchaseRequestId, (int?)null));
 
         // Hóa đơn, thanh toán, giao hàng, nộp online gắn với chứng từ mẫu
         var invIds = await db.Invoices.Where(x => poIds.Contains(x.PurchaseOrderId)).Select(x => x.Id).ToListAsync();

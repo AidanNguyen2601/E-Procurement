@@ -203,6 +203,39 @@ public class ContractsController : ProcControllerBase
         Notes = $"Theo hợp đồng {c.Number} ký ngày {c.SignedDate.ToDate()}", CreatedAt = DateTime.Now
     };
 
+    /// <summary>Lập PO đặt hàng đợt từ PR đã duyệt tạo trong catalog hợp đồng khung</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreatePoFromPr(int prId)
+    {
+        var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == prId);
+        if (pr?.ContractId == null) return NotFound();
+        IActionResult Back(string e) { TempData["Error"] = e; return RedirectToAction("Details", "PurchaseRequests", new { id = prId }); }
+        if (pr.Status != PrStatus.Approved) return Back("Đề nghị chưa được duyệt hoặc đã lập đơn hàng.");
+        var c = await LoadAsync(pr.ContractId.Value);
+        if (c == null || c.Status != ContractStatus.Active || !c.IsFramework || c.EndDate < DateTime.Today) return Back("Hợp đồng khung không còn hiệu lực – chọn hình thức mua khác.");
+        var avail = await OrderingController.AvailabilityAsync(Db, c, excludePrId: prId);
+        var po = await NewPoAsync(c, prId, pr.NeededDate);
+        var s = 1;
+        foreach (var l in pr.Lines.OrderBy(x => x.SortOrder))
+        {
+            var cl = c.Lines.FirstOrDefault(x => x.ItemId == l.ItemId && x.Description == l.Description);
+            if (cl == null) return Back($"\"{l.Description}\" không có trong hợp đồng.");
+            if (l.Quantity > avail[cl.Id].Available) return Back($"\"{l.Description}\": vượt khối lượng còn lại của hợp đồng ({avail[cl.Id].Available.ToQty()}).");
+            po.Lines.Add(new PurchaseOrderLine { ItemId = cl.ItemId, Description = cl.Description, Unit = cl.Unit, Quantity = l.Quantity, UnitPrice = cl.UnitPrice, SortOrder = s++ });
+        }
+        po.Recalculate();
+        Db.PurchaseOrders.Add(po);
+        pr.Status = PrStatus.Processing; pr.Method = ProcurementMethod.OpenTender; pr.MethodReason = $"Đặt hàng theo hợp đồng khung {c.Number}";
+        await Db.SaveChangesAsync();
+        Log(DocType.PO, po.Id, $"Đặt hàng theo hợp đồng khung {c.Number}", $"Từ đề nghị {pr.Number}");
+        Log(DocType.Contract, c.Id, $"Đặt hàng đợt {po.Number}", $"{po.SubTotal.ToMoney()} đ – đề nghị {pr.Number} ({pr.Department})");
+        Log(DocType.PR, pr.Id, $"Mua hàng lập {po.Number} theo hợp đồng khung {c.Number}");
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã tạo đơn mua hàng nháp {po.Number} theo hợp đồng {c.Number} – trình duyệt / gửi NCC.";
+        return RedirectToAction("Details", "PurchaseOrders", new { id = po.Id });
+    }
+
     // ------------------------------------------------------------------ Phụ lục hợp đồng
     [Authorize(Roles = AppRoles.Purchasing)]
     [HttpPost, ValidateAntiForgeryToken]

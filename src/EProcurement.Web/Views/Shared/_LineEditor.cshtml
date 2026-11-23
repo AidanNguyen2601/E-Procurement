@@ -4,6 +4,7 @@
 @{
     var priceLabel = ViewData["PriceLabel"] as string;
     var showPrice = priceLabel != null;
+    var showQuarter = ViewData["ShowQuarter"] is true;
     var inv = System.Globalization.CultureInfo.InvariantCulture;
 }
 <div class="card mb-3">
@@ -12,7 +13,7 @@
     <div class="card-body p-0 table-responsive">
         <table class="table mb-0 line-editor" data-items="@(ViewData["ItemsJson"] as string)" data-show-price="@(showPrice ? "1" : "0")">
             <thead><tr><th style="width:40px">#</th><th style="width:260px">Hàng hóa (danh mục)</th><th>Diễn giải / quy cách</th><th style="width:100px">ĐVT</th><th style="width:100px">Số lượng</th>
-                @if (showPrice) { <th style="width:150px">@priceLabel</th><th class="money" style="width:150px">Thành tiền</th> }<th style="width:40px"></th></tr></thead>
+                @if (showPrice) { <th style="width:150px">@priceLabel</th><th class="money" style="width:150px">Thành tiền</th> }@if (showQuarter) { <th style="width:90px">Quý</th> }<th style="width:40px"></th></tr></thead>
             <tbody>
             @for (var i = 0; i < Model.Count; i++)
             {
@@ -29,13 +30,17 @@
                         <td><input data-f="Price" type="number" step="1000" min="0" class="form-control form-control-sm calc" value="@l.Price.ToString(inv)" /></td>
                         <td class="money total">0</td>
                     }
+                    @if (showQuarter)
+                    {
+                        <td><select data-f="Quarter" class="form-select form-select-sm">@for (var q = 1; q <= 4; q++) { <option value="@q" selected="@(l.Quarter == q)">Q@(q)</option> }</select></td>
+                    }
                     <td><button type="button" class="btn btn-sm btn-link text-danger remove-line" title="Xóa dòng">✕</button></td>
                 </tr>
             }
             </tbody>
             @if (showPrice)
             {
-                <tfoot><tr class="fw-bold"><td colspan="6" class="text-end">Cộng</td><td class="money" data-sum>0</td><td></td></tr></tfoot>
+                <tfoot><tr class="fw-bold"><td colspan="6" class="text-end">Cộng</td><td class="money" data-sum>0</td>@if (showQuarter) { <td></td> }<td></td></tr></tfoot>
             }
         </table>
     </div>

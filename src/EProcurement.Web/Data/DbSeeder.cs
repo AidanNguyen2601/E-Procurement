@@ -266,6 +266,7 @@ public static class DbSeeder
             "IF COL_LENGTH('PurchaseOrders','VendorResponse') IS NULL ALTER TABLE PurchaseOrders ADD VendorResponse nvarchar(1000) NULL",
             "IF COL_LENGTH('PurchaseRequests','Method') IS NULL ALTER TABLE PurchaseRequests ADD Method int NULL",
             "IF COL_LENGTH('PurchaseRequests','MethodReason') IS NULL ALTER TABLE PurchaseRequests ADD MethodReason nvarchar(1000) NULL",
+            "IF COL_LENGTH('PurchaseRequests','ContractId') IS NULL ALTER TABLE PurchaseRequests ADD ContractId int NULL CONSTRAINT FK_PurchaseRequests_Contracts_ContractId REFERENCES Contracts(Id)",
             // Hình thức + căn cứ mua sắm trực tiếp trên PO
             "IF COL_LENGTH('PurchaseOrders','Method') IS NULL ALTER TABLE PurchaseOrders ADD Method int NULL",
             "IF COL_LENGTH('PurchaseOrders','PriceDeviationReason') IS NULL ALTER TABLE PurchaseOrders ADD PriceDeviationReason nvarchar(1000) NULL",

@@ -254,6 +254,10 @@ public class PurchaseRequest
     [Display(Name = "Lý do chọn hình thức")]
     public string? MethodReason { get; set; }
 
+    /// <summary>Đặt hàng theo hợp đồng khung (chọn từ catalog hợp đồng)</summary>
+    [Display(Name = "Hợp đồng khung")] public int? ContractId { get; set; }
+    public Contract? Contract { get; set; }
+
     public ICollection<PurchaseRequestLine> Lines { get; set; } = new List<PurchaseRequestLine>();
 
     public void Recalculate()
@@ -972,4 +976,45 @@ public class ApiClient
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime? LastUsedAt { get; set; }
     public DateTime? RevokedAt { get; set; }
+}
+
+// =====================================================================
+//  KẾ HOẠCH MUA SẮM NĂM
+// =====================================================================
+/// <summary>Kế hoạch mua sắm năm của một phòng ban – được Giám đốc duyệt, mua hàng gom thành gói</summary>
+public class ProcurementPlan
+{
+    public int Id { get; set; }
+    [Range(2000, 2100)][Display(Name = "Năm")] public int Year { get; set; }
+    [Required, StringLength(100)][Display(Name = "Phòng ban")] public string Department { get; set; } = string.Empty;
+    [Display(Name = "Trạng thái")] public PlanStatus Status { get; set; } = PlanStatus.Draft;
+    [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    public int CreatedById { get; set; }
+    public AppUser? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime? SubmittedAt { get; set; }
+    public int? ApprovedById { get; set; }
+    public AppUser? ApprovedBy { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    [StringLength(1000)] public string? DecisionNote { get; set; }
+    public ICollection<ProcurementPlanLine> Lines { get; set; } = new List<ProcurementPlanLine>();
+    [NotMapped] public decimal Total => Lines.Sum(l => l.Quantity * l.EstimatedPrice);
+}
+
+public class ProcurementPlanLine
+{
+    public int Id { get; set; }
+    public int PlanId { get; set; }
+    public ProcurementPlan? Plan { get; set; }
+    public int? ItemId { get; set; }
+    public Item? Item { get; set; }
+    [Required, StringLength(300)] public string Description { get; set; } = string.Empty;
+    [StringLength(30)] public string? Unit { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal Quantity { get; set; }
+    [Column(TypeName = "decimal(18,0)")] public decimal EstimatedPrice { get; set; }
+    [Range(1, 4)][Display(Name = "Quý cần hàng")] public int Quarter { get; set; } = 1;
+    [StringLength(300)] public string? Note { get; set; }
+    /// <summary>Đã được gom vào đề nghị mua hàng</summary>
+    public int? PurchaseRequestId { get; set; }
+    public PurchaseRequest? PurchaseRequest { get; set; }
 }

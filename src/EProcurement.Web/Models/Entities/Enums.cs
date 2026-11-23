@@ -59,7 +59,8 @@ public enum DocType
     [Display(Name = "Gói thầu")] Tender = 5,
     [Display(Name = "Hợp đồng")] Contract = 6,
     [Display(Name = "Hóa đơn")] Invoice = 7,
-    [Display(Name = "Đề nghị thanh toán")] Payment = 8
+    [Display(Name = "Đề nghị thanh toán")] Payment = 8,
+    [Display(Name = "Kế hoạch mua sắm")] Plan = 9
 }
 
 /// <summary>Hình thức lựa chọn nhà cung cấp (xếp theo mức độ cạnh tranh tăng dần)</summary>
@@ -216,4 +217,12 @@ public enum AmendmentStatus
     [Display(Name = "Chờ Giám đốc duyệt")] Pending = 1,
     [Display(Name = "Đã duyệt – có hiệu lực")] Approved = 2,
     [Display(Name = "Không duyệt")] Rejected = 3
+}
+
+public enum PlanStatus
+{
+    [Display(Name = "Nháp")] Draft = 1,
+    [Display(Name = "Chờ Giám đốc duyệt")] Submitted = 2,
+    [Display(Name = "Đã duyệt")] Approved = 3,
+    [Display(Name = "Trả lại")] Returned = 4
 }

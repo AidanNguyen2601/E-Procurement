@@ -58,6 +58,7 @@ public class NotificationService
         DocType.Contract => $"/Contracts/Details/{id}",
         DocType.Invoice => $"/Invoices/Details/{id}",
         DocType.Payment => $"/Payments/Details/{id}",
+        DocType.Plan => $"/Plans/Details/{id}",
         _ => "/"
     };
 
@@ -144,6 +145,17 @@ public class NotificationService
                     Add(await DirectorsAsync(), NotificationKind.Action, $"Phụ lục hợp đồng {c.Number} chờ duyệt", c.Title, e,
                         $"act:HD:{c.Id}:amend:{await _db.ContractAmendments.Where(a => a.ContractId == c.Id).CountAsync()}");
                 Owner(c.CreatedById, e, $"{c.Number}: {e.Action}");
+                break;
+            }
+            case DocType.Plan:
+            {
+                var pl = await _db.ProcurementPlans.AsNoTracking().FirstOrDefaultAsync(x => x.Id == e.Id);
+                if (pl == null) return;
+                if (pl.Status == PlanStatus.Submitted)
+                    Add(await DirectorsAsync(), NotificationKind.Action, $"Kế hoạch mua sắm {pl.Year} chờ duyệt: {pl.Department}", null, e, $"act:PL:{pl.Id}:{pl.SubmittedAt:yyyyMMddHHmm}");
+                if (pl.Status == PlanStatus.Approved)
+                    Add(await UsersAsync(u => u.Role == AppRoles.Buyer), NotificationKind.Info, $"Kế hoạch mua sắm {pl.Year} của {pl.Department} đã duyệt – có thể gom nhu cầu", null, e, $"info:PL:{pl.Id}:approved");
+                Owner(pl.CreatedById, e, $"Kế hoạch {pl.Year} – {pl.Department}: {e.Action}");
                 break;
             }
             case DocType.Invoice:

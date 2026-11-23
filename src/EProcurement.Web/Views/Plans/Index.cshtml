@@ -1,0 +1,24 @@
+@model List<ProcurementPlan>
+@{ int year = ViewBag.Year; bool seesAll = ViewBag.SeesAll; bool hasOwn = ViewBag.HasOwn; }
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <div class="btn-group btn-group-sm">
+        @for (var y = DateTime.Today.Year - 1; y <= DateTime.Today.Year + 1; y++) { <a asp-action="Index" asp-route-year="@y" class="btn @(y == year ? "btn-primary" : "btn-outline-primary")">@y</a> }
+    </div>
+    @if (User.IsInRole(AppRoles.Approver) || User.IsInRole(AppRoles.Requester) || User.IsAdmin())
+    {
+        <a asp-action="Edit" asp-route-year="@year" class="btn btn-sm btn-outline-primary">@(hasOwn ? "Mở kế hoạch phòng tôi" : "+ Lập kế hoạch phòng tôi")</a>
+    }
+    @if (User.IsPurchasing() || User.IsInRole(AppRoles.Director)) { <a asp-action="Consolidate" asp-route-year="@year" class="btn btn-sm btn-primary ms-auto">Gom nhu cầu các phòng ban →</a> }
+</div>
+<div class="card"><div class="card-body p-0"><table class="table mb-0 align-middle">
+    <thead><tr><th>Phòng ban</th><th class="money">Số dòng</th><th class="money">Giá trị dự kiến</th><th>Trạng thái</th><th class="money">Đã gom vào PR</th><th></th></tr></thead><tbody>
+    @foreach (var p in Model)
+    {
+        <tr><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Department</a></td><td class="money">@p.Lines.Count</td><td class="money">@p.Total.ToMoney()</td>
+            <td><span class="badge @(p.Status switch { PlanStatus.Approved => "bg-success", PlanStatus.Submitted => "bg-warning text-dark", PlanStatus.Returned => "bg-danger", _ => "bg-light text-dark border" })">@p.Status.GetDisplayName()</span>
+                @if (p.ApprovedBy != null) { <div class="small text-muted">@p.ApprovedBy.FullName · @p.ApprovedAt.ToDate()</div> }</td>
+            <td class="money">@p.Lines.Count(l => l.PurchaseRequestId != null)/@p.Lines.Count</td><td></td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="6" class="text-muted p-3">Chưa có kế hoạch năm @year.</td></tr> }
+    @if (Model.Count > 1) { <tr class="fw-semibold"><td>Tổng</td><td class="money">@Model.Sum(p => p.Lines.Count)</td><td class="money">@Model.Sum(p => p.Total).ToMoney()</td><td colspan="3"></td></tr> }
+</tbody></table></div></div>

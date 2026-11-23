@@ -1,0 +1,14 @@
+@model EProcurement.Web.Controllers.PlanForm
+@{ var plan = ViewBag.Plan as ProcurementPlan; ViewData["PriceLabel"] = "Đơn giá dự kiến"; ViewData["ShowQuarter"] = true; }
+@if (plan?.Status == PlanStatus.Returned) { <div class="alert alert-warning">Giám đốc trả lại: @plan.DecisionNote</div> }
+<form asp-action="Save" method="post">
+    <input type="hidden" name="Year" value="@Model.Year" />
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+    <div class="card mb-3"><div class="card-body small text-muted">Liệt kê nhu cầu mua sắm cả năm của phòng: hàng hóa, số lượng, đơn giá dự kiến và quý cần hàng.
+        Mua hàng sẽ gom nhu cầu cùng loại của các phòng ban để tổ chức lựa chọn nhà cung cấp một lần.</div></div>
+    <partial name="_LineEditor" model="Model.Lines" />
+    <div class="mb-3"><label class="form-label small mb-0">Ghi chú</label><textarea name="Note" class="form-control" rows="2" maxlength="1000">@Model.Note</textarea></div>
+    <button class="btn btn-outline-primary">Lưu nháp</button>
+    @if (User.IsInRole(AppRoles.Approver) || User.IsAdmin()) { <button name="submit" value="true" class="btn btn-primary" data-confirm="Trình Giám đốc duyệt kế hoạch?">Lưu & trình Giám đốc</button> }
+    <a asp-action="Index" asp-route-year="@Model.Year" class="btn btn-light">Hủy</a>
+</form>
