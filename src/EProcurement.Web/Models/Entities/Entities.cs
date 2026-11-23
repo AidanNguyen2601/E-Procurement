@@ -954,3 +954,22 @@ public class ContractGuarantee
     [Display(Name = "Đã giải tỏa")] public DateTime? ReleasedAt { get; set; }
     [StringLength(500)] public string? Note { get; set; }
 }
+
+// =====================================================================
+//  TÍCH HỢP – API KEY
+// =====================================================================
+public class ApiClient
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Nhập tên hệ thống"), StringLength(100)][Display(Name = "Hệ thống tích hợp")] public string Name { get; set; } = string.Empty;
+    /// <summary>SHA-256 của key (không lưu key gốc)</summary>
+    [Required, StringLength(64)] public string KeyHash { get; set; } = string.Empty;
+    [Required, StringLength(12)] public string KeyPrefix { get; set; } = string.Empty;
+    [Required, StringLength(200)][Display(Name = "Phạm vi")] public string Scopes { get; set; } = "read";
+    public bool IsActive { get; set; } = true;
+    public int CreatedById { get; set; }
+    public AppUser? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime? LastUsedAt { get; set; }
+    public DateTime? RevokedAt { get; set; }
+}

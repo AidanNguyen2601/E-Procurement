@@ -68,6 +68,15 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, EProcurement.Web.Infrastructure.DelegationClaimsTransformation>();
 if (builder.Configuration.GetValue("Notifications:BackgroundEnabled", true)) builder.Services.AddHostedService<EProcurement.Web.Infrastructure.NotificationWorker>();
 
+// REST API: tối đa 120 request / phút / API key
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("api", ctx => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Request.Headers["X-Api-Key"].ToString(),
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -79,6 +88,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

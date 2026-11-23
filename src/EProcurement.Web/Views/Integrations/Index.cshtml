@@ -1,0 +1,48 @@
+@model List<ApiClient>
+@{ var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/api/v1"; }
+@if (TempData["NewKey"] is string key)
+{
+    <div class="alert alert-warning"><b>API key mới:</b> <code class="user-select-all text-break">@key</code><div class="small">Lưu vào cấu hình hệ thống ERP. Hệ thống chỉ lưu mã băm nên không xem lại được key này.</div></div>
+}
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card mb-3"><div class="card-header">Cấp API key</div><div class="card-body">
+            <form asp-action="Create" method="post" class="d-flex flex-column gap-2">
+                <input name="name" maxlength="100" class="form-control form-control-sm" placeholder="Tên hệ thống (VD: ERP kế toán)" required />
+                <label class="small"><input type="checkbox" name="scopes" value="read" checked /> <b>read</b> – đọc NCC, hàng hóa, PO, phiếu nhận, hóa đơn, thanh toán, ngân sách</label>
+                <label class="small"><input type="checkbox" name="scopes" value="payments:write" /> <b>payments:write</b> – ghi nhận đã chi cho đề nghị thanh toán đã duyệt</label>
+                <button class="btn btn-sm btn-primary align-self-start">Tạo key</button>
+            </form>
+        </div></div>
+        <div class="card"><div class="card-body p-0"><table class="table table-sm mb-0 small align-middle">
+            <thead><tr><th>Hệ thống</th><th>Key</th><th>Phạm vi</th><th>Dùng gần nhất</th><th></th></tr></thead><tbody>
+            @foreach (var c in Model)
+            {
+                <tr class="@(c.IsActive ? "" : "text-muted")"><td>@c.Name<div class="text-muted">@c.CreatedBy?.FullName · @c.CreatedAt.ToDate()</div></td><td><code>@c.KeyPrefix…</code></td><td>@c.Scopes</td>
+                    <td>@(c.LastUsedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                    <td>@if (c.IsActive) { <form asp-action="Revoke" asp-route-id="@c.Id" method="post" data-confirm="Thu hồi key của @c.Name? Hệ thống tích hợp sẽ mất kết nối ngay."><button class="btn btn-sm btn-link text-danger p-0">Thu hồi</button></form> } else { <span>đã thu hồi</span> }</td></tr>
+            }
+            @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">Chưa cấp key nào.</td></tr> }
+        </tbody></table></div></div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card"><div class="card-header">Tài liệu API (JSON, UTF-8)</div><div class="card-body small">
+            <p>Gửi key trong header <code>X-Api-Key</code>. Giới hạn 120 request / phút / key (vượt → <code>429</code>). Danh sách có phân trang <code>page</code>, <code>pageSize</code> (≤ 500); kết quả <code>{ page, pageSize, total, data }</code>.</p>
+            <table class="table table-sm">
+                <thead><tr><th>Phương thức & đường dẫn</th><th>Tham số</th><th>Mô tả</th></tr></thead><tbody>
+                <tr><td><code>GET /vendors</code></td><td>status</td><td>Nhà cung cấp, thông tin ngân hàng</td></tr>
+                <tr><td><code>GET /items</code></td><td></td><td>Danh mục hàng hóa</td></tr>
+                <tr><td><code>GET /purchase-orders</code></td><td>status, from, to</td><td>PO đã duyệt trở đi, kèm dòng hàng, phòng ban, hợp đồng</td></tr>
+                <tr><td><code>GET /goods-receipts</code></td><td>from, to</td><td>Phiếu nhận hàng</td></tr>
+                <tr><td><code>GET /invoices</code></td><td>status, from</td><td>Hóa đơn NCC và kết quả đối chiếu 3 bên</td></tr>
+                <tr><td><code>GET /payments</code></td><td>status (mặc định Approved)</td><td>Đề nghị thanh toán chờ chi, tài khoản NCC</td></tr>
+                <tr><td><code>POST /payments/{number}/paid</code></td><td>body <code>{"paidAt":"2026-11-23","paymentRef":"UNC123"}</code></td><td>Ghi nhận đã chi (cần <b>payments:write</b>); 409 nếu đã chi, 422 nếu chưa duyệt</td></tr>
+                <tr><td><code>GET /budgets</code></td><td>year</td><td>Ngân sách và tình hình sử dụng</td></tr>
+            </tbody></table>
+            <div class="fw-semibold">Ví dụ</div>
+            <pre class="bg-light p-2 rounded small mb-0">curl -H "X-Api-Key: ep_…" "@baseUrl/payments?status=Approved"
+curl -X POST -H "X-Api-Key: ep_…" -H "Content-Type: application/json" \
+     -d '{"paidAt":"@DateTime.Today.ToString("yyyy-MM-dd")","paymentRef":"UNC123"}' "@baseUrl/payments/TT-@DateTime.Today.Year-0001/paid"</pre>
+        </div></div>
+    </div>
+</div>

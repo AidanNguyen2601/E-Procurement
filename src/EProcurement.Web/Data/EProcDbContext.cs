@@ -53,6 +53,7 @@ public class EProcDbContext : DbContext
     public DbSet<ContractAmendment> ContractAmendments => Set<ContractAmendment>();
     public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
     public DbSet<ContractGuarantee> ContractGuarantees => Set<ContractGuarantee>();
+    public DbSet<ApiClient> ApiClients => Set<ApiClient>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -86,6 +87,7 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<VendorSubmission>().HasIndex(x => new { x.TenderBidderId, x.IsLatest });
         modelBuilder.Entity<PoShipment>().HasIndex(x => x.PurchaseOrderId);
         modelBuilder.Entity<Invoice>().HasIndex(x => x.Number).IsUnique();
+        modelBuilder.Entity<ApiClient>().HasIndex(x => x.KeyHash).IsUnique();
         modelBuilder.Entity<Invoice>().HasIndex(x => new { x.VendorId, x.InvoiceNo, x.Series });
         modelBuilder.Entity<Payment>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<Payment>().HasIndex(x => new { x.Status, x.RequestedAt });

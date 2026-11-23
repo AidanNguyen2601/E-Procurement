@@ -31,7 +31,9 @@ public class InternalAuthConvention : IControllerModelConvention
     public InternalAuthConvention(AuthorizeFilter filter) => _filter = filter;
     public void Apply(ControllerModel controller)
     {
-        if (!controller.ControllerName.StartsWith("Portal", StringComparison.Ordinal)) controller.Filters.Add(_filter);
+        // Cổng NCC (cookie riêng) và REST API (API key) có cơ chế xác thực riêng
+        var isApi = controller.Attributes.Any(a => a.GetType().Name == "ApiKeyAttribute");
+        if (!controller.ControllerName.StartsWith("Portal", StringComparison.Ordinal) && !isApi) controller.Filters.Add(_filter);
     }
 }
 
