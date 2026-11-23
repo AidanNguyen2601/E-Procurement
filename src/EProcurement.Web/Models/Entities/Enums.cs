@@ -137,3 +137,11 @@ public enum CatalogType
     [Display(Name = "Ngân hàng")] Bank = 6,
     [Display(Name = "Thời hạn bảo hành")] Warranty = 7
 }
+
+public enum NotificationKind
+{
+    [Display(Name = "Cần xử lý")] Action = 1,
+    [Display(Name = "Thông tin")] Info = 2,
+    [Display(Name = "Nhắc hạn")] Reminder = 3,
+    [Display(Name = "Cảnh báo")] Warning = 4
+}

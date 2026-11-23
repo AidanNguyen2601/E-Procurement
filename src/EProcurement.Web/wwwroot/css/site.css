@@ -72,3 +72,13 @@ dl.info dt { color: #64748b; font-weight: 500; }
 .btn .ico { margin-right: 4px; }
 .icon-tile { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: rgba(79,70,229,.1); color: var(--accent); }
 .catalog-nav .list-group-item { display: flex; align-items: center; gap: 10px; }
+
+/* Thông báo */
+.bell { padding: 6px 10px; }
+.notif-menu { width: 360px; max-height: 70vh; overflow-y: auto; }
+.notif-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; white-space: normal; border-bottom: 1px solid #f0f0f5; }
+.notif-kind { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0; background: #eef0ff; color: var(--accent); }
+.notif-kind.k1 { background: #e8f0ff; color: #1d4ed8; }
+.notif-kind.k3 { background: #fff6e0; color: #a16207; }
+.notif-kind.k4 { background: #fdecec; color: #b42318; }
+@media (max-width: 480px) { .notif-menu { width: calc(100vw - 32px); } }

@@ -39,6 +39,7 @@ public class EProcDbContext : DbContext
     public DbSet<ContractLine> ContractLines => Set<ContractLine>();
     public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
     public DbSet<CatalogEntry> CatalogEntries => Set<CatalogEntry>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,6 +64,8 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<TenderScore>().HasIndex(x => new { x.TenderBidderId, x.MemberUserId }).IsUnique();
         modelBuilder.Entity<Contract>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<CatalogEntry>().HasIndex(x => new { x.Type, x.Name }).IsUnique();
+        modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.ReadAt });
+        modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.Key }).IsUnique().HasFilter("[Key] IS NOT NULL");
 
         // Chứng từ mua sắm không được xóa dây chuyền
         foreach (var fk in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))

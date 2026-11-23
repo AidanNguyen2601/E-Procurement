@@ -253,6 +253,7 @@ public static class DbSeeder
             "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseOrders_ContractId') " +
                 "CREATE INDEX IX_PurchaseOrders_ContractId ON PurchaseOrders(ContractId)",
             // Hình thức lựa chọn NCC trên PR
+            "IF COL_LENGTH('Users','EmailNotifications') IS NULL ALTER TABLE Users ADD EmailNotifications bit NOT NULL CONSTRAINT DF_Users_EmailNotifications DEFAULT 1",
             "IF COL_LENGTH('PurchaseRequests','Method') IS NULL ALTER TABLE PurchaseRequests ADD Method int NULL",
             "IF COL_LENGTH('PurchaseRequests','MethodReason') IS NULL ALTER TABLE PurchaseRequests ADD MethodReason nvarchar(1000) NULL",
             // Hình thức + căn cứ mua sắm trực tiếp trên PO

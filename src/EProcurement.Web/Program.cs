@@ -45,6 +45,9 @@ builder.Services.Configure<EProcurement.Web.Infrastructure.ProcurementSettings>(
 builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.Reporting.StandardReports>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.CatalogService>();
+builder.Services.Configure<EProcurement.Web.Infrastructure.NotificationSettings>(builder.Configuration.GetSection("Notifications"));
+builder.Services.AddScoped<EProcurement.Web.Infrastructure.NotificationService>();
+if (builder.Configuration.GetValue("Notifications:BackgroundEnabled", true)) builder.Services.AddHostedService<EProcurement.Web.Infrastructure.NotificationWorker>();
 
 var app = builder.Build();
 

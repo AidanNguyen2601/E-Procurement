@@ -37,6 +37,7 @@ public class AppUser
     public bool IsActive { get; set; } = true;
 
     public DateTime? LastLoginAt { get; set; }
+    [Display(Name = "Nhận thông báo qua email")] public bool EmailNotifications { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
 
@@ -655,4 +656,25 @@ public class CatalogEntry
     [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
     [Display(Name = "Thứ tự")] public int SortOrder { get; set; }
     [Display(Name = "Đang sử dụng")] public bool IsActive { get; set; } = true;
+}
+
+// =====================================================================
+//  THÔNG BÁO
+// =====================================================================
+public class Notification
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public AppUser? User { get; set; }
+    public NotificationKind Kind { get; set; } = NotificationKind.Info;
+    [Required, StringLength(200)] public string Title { get; set; } = string.Empty;
+    [StringLength(1000)] public string? Message { get; set; }
+    [StringLength(300)] public string? Url { get; set; }
+    public DocType? DocumentType { get; set; }
+    public int? DocumentId { get; set; }
+    /// <summary>Khóa chống trùng: cùng người + cùng khóa chỉ tạo một lần</summary>
+    [StringLength(150)] public string? Key { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime? ReadAt { get; set; }
+    public DateTime? EmailedAt { get; set; }
 }

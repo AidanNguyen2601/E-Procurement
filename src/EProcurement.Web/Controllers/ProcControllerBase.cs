@@ -23,8 +23,30 @@ public abstract class ProcControllerBase : Controller
 
     protected int Me => User.GetUserId();
 
-    protected void Log(DocType type, int id, string action, string? comment = null) =>
-        Db.ApprovalHistories.Add(new ApprovalHistory { DocumentType = type, DocumentId = id, UserId = Me, Action = action, Comment = comment, CreatedAt = DateTime.Now });
+    protected void Log(DocType type, int id, string action, string? comment = null)
+    {
+        var h = new ApprovalHistory { DocumentType = type, DocumentId = id, UserId = Me, Action = action, Comment = comment, CreatedAt = DateTime.Now };
+        Db.ApprovalHistories.Add(h);
+        _logged.Add(h);
+    }
+
+    private readonly List<ApprovalHistory> _logged = new();
+
+    /// <summary>Sau mỗi action: các dòng nhật ký đã lưu thành công → sinh thông báo cho người liên quan</summary>
+    public override async Task OnActionExecutionAsync(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext context, Microsoft.AspNetCore.Mvc.Filters.ActionExecutionDelegate next)
+    {
+        var executed = await next();
+        if (executed.Exception != null && !executed.ExceptionHandled) return;
+        var saved = _logged.Where(h => h.Id > 0 && Db.Entry(h).State == EntityState.Unchanged)
+            .Select(h => new DocEvent(h.DocumentType, h.DocumentId, h.UserId, h.Action, h.Comment)).ToList();
+        if (saved.Count == 0) return;
+        try { await HttpContext.RequestServices.GetRequiredService<NotificationService>().OnEventsAsync(saved); }
+        catch (Exception ex)
+        {
+            // Thông báo lỗi không được làm hỏng nghiệp vụ đã lưu
+            HttpContext.RequestServices.GetRequiredService<ILogger<ProcControllerBase>>().LogWarning(ex, "Không tạo được thông báo");
+        }
+    }
 
     protected Task<List<ApprovalHistory>> HistoryAsync(DocType type, int id) =>
         Db.ApprovalHistories.Include(h => h.User).Where(h => h.DocumentType == type && h.DocumentId == id)

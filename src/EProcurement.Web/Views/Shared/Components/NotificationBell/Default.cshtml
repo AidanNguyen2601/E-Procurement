@@ -1,0 +1,21 @@
+@model List<Notification>
+@{ var count = (int)ViewBag.Count; }
+<div class="dropdown">
+    <button class="btn btn-light position-relative bell" data-bs-toggle="dropdown" aria-label="Thông báo@(count > 0 ? $" ({count} chưa đọc)" : "")">
+        @Icon.Svg("bell", 18)
+        @if (count > 0) { <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">@(count > 99 ? "99+" : count.ToString())</span> }
+    </button>
+    <div class="dropdown-menu dropdown-menu-end p-0 notif-menu">
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+            <b class="small">Thông báo</b><a asp-controller="Notifications" asp-action="Index" class="small">Xem tất cả</a>
+        </div>
+        @foreach (var n in Model)
+        {
+            <a class="dropdown-item notif-item" asp-controller="Notifications" asp-action="Open" asp-route-id="@n.Id">
+                <span class="notif-kind k@((int)n.Kind)">@Icon.Svg(n.Kind switch { NotificationKind.Action => "inbox", NotificationKind.Reminder => "clock", NotificationKind.Warning => "alert", _ => "bell" }, 14)</span>
+                <span class="flex-grow-1"><span class="d-block text-wrap">@n.Title</span><span class="small text-muted">@n.CreatedAt.ToDateTime()</span></span>
+            </a>
+        }
+        @if (count == 0) { <div class="px-3 py-3 small text-muted">Không có thông báo mới.</div> }
+    </div>
+</div>
