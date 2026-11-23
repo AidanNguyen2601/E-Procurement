@@ -42,6 +42,8 @@ public class StandardReports
     }
 
     private static decimal Pct(decimal part, decimal whole) => whole == 0 ? 0 : Math.Round(part * 100 / whole, 1);
+    private static readonly System.Globalization.CultureInfo ViCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+    private static string Pc(decimal v) => ReportFormat.Cell(v, ColumnKind.Percent);
 
     // ------------------------------------------------------------------ Dữ liệu chi tiêu dùng chung
     private record SpendLine(int PoId, string PoNumber, DateTime OrderDate, int? VendorId, string Vendor, string Department,
@@ -93,7 +95,7 @@ public class StandardReports
         r.Kpis.Add(new("Tổng chi tiêu", total.ToShortMoney() + " đ", "trước VAT"));
         r.Kpis.Add(new("Số đơn hàng", poCount.ToString(), $"{lines.Select(x => x.VendorId).Distinct().Count()} nhà cung cấp"));
         r.Kpis.Add(new("Giá trị bình quân / PO", (poCount == 0 ? 0 : total / poCount).ToShortMoney() + " đ"));
-        r.Kpis.Add(new("Tiết kiệm so với dự toán", (estimate - spendWithPr).ToShortMoney() + " đ", $"{Pct(estimate - spendWithPr, estimate)}% trên PO có đề nghị", estimate - spendWithPr < 0));
+        r.Kpis.Add(new("Tiết kiệm so với dự toán", (estimate - spendWithPr).ToShortMoney() + " đ", $"{Pc(Pct(estimate - spendWithPr, estimate))} trên PO có đề nghị", estimate - spendWithPr < 0));
 
         // Theo tháng (đủ các tháng trong kỳ, kể cả tháng 0 đồng)
         var months = new List<DateTime>();
@@ -137,9 +139,9 @@ public class StandardReports
         var competitive = groups.Where(g => g.Key is ProcurementMethod.CompetitiveQuotation or ProcurementMethod.OpenTender).Sum(g => g.Sum);
         var direct = groups.Where(g => g.Key is ProcurementMethod.DirectAward).Sum(g => g.Sum);
         r.Kpis.Add(new("Tổng chi tiêu", total.ToShortMoney() + " đ"));
-        r.Kpis.Add(new("Qua cạnh tranh", Pct(competitive, total) + "%", "chào hàng cạnh tranh + đấu thầu"));
-        r.Kpis.Add(new("Chỉ định thầu", Pct(direct, total) + "%", direct.ToShortMoney() + " đ", Pct(direct, total) > 20));
-        r.Kpis.Add(new("Chưa phân loại", Pct(groups.Where(g => g.Key == null).Sum(g => g.Sum), total) + "%", "PO lập lẻ / dữ liệu cũ"));
+        r.Kpis.Add(new("Qua cạnh tranh", Pc(Pct(competitive, total)), "chào hàng cạnh tranh + đấu thầu"));
+        r.Kpis.Add(new("Chỉ định thầu", Pc(Pct(direct, total)), direct.ToShortMoney() + " đ", Pct(direct, total) > 20));
+        r.Kpis.Add(new("Chưa phân loại", Pc(Pct(groups.Where(g => g.Key == null).Sum(g => g.Sum), total)), "PO lập lẻ / dữ liệu cũ"));
         r.Tables.Add(new ReportTable
         {
             Title = "Cơ cấu theo hình thức", Chart = ChartKind.Bar,
@@ -190,8 +192,8 @@ public class StandardReports
 
         r.Kpis.Add(new("Số đề nghị", prs.Count.ToString(), prs.Sum(p => p.EstimatedTotal).ToShortMoney() + " đ dự toán"));
         r.Kpis.Add(new("Đang chờ duyệt", prs.Count(p => p.Status is PrStatus.Submitted or PrStatus.PendingDirector).ToString()));
-        r.Kpis.Add(new("TB thời gian duyệt", (Avg(rows.Select(x => x.Approve))?.ToString("0.#") ?? "—") + " ngày", "gửi duyệt → duyệt cuối"));
-        r.Kpis.Add(new("TB duyệt → đặt hàng", (Avg(rows.Select(x => x.ToPo))?.ToString("0.#") ?? "—") + " ngày", "duyệt → lập PO đầu tiên"));
+        r.Kpis.Add(new("TB thời gian duyệt", (Avg(rows.Select(x => x.Approve))?.ToString("0.#", ViCulture) ?? "—") + " ngày", "gửi duyệt → duyệt cuối"));
+        r.Kpis.Add(new("TB duyệt → đặt hàng", (Avg(rows.Select(x => x.ToPo))?.ToString("0.#", ViCulture) ?? "—") + " ngày", "duyệt → lập PO đầu tiên"));
         r.Tables.Add(new ReportTable
         {
             Title = "Đề nghị theo trạng thái", Chart = ChartKind.Bar, Width = 6,
@@ -233,9 +235,9 @@ public class StandardReports
         }).ToList();
         var done = rows.Where(x => x.Done).ToList();
         r.Kpis.Add(new("PO đã gửi NCC", rows.Count.ToString(), $"{done.Count} đã nhận đủ"));
-        r.Kpis.Add(new("Giao đúng hạn", Pct(done.Count(x => x.OnTime), done.Count) + "%", "trên các PO đã nhận đủ", done.Count > 0 && Pct(done.Count(x => x.OnTime), done.Count) < 80));
+        r.Kpis.Add(new("Giao đúng hạn", Pc(Pct(done.Count(x => x.OnTime), done.Count)), "trên các PO đã nhận đủ", done.Count > 0 && Pct(done.Count(x => x.OnTime), done.Count) < 80));
         r.Kpis.Add(new("Đang trễ hạn", rows.Count(x => x.OpenLate).ToString(), "chưa nhận đủ, quá ngày giao", rows.Any(x => x.OpenLate)));
-        r.Kpis.Add(new("Tỷ lệ hàng không đạt", Pct(rows.Sum(x => x.Rej), rows.Sum(x => x.Acc + x.Rej)) + "%", "số lượng bị trả lại / đã giao"));
+        r.Kpis.Add(new("Tỷ lệ hàng không đạt", Pc(Pct(rows.Sum(x => x.Rej), rows.Sum(x => x.Acc + x.Rej))), "số lượng bị trả lại / đã giao"));
         r.Tables.Add(new ReportTable
         {
             Title = "Theo nhà cung cấp", Chart = ChartKind.Bar, ChartValue = 3,
@@ -284,7 +286,7 @@ public class StandardReports
         r.Kpis.Add(new("NCC có giao dịch", rows.Count.ToString()));
         r.Kpis.Add(new("Điểm bình quân", (rows.Where(x => x.v.Rating > 0).Select(x => x.v.Rating).DefaultIfEmpty().Average()).ToString("0.00") + "/5"));
         r.Kpis.Add(new("NCC điểm < 3", rows.Count(x => x.v.Rating > 0 && x.v.Rating < 3).ToString(), "cần xem xét", rows.Any(x => x.v.Rating > 0 && x.v.Rating < 3)));
-        r.Kpis.Add(new("Tỷ lệ phản hồi báo giá", Pct(rows.Sum(x => x.q?.Resp ?? 0), rows.Sum(x => x.q?.Invited ?? 0)) + "%"));
+        r.Kpis.Add(new("Tỷ lệ phản hồi báo giá", Pc(Pct(rows.Sum(x => x.q?.Resp ?? 0), rows.Sum(x => x.q?.Invited ?? 0)))));
         r.Tables.Add(new ReportTable
         {
             Title = "Bảng đánh giá nhà cung cấp", Chart = ChartKind.Bar, ChartValue = 3,
@@ -324,9 +326,9 @@ public class StandardReports
 
         var avgResp = rfqRows.Count == 0 ? 0 : Math.Round((decimal)rfqRows.Average(x => (int)x[3]!), 1);
         var notLowest = rfqRows.Count(x => (string?)x[7] == "Không");
-        r.Kpis.Add(new("Báo giá / RFQ (TB)", avgResp.ToString("0.#"), $"{rfqRows.Count} RFQ đã chọn NCC", rfqRows.Count > 0 && avgResp < 3));
+        r.Kpis.Add(new("Báo giá / RFQ (TB)", avgResp.ToString("0.#", ViCulture), $"{rfqRows.Count} RFQ đã chọn NCC", rfqRows.Count > 0 && avgResp < 3));
         r.Kpis.Add(new("Không chọn giá thấp nhất", $"{notLowest}/{rfqRows.Count}", "RFQ", notLowest > 0));
-        r.Kpis.Add(new("HSDT / gói thầu (TB)", tenders.Count == 0 ? "—" : Math.Round((decimal)tenders.Average(t => t.Bidders.Count(b => b.Submitted)), 1).ToString("0.#"), $"{tenders.Count} gói thầu"));
+        r.Kpis.Add(new("HSDT / gói thầu (TB)", tenders.Count == 0 ? "—" : Math.Round((decimal)tenders.Average(t => t.Bidders.Count(b => b.Submitted)), 1).ToString("0.#", ViCulture), $"{tenders.Count} gói thầu"));
         r.Kpis.Add(new("Chỉ định thầu", awards.Count.ToString(), awards.Sum(d => d.NegotiatedTotal).ToShortMoney() + " đ", awards.Any(d => !string.IsNullOrEmpty(d.SplitWarning))));
 
         r.Tables.Add(new ReportTable
@@ -367,7 +369,7 @@ public class StandardReports
         var today = DateTime.Today; var soon = today.AddDays(30);
         var active = list.Where(c => c.Status == ContractStatus.Active).ToList();
         r.Kpis.Add(new("Hợp đồng đang thực hiện", active.Count.ToString(), active.Sum(c => c.Value).ToShortMoney() + " đ"));
-        r.Kpis.Add(new("Đã thực hiện", Pct(active.Sum(c => c.Used), active.Sum(c => c.Value)) + "%", active.Sum(c => c.Used).ToShortMoney() + " đ"));
+        r.Kpis.Add(new("Đã thực hiện", Pc(Pct(active.Sum(c => c.Used), active.Sum(c => c.Value))), active.Sum(c => c.Used).ToShortMoney() + " đ"));
         r.Kpis.Add(new("Hết hạn trong 30 ngày", active.Count(c => c.EndDate <= soon).ToString(), null, active.Any(c => c.EndDate <= soon)));
         r.Kpis.Add(new("Bảo lãnh sắp / đã hết hạn", active.Count(c => c.PerformanceSecurityExpiry <= soon).ToString(), "trong 30 ngày", active.Any(c => c.PerformanceSecurityExpiry <= soon)));
         r.Tables.Add(new ReportTable

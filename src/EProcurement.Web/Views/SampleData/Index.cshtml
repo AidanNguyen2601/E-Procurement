@@ -1,0 +1,45 @@
+@model EProcurement.Web.Data.SampleDataStatus
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card mb-3"><div class="card-header">Bộ dữ liệu mẫu cho các quy trình</div><div class="card-body">
+            <p class="mb-2">Khoảng 15 tháng chứng từ của 6 phòng ban, đi qua đủ các bước của từng hình thức:</p>
+            <ul class="small mb-3">
+                <li><b>Mua sắm trực tiếp</b>: văn phòng phẩm hằng tháng theo PO gốc (≤ 130% khối lượng, trong 12 tháng), có đơn vượt giá tham chiếu chờ duyệt, đơn bị hủy.</li>
+                <li><b>Chào hàng cạnh tranh</b>: RFQ đã chọn NCC (giá thấp nhất và chấm điểm), báo giá không đạt kỹ thuật, chờ Giám đốc duyệt kết quả, đang đánh giá, đang nhận báo giá, RFQ bị hủy; dịch vụ nghiệm thu hằng tháng.</li>
+                <li><b>Chỉ định thầu</b>: khẩn cấp, độc quyền, tương thích, dưới hạn mức (có file chứng minh), tờ trình bị cảnh báo chia nhỏ gói, tờ trình nháp.</li>
+                <li><b>Đấu thầu rộng rãi</b>: gói đã ký hợp đồng và thanh lý (có kiến nghị), hợp đồng khung sắp hết hạn với 7 đợt đặt hàng, gói đang mời thầu, gói hai túi hồ sơ đang chấm kỹ thuật, gói chờ duyệt kế hoạch.</li>
+                <li><b>Nhận hàng & đánh giá NCC</b>: giao đúng hạn / trễ, hàng lỗi trả lại và giao bù, PO quá hạn chưa giao.</li>
+                <li>Đề nghị ở mọi bước duyệt: nháp, chờ trưởng bộ phận, chờ Giám đốc, đã duyệt, bị từ chối, đã hủy.</li>
+            </ul>
+            <p class="small text-muted mb-0">Chứng từ mẫu có số bắt đầu bằng <code>MAU-</code>, không ảnh hưởng dãy số chứng từ thật và gỡ được hoàn toàn.
+                Hệ thống bổ sung người dùng cho 4 phòng ban mới (ketoan, kinhdoanh, kythuat, nhansu và trưởng phòng *.tp, buyer2 – mật khẩu <code>Abc@123</code>),
+                hàng hóa và NCC nếu chưa có; các danh mục này được giữ lại khi gỡ.</p>
+        </div></div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card"><div class="card-header">Trạng thái</div><div class="card-body">
+            @if (Model.Loaded)
+            {
+                <table class="table table-sm mb-3">
+                    <tr><td>Đề nghị mua hàng</td><td class="text-end">@Model.Requests</td></tr>
+                    <tr><td>Yêu cầu báo giá (RFQ)</td><td class="text-end">@Model.Rfqs</td></tr>
+                    <tr><td>Tờ trình chỉ định thầu</td><td class="text-end">@Model.DirectAwards</td></tr>
+                    <tr><td>Gói thầu</td><td class="text-end">@Model.Tenders</td></tr>
+                    <tr><td>Hợp đồng</td><td class="text-end">@Model.Contracts</td></tr>
+                    <tr><td>Đơn mua hàng (PO)</td><td class="text-end">@Model.Orders</td></tr>
+                    <tr><td>Phiếu nhận hàng</td><td class="text-end">@Model.Receipts</td></tr>
+                </table>
+                <form asp-action="Remove" method="post" data-confirm="Gỡ toàn bộ chứng từ mẫu (số MAU-…)? Chứng từ khác tạo từ chứng từ mẫu cũng bị gỡ theo hoặc bỏ liên kết.">
+                    <button class="btn btn-outline-danger">Gỡ dữ liệu mẫu</button>
+                </form>
+            }
+            else
+            {
+                <p class="text-muted">Chưa nạp dữ liệu mẫu.</p>
+                <form asp-action="Load" method="post" data-confirm="Nạp bộ dữ liệu mẫu vào hệ thống?">
+                    <button class="btn btn-primary">Nạp dữ liệu mẫu</button>
+                </form>
+            }
+        </div></div>
+    </div>
+</div>
