@@ -1,5 +1,5 @@
 @model StandardReports.Definition[]
-@{ ViewData["Title"] = "Báo cáo mua sắm"; }
+@{ ViewData["Title"] = ViewBag.Group as string == "sourcing" ? "Báo cáo quản lý nguồn cung" : "Báo cáo mua sắm"; }
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="text-muted small">Báo cáo chuẩn – lọc theo kỳ, phòng ban, nhóm hàng, nhà cung cấp; in hoặc xuất Excel.</div>
     <a asp-controller="ReportBuilder" asp-action="Index" class="btn btn-outline-primary">Báo cáo động (tự thiết kế) →</a>

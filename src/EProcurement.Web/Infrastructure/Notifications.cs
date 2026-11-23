@@ -61,6 +61,8 @@ public class NotificationService
         DocType.Plan => $"/Plans/Details/{id}",
         DocType.Package => $"/Packages/Details/{id}",
         DocType.SelectionPlan => $"/SelectionPlans/Details/{id}",
+        DocType.Prequalification => $"/Prequalifications/Details/{id}",
+        DocType.StandardPriceList => $"/StandardPrices/Details/{id}",
         _ => "/"
     };
 
@@ -152,6 +154,26 @@ public class NotificationService
                     Add(await DirectorsAsync(), NotificationKind.Action, $"Phụ lục hợp đồng {c.Number} chờ duyệt", c.Title, e,
                         $"act:HD:{c.Id}:amend:{await _db.ContractAmendments.Where(a => a.ContractId == c.Id).CountAsync()}");
                 Owner(c.CreatedById, e, $"{c.Number}: {e.Action}");
+                break;
+            }
+            case DocType.Prequalification:
+            {
+                var pq = await _db.Prequalifications.AsNoTracking().FirstOrDefaultAsync(x => x.Id == e.Id);
+                if (pq == null) return;
+                if (pq.Status == PrequalificationStatus.PendingApproval)
+                    Add(await DirectorsAsync(), NotificationKind.Action, $"Kết quả sơ tuyển NCC chờ duyệt: {pq.Number}", pq.Title, e, $"act:ST:{pq.Id}:{pq.Status}");
+                Owner(pq.CreatedById, e, $"{pq.Number}: {e.Action}");
+                break;
+            }
+            case DocType.StandardPriceList:
+            {
+                var sl = await _db.StandardPriceLists.AsNoTracking().FirstOrDefaultAsync(x => x.Id == e.Id);
+                if (sl == null) return;
+                if (sl.Status == StandardPriceStatus.Submitted)
+                    Add(await DirectorsAsync(), NotificationKind.Action, $"Bảng giá tiêu chuẩn chờ duyệt: {sl.Number}", sl.Title, e, $"act:BG:{sl.Id}:{sl.SubmittedAt:yyyyMMddHHmm}");
+                if (sl.Status == StandardPriceStatus.Approved)
+                    Add(await UsersAsync(u => u.Role == AppRoles.Buyer), NotificationKind.Info, $"Bảng giá tiêu chuẩn {sl.Number} đã duyệt – áp dụng từ {sl.EffectiveFrom:dd/MM/yyyy}", sl.Title, e, $"info:BG:{sl.Id}:approved");
+                Owner(sl.CreatedById, e, $"{sl.Number}: {e.Action}", sl.Status == StandardPriceStatus.Returned ? NotificationKind.Warning : NotificationKind.Info);
                 break;
             }
             case DocType.SelectionPlan:

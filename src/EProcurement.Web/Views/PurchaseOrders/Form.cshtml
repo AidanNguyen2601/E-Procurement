@@ -54,6 +54,9 @@
     </div></div>
     <partial name="_LineEditor" model="Model.Lines" />
     <div class="text-end mb-3">VAT: <b id="vatAmt">0</b> · Tổng thanh toán: <b class="fs-5" id="grand">0</b> đ</div>
+    <div class="mb-3"><label asp-for="StandardPriceReason" class="form-label small"></label>
+        <input asp-for="StandardPriceReason" class="form-control form-control-sm" placeholder="Chỉ nhập khi có dòng đơn giá vượt giá trần bảng giá tiêu chuẩn – đơn sẽ phải trình Giám đốc duyệt" />
+        <span asp-validation-for="StandardPriceReason" class="text-danger small"></span></div>
     <button class="btn btn-outline-primary" name="submit" value="false">Lưu nháp</button>
     <button class="btn btn-primary" name="submit" value="true">Lưu & trình duyệt</button>
     <a asp-action="Index" class="btn btn-light">Hủy</a>

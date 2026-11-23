@@ -7,7 +7,8 @@
     decimal threshold = ViewBag.Threshold;
     var byAward = Model.DirectAward is { Status: DirectAwardStatus.Approved } && Model.Total <= Model.DirectAward.NegotiatedGrandTotal;
     var byContract = Model.Contract is { Status: ContractStatus.Active };
-    var needsDirector = !byAward && !byContract && (Model.Total > threshold || Model.PriceDeviationReason != null);
+    var overCeiling = (List<(string Description, decimal Price, StandardPrice Std)>)ViewBag.OverCeiling;
+    var needsDirector = overCeiling.Count > 0 || (!byAward && !byContract && (Model.Total > threshold || Model.PriceDeviationReason != null));
     var buyer = User.IsPurchasing();
     var canDecide = Model.Status == PoStatus.PendingApproval && (User.IsInRole(AppRoles.Director) || User.IsAdmin());
     var flow = new[] { PoStatus.Draft, PoStatus.PendingApproval, PoStatus.Approved, PoStatus.Issued, PoStatus.PartiallyReceived, PoStatus.Received };
@@ -24,6 +25,12 @@
     </div>
     <partial name="_Badge" model="Model.Status" />
 </div></div>
+@if (overCeiling.Count > 0 && Model.Status == PoStatus.Draft)
+{
+    <div class="alert alert-warning small">@Icon.Svg("alert", 14) <b>Vượt giá trần bảng giá tiêu chuẩn</b> – đơn phải trình Giám đốc duyệt:
+        @string.Join("; ", overCeiling.Select(o => $"{o.Description}: {o.Price.ToMoney()} > {o.Std.Ceiling.ToMoney()} ({o.Std.ListNumber})")).
+        @(string.IsNullOrEmpty(Model.StandardPriceReason) ? (Model.RfqId == null && Model.DirectAwardId == null && Model.ContractId == null ? " Sửa đơn để nhập lý do." : " Lý do ghi theo kết quả lựa chọn NCC khi trình.") : $" Lý do: {Model.StandardPriceReason}")</div>
+}
 <div class="toolbar">
     @if (buyer && Model.Status == PoStatus.Draft)
     {
@@ -51,6 +58,7 @@
     <div class="card mb-3 border-warning"><div class="card-body">
         <div class="fw-semibold mb-2">Phê duyệt Giám đốc – giá trị @Model.Total.ToMoney() đ@(Model.Total > threshold ? $" vượt ngưỡng {threshold.ToMoney()} đ" : "")</div>
         @if (Model.PriceDeviationReason != null) { <div class="small mb-2 text-danger">Mua sắm trực tiếp có đơn giá cao hơn PO tham chiếu @Model.ReferencePo?.Number: @Model.PriceDeviationReason</div> }
+        @if (overCeiling.Count > 0) { <div class="small mb-2 text-danger">Vượt giá trần tiêu chuẩn: @string.Join("; ", overCeiling.Select(o => $"{o.Description} {o.Price.ToMoney()} > {o.Std.Ceiling.ToMoney()}")) · Lý do: @Model.StandardPriceReason</div> }
         <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
             <input name="comment" class="form-control" placeholder="Ý kiến (bắt buộc khi trả lại)" />
             <button name="approve" value="true" class="btn btn-success text-nowrap">Duyệt</button>

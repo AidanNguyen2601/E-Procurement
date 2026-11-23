@@ -1,0 +1,33 @@
+@model EProcurement.Web.Controllers.PrequalificationForm
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Lập đợt sơ tuyển nhà cung cấp" : $"Sửa {Model.Number}";
+    var rows = Model.Criteria.Concat(Enumerable.Range(0, 3).Select(_ => new EProcurement.Web.Controllers.CriterionInput())).ToList();
+    var docTypes = Html.GetEnumSelectList<VendorDocumentType>().ToList();
+}
+<form asp-action="Save" method="post">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="All" class="alert alert-danger small" style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+    <div class="card mb-3"><div class="card-body row g-3">
+        <div class="col-md-8"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" placeholder="Sơ tuyển nhà cung cấp thiết bị CNTT năm 2027" /></div>
+        <div class="col-md-4"><label asp-for="CategoryId" class="form-label"></label><select asp-for="CategoryId" asp-items="ViewBag.Categories" class="form-select"><option value="0">-- Chọn --</option></select></div>
+        <div class="col-12"><label asp-for="Description" class="form-label"></label><textarea asp-for="Description" rows="3" class="form-control" placeholder="Hàng hóa / dịch vụ dự kiến mua, quy mô, yêu cầu chung đối với NCC"></textarea></div>
+        <div class="col-md-4"><label asp-for="Deadline" class="form-label"></label><input asp-for="Deadline" type="datetime-local" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="ValidityMonths" class="form-label"></label><input asp-for="ValidityMonths" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="MinScore" class="form-label"></label><input asp-for="MinScore" class="form-control" /></div>
+    </div></div>
+    <div class="card mb-3"><div class="card-header">Tiêu chí sơ tuyển <span class="small fw-normal text-muted">– tiêu chí bắt buộc: đạt / không đạt; tiêu chí chấm điểm quy đổi thang 100. Để trống tên để bỏ dòng.</span></div>
+    <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+        <thead><tr><th>#</th><th style="min-width:180px">Tiêu chí</th><th style="min-width:240px">Yêu cầu / cách đánh giá</th><th>Bắt buộc</th><th style="width:100px">Điểm tối đa</th><th>Hồ sơ chứng minh</th></tr></thead><tbody>
+        @for (var i = 0; i < rows.Count; i++)
+        {
+            <tr><td>@(i + 1)</td>
+                <td><input name="Criteria[@i].Name" value="@rows[i].Name" maxlength="200" class="form-control form-control-sm" /></td>
+                <td><input name="Criteria[@i].Requirement" value="@rows[i].Requirement" maxlength="1000" class="form-control form-control-sm" /></td>
+                <td class="text-center"><input type="checkbox" name="Criteria[@i].IsMandatory" value="true" class="form-check-input" @(rows[i].IsMandatory ? "checked" : "") /></td>
+                <td><input name="Criteria[@i].MaxScore" type="number" min="0" max="100" value="@rows[i].MaxScore" class="form-control form-control-sm" /></td>
+                <td><select name="Criteria[@i].DocumentType" class="form-select form-select-sm"><option value="">—</option>
+                    @foreach (var d in docTypes) { <option value="@d.Value" selected="@(rows[i].DocumentType.HasValue && ((int)rows[i].DocumentType!.Value).ToString() == d.Value)">@d.Text</option> }</select></td></tr>
+        }
+    </tbody></table></div></div>
+    <div class="d-flex gap-2"><button class="btn btn-primary">Lưu</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
+</form>

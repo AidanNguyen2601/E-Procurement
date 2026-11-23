@@ -38,6 +38,7 @@ public class PurchaseOrdersController : ProcControllerBase
         ViewBag.Evaluation = await Db.VendorEvaluations.Include(e => e.Evaluator).FirstOrDefaultAsync(e => e.PurchaseOrderId == id);
         ViewBag.Shipments = await Db.PoShipments.Include(s => s.VendorUser).Where(s => s.PurchaseOrderId == id).OrderBy(s => s.CreatedAt).ToListAsync();
         ViewBag.Threshold = await Matrix.PoDirectorAsync(po.PurchaseRequest?.Department);
+        ViewBag.OverCeiling = await OverCeilingAsync(po);
         return View(po);
     }
 
@@ -102,7 +103,7 @@ public class PurchaseOrdersController : ProcControllerBase
         {
             Id = po.Id, Number = po.Number, VendorId = po.VendorId, PurchaseRequestId = po.PurchaseRequestId, PackageId = po.PackageId, RfqId = po.RfqId,
             OrderDate = po.OrderDate, DeliveryDate = po.DeliveryDate, DeliveryAddress = po.DeliveryAddress, PaymentTerms = po.PaymentTerms,
-            VatPercent = Math.Round(po.VatPercent, 0), Notes = po.Notes, ReferencePoId = po.ReferencePoId, PriceDeviationReason = po.PriceDeviationReason,
+            VatPercent = Math.Round(po.VatPercent, 0), Notes = po.Notes, ReferencePoId = po.ReferencePoId, PriceDeviationReason = po.PriceDeviationReason, StandardPriceReason = po.StandardPriceReason,
             Lines = po.Lines.OrderBy(l => l.SortOrder).Select(l => new LineInput { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, Price = l.UnitPrice }).ToList()
         };
         await LoadFormAsync(vm);
@@ -138,6 +139,16 @@ public class PurchaseOrdersController : ProcControllerBase
         if (method == ProcurementMethod.DirectPurchase)
             priceDeviation = await ValidateDirectPurchaseAsync(vm);
 
+        // Bảng giá tiêu chuẩn: đơn lập tay có dòng vượt giá trần phải nêu lý do (đơn sinh từ hồ sơ lựa chọn NCC: lý do tự ghi khi trình)
+        var sourced = vm.RfqId.HasValue || existing?.DirectAwardId != null || existing?.ContractId != null;
+        if (!sourced && string.IsNullOrWhiteSpace(vm.StandardPriceReason))
+        {
+            var ids = vm.Lines.Where(l => l.ItemId.HasValue).Select(l => l.ItemId!.Value).Distinct().ToList();
+            var std = await StandardPrices.CurrentAsync(Db, ids, vm.OrderDate);
+            foreach (var o in StandardPrices.Exceeding(vm.Lines.Select(l => (l.ItemId, l.Description, l.Price)), std))
+                ModelState.AddModelError(nameof(vm.StandardPriceReason), $"\"{o.Description}\": {o.Price.ToMoney()} vượt giá trần {o.Std.Ceiling.ToMoney()} ({o.Std.ListNumber}) – nhập lý do vượt giá trần.");
+        }
+
         if (!ModelState.IsValid)
         {
             if (vm.Lines.Count == 0) vm.Lines.Add(new LineInput());
@@ -166,6 +177,7 @@ public class PurchaseOrdersController : ProcControllerBase
         po.VendorId = vm.VendorId; po.OrderDate = vm.OrderDate; po.DeliveryDate = vm.DeliveryDate; po.DeliveryAddress = vm.DeliveryAddress;
         po.PaymentTerms = vm.PaymentTerms ?? vendor?.PaymentTerms; po.VatPercent = vm.VatPercent; po.Notes = vm.Notes;
         po.PriceDeviationReason = priceDeviation ? vm.PriceDeviationReason!.Trim() : null;
+        po.StandardPriceReason = string.IsNullOrWhiteSpace(vm.StandardPriceReason) ? null : vm.StandardPriceReason.Trim();
         var s = 1;
         foreach (var l in vm.Lines)
             po.Lines.Add(new PurchaseOrderLine { ItemId = l.ItemId, Description = l.Description.Trim(), Unit = l.Unit, Quantity = l.Quantity, UnitPrice = l.Price, SortOrder = s++ });
@@ -203,7 +215,26 @@ public class PurchaseOrdersController : ProcControllerBase
         var contract = po.ContractId.HasValue ? await Db.Contracts.FindAsync(po.ContractId) : null;
         var contractUsed = contract == null ? 0 : await Db.PurchaseOrders
             .Where(p => p.ContractId == contract.Id && p.Id != po.Id && p.Status != PoStatus.Cancelled).SumAsync(p => (decimal?)p.SubTotal) ?? 0;
-        if (contract is { Status: ContractStatus.Active } && contractUsed + po.SubTotal <= contract.Value)
+        // Bảng giá tiêu chuẩn: dòng vượt giá trần → bắt buộc lý do + Giám đốc duyệt (kể cả dưới ngưỡng / theo hợp đồng / chỉ định)
+        var over = await OverCeilingAsync(po);
+        if (over.Count > 0 && string.IsNullOrWhiteSpace(po.StandardPriceReason))
+        {
+            var source = po.ContractId.HasValue ? "hợp đồng " + contract?.Number : po.DirectAwardId.HasValue ? "hồ sơ chỉ định " + award?.Number
+                : po.RfqId.HasValue ? "chào giá cạnh tranh " + await Db.Rfqs.Where(r => r.Id == po.RfqId).Select(r => r.Number).FirstOrDefaultAsync() : null;
+            if (source == null)
+            {
+                TempData["Error"] = "Có dòng vượt giá trần bảng giá tiêu chuẩn – sửa đơn, nhập lý do vượt giá trần trước khi trình.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            po.StandardPriceReason = $"Đơn giá theo kết quả lựa chọn NCC ({source})";
+        }
+        if (over.Count > 0 && !User.IsAdmin())
+        {
+            po.Status = PoStatus.PendingApproval;
+            Log(DocType.PO, id, "Trình Giám đốc duyệt – vượt giá trần tiêu chuẩn",
+                string.Join("; ", over.Select(o => $"{o.Description}: {o.Price.ToMoney()} > trần {o.Std.Ceiling.ToMoney()} ({o.Std.ListNumber})")) + ". Lý do: " + po.StandardPriceReason);
+        }
+        else if (contract is { Status: ContractStatus.Active } && contractUsed + po.SubTotal <= contract.Value)
         {
             // Kết quả đấu thầu và hợp đồng đã được Giám đốc phê duyệt → đặt hàng trong giá trị hợp đồng không duyệt lại
             po.Status = PoStatus.Approved;
@@ -321,6 +352,16 @@ public class PurchaseOrdersController : ProcControllerBase
         await Db.SaveChangesAsync();
         TempData["Success"] = $"Đã đánh giá nhà cung cấp. Điểm trung bình mới: {vendor?.Rating:0.00}/5.";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Các dòng của PO vượt giá trần bảng giá tiêu chuẩn đang hiệu lực tại ngày đặt hàng</summary>
+    private async Task<List<(string Description, decimal Price, StandardPrice Std)>> OverCeilingAsync(PurchaseOrder po)
+    {
+        var lines = await Db.PurchaseOrderLines.Where(l => l.PurchaseOrderId == po.Id).Select(l => new { l.ItemId, l.Description, l.UnitPrice }).ToListAsync();
+        var ids = lines.Where(l => l.ItemId != null).Select(l => l.ItemId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return new();
+        var std = await StandardPrices.CurrentAsync(Db, ids, po.OrderDate);
+        return StandardPrices.Exceeding(lines.Select(l => (l.ItemId, l.Description, l.UnitPrice)), std);
     }
 
     /// <summary>

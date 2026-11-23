@@ -44,6 +44,24 @@
         </tbody>
     </table></div></div>
 }
+@if (Model.Prequalifications.Any() || Model.StandardPriceLists.Any())
+{
+    <div class="card mb-4"><div class="card-header">Quản lý nguồn cung chờ phê duyệt (@(Model.Prequalifications.Count + Model.StandardPriceLists.Count))</div>
+    <ul class="list-group list-group-flush">
+        @foreach (var p in Model.Prequalifications)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center"><span>Kết quả sơ tuyển <a asp-controller="Prequalifications" asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a> – @p.Title
+                <span class="small text-muted">· @p.Category?.Name · @p.Applications.Count(a => a.Status == PrequalificationResult.Passed)/@p.Applications.Count(a => a.Status != PrequalificationResult.Withdrawn) NCC đạt</span></span>
+                <a asp-controller="Prequalifications" asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-primary">Xem & phê duyệt</a></li>
+        }
+        @foreach (var l in Model.StandardPriceLists)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center"><span>Bảng giá tiêu chuẩn <a asp-controller="StandardPrices" asp-action="Details" asp-route-id="@l.Id" class="fw-semibold">@l.Number</a> – @l.Title
+                <span class="small text-muted">· @l.Lines.Count mặt hàng · hiệu lực từ @l.EffectiveFrom.ToDate() · @l.CreatedBy?.FullName</span></span>
+                <a asp-controller="StandardPrices" asp-action="Details" asp-route-id="@l.Id" class="btn btn-sm btn-primary">Xem & phê duyệt</a></li>
+        }
+    </ul></div>
+}
 @if (Model.Appraisals.Any())
 {
     <div class="card mb-4 border-warning"><div class="card-header">Thẩm định kết quả lựa chọn nhà thầu được giao cho tôi (@Model.Appraisals.Count)</div>

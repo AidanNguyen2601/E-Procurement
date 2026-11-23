@@ -1,0 +1,49 @@
+@model List<Prequalification>
+@{
+    ViewData["Title"] = "Quản lý nhà cung cấp đăng ký sơ tuyển";
+    var tab = (string)ViewBag.Tab; var status = ViewBag.Status as PrequalificationStatus?;
+    var regs = (List<EProcurement.Web.Controllers.PrequalificationsController.RegistrationRow>)ViewBag.Registrations;
+    var statusItems = Html.GetEnumSelectList<PrequalificationStatus>().ToList();
+    foreach (var i in statusItems) i.Selected = status.HasValue && i.Value == ((int)status.Value).ToString();
+}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link @(tab == "rounds" ? "active" : "")" asp-action="Index">Đợt sơ tuyển (@Model.Count)</a></li>
+    <li class="nav-item"><a class="nav-link @(tab == "registrations" ? "active" : "")" asp-action="Index" asp-route-tab="registrations">NCC đăng ký chờ thẩm định (@regs.Count)</a></li>
+</ul>
+@if (tab == "rounds")
+{
+    <form method="get" class="toolbar">
+        <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="statusItems" onchange="this.form.submit()"><option value="">-- Mọi trạng thái --</option></select>
+        @if (User.IsPurchasing()) { <a asp-action="Create" class="btn btn-sm btn-primary ms-auto">@Icon.Svg("plus", 14) Lập đợt sơ tuyển</a> }
+    </form>
+    <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+        <thead><tr><th>Số</th><th>Đợt sơ tuyển</th><th>Nhóm hàng</th><th>Hạn nộp</th><th class="money">Hồ sơ</th><th class="money">Đạt</th><th>Trạng thái</th></tr></thead>
+        <tbody>
+        @foreach (var p in Model)
+        {
+            var apps = p.Applications.Where(a => a.Status != PrequalificationResult.Withdrawn).ToList();
+            <tr><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td><td>@p.Title</td><td class="small">@p.Category?.Name</td>
+                <td class="small">@p.Deadline.ToDateTime()</td><td class="money">@apps.Count</td><td class="money">@apps.Count(a => a.Status == PrequalificationResult.Passed)</td>
+                <td><span class="badge @(p.Status switch { PrequalificationStatus.Open => "bg-info text-dark", PrequalificationStatus.Evaluating => "bg-primary", PrequalificationStatus.PendingApproval => "bg-warning text-dark", PrequalificationStatus.Completed => "bg-success", PrequalificationStatus.Cancelled => "bg-dark", _ => "bg-secondary" })">@p.Status.GetDisplayName()</span></td></tr>
+        }
+        @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Chưa có đợt sơ tuyển.</td></tr> }
+        </tbody>
+    </table></div></div></div>
+}
+else
+{
+    <div class="alert alert-light border small">NCC tự đăng ký trên cổng NCC (trạng thái chờ thẩm định). Thẩm định hồ sơ pháp lý tại trang nhà cung cấp, hoặc mời tham dự đợt sơ tuyển của nhóm hàng – NCC đạt sơ tuyển được chuyển sang Đã duyệt khi Giám đốc phê duyệt kết quả.</div>
+    <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+        <thead><tr><th>Nhà cung cấp</th><th>MST</th><th>Nhóm hàng đăng ký</th><th>Ngày đăng ký</th><th class="money">Hồ sơ pháp lý</th><th class="money">Đang dự sơ tuyển</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var r in regs)
+        {
+            <tr><td><a asp-controller="Vendors" asp-action="Details" asp-route-id="@r.Id" class="fw-semibold">@r.Name</a><div class="small text-muted">@r.Code</div></td><td class="small">@r.TaxCode</td>
+                <td class="small">@string.Join(", ", r.Categories)</td><td class="small">@r.CreatedAt.ToDate()</td>
+                <td class="money">@r.Verified/@r.Docs <span class="small text-muted">đã xác minh</span></td><td class="money">@r.Applications</td>
+                <td class="text-end"><a asp-controller="Vendors" asp-action="Details" asp-route-id="@r.Id" class="btn btn-sm btn-outline-primary">Thẩm định</a></td></tr>
+        }
+        @if (!regs.Any()) { <tr><td colspan="7" class="text-muted p-3">Không có NCC chờ thẩm định.</td></tr> }
+        </tbody>
+    </table></div></div></div>
+}

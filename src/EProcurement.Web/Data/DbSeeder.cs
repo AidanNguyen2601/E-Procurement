@@ -313,12 +313,16 @@ public static class DbSeeder
             "IF COL_LENGTH('DirectAwards','QuoteOpenedAt') IS NULL ALTER TABLE DirectAwards ADD QuoteOpenedAt datetime2 NULL",
             "IF COL_LENGTH('VendorSubmissions','DirectAwardId') IS NULL ALTER TABLE VendorSubmissions ADD DirectAwardId int NULL CONSTRAINT FK_VendorSubmissions_DirectAwards_DirectAwardId REFERENCES DirectAwards(Id)",
             "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_VendorSubmissions_DirectAwardId_IsLatest') CREATE INDEX IX_VendorSubmissions_DirectAwardId_IsLatest ON VendorSubmissions(DirectAwardId, IsLatest)",
+            // Quản lý nguồn cung: đánh giá NCC định kỳ, lý do vượt giá trần bảng giá tiêu chuẩn
+            "IF COL_LENGTH('VendorEvaluations','Period') IS NULL ALTER TABLE VendorEvaluations ADD Period nvarchar(20) NULL",
+            "IF COL_LENGTH('PurchaseOrders','StandardPriceReason') IS NULL ALTER TABLE PurchaseOrders ADD StandardPriceReason nvarchar(1000) NULL",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"
         };
         foreach (var sql in statements) await db.Database.ExecuteSqlRawAsync(sql);
-        await EProcurement.Web.Infrastructure.Packages.EnsureLegacyAsync(db); // PR đã chọn hình thức trước khi có gói → sinh gói + KHLCNT tương ứng
+        await EProcurement.Web.Infrastructure.Packages.EnsureLegacyAsync(db);
+        await EProcurement.Web.Infrastructure.StandardPrices.SyncReferenceAsync(db); // bảng giá tiêu chuẩn tới ngày hiệu lực // PR đã chọn hình thức trước khi có gói → sinh gói + KHLCNT tương ứng
         await EProcurement.Web.Infrastructure.Catalogs.EnsureAsync(db); // danh mục dùng chung: nạp mặc định + giá trị đang dùng
     }
 

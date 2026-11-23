@@ -75,6 +75,10 @@ public class SignatureService
                 Lines = x.Lines.OrderBy(l => l.Id).Select(l => new { l.ItemId, l.Description, l.Quantity, l.EstimatedPrice, l.Quarter }) }).FirstOrDefaultAsync(),
             DocType.SelectionPlan => await _db.SelectionPlans.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.Number, x.Title,
                 Packages = x.Packages.OrderBy(p => p.Id).Select(p => new { p.Number, p.Budget, p.Method, p.EnvelopeMethod, p.ContractType, p.ContractDurationDays, p.PlannedStart }) }).FirstOrDefaultAsync(),
+            DocType.Prequalification => await _db.Prequalifications.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.Number, x.CategoryId, x.MinScore, x.ValidityMonths,
+                Results = x.Applications.OrderBy(a => a.VendorId).Select(a => new { a.VendorId, a.Status, a.TotalScore }) }).FirstOrDefaultAsync(),
+            DocType.StandardPriceList => await _db.StandardPriceLists.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.Number, x.EffectiveFrom, x.EffectiveTo,
+                Lines = x.Lines.OrderBy(l => l.ItemId).Select(l => new { l.ItemId, l.StandardPrice, l.CeilingPrice }) }).FirstOrDefaultAsync(),
             _ => null
         };
         var json = JsonSerializer.Serialize(snap);

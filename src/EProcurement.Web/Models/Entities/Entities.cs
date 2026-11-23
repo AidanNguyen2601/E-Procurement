@@ -442,6 +442,8 @@ public class PurchaseOrder
     public PurchaseOrder? ReferencePo { get; set; }
     /// <summary>Mua sắm trực tiếp: lý do khi đơn giá cao hơn PO tham chiếu (bắt buộc Giám đốc duyệt)</summary>
     [StringLength(1000)][Display(Name = "Lý do vượt giá tham chiếu")] public string? PriceDeviationReason { get; set; }
+    /// <summary>Lý do đặt mua vượt giá trần bảng giá tiêu chuẩn (bắt buộc Giám đốc duyệt)</summary>
+    [StringLength(1000)][Display(Name = "Lý do vượt giá trần tiêu chuẩn")] public string? StandardPriceReason { get; set; }
     /// <summary>Chỉ định thầu: tờ trình đã được Giám đốc duyệt</summary>
     [Display(Name = "Tờ trình chỉ định")] public int? DirectAwardId { get; set; }
     public DirectAward? DirectAward { get; set; }
@@ -643,6 +645,8 @@ public class VendorEvaluation
     [Range(1, 5)][Display(Name = "Giá cả")] public int Price { get; set; } = 4;
     [Range(1, 5)][Display(Name = "Dịch vụ hỗ trợ")] public int Service { get; set; } = 4;
     [StringLength(1000)][Display(Name = "Nhận xét")] public string? Comment { get; set; }
+    /// <summary>Đánh giá định kỳ (không gắn PO): kỳ đánh giá, vd "2026-Q4"</summary>
+    [StringLength(20)][Display(Name = "Kỳ đánh giá")] public string? Period { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     [NotMapped] public decimal Average => (Quality + Delivery + Price + Service) / 4m;
 }

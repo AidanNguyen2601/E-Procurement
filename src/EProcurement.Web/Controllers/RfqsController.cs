@@ -502,7 +502,12 @@ public class RfqsController : ProcControllerBase
         var catIds = await Db.Items.Where(i => itemIds.Contains(i.Id) && i.CategoryId != null).Select(i => i.CategoryId!.Value).Distinct().ToListAsync();
         var approved = await Db.Vendors.Include(v => v.Categories).Where(v => v.Status == VendorStatus.Approved)
             .OrderByDescending(v => v.Rating).ToListAsync();
-        vm.SuggestedVendors = approved.Where(v => v.Categories.Any(c => catIds.Contains(c.CategoryId))).ToList();
+        // NCC còn hiệu lực sơ tuyển đạt cho nhóm hàng của RFQ được ưu tiên mời (xếp trước, theo điểm)
+        var prequalified = (await PrequalificationRules.PrequalifiedVendorIds(Db, null, DateTime.Today)
+            .Join(Db.PrequalificationApplications.Where(a => catIds.Contains(a.Prequalification!.CategoryId)), id => id, a => a.VendorId, (id, a) => id).Distinct().ToListAsync()).ToHashSet();
+        ViewBag.Prequalified = prequalified;
+        vm.SuggestedVendors = approved.Where(v => v.Categories.Any(c => catIds.Contains(c.CategoryId)) || prequalified.Contains(v.Id))
+            .OrderByDescending(v => prequalified.Contains(v.Id)).ThenByDescending(v => v.Rating).ToList();
         vm.OtherVendors = approved.Except(vm.SuggestedVendors).ToList();
     }
 }

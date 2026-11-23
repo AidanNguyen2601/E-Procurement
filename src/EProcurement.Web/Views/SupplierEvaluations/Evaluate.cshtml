@@ -1,0 +1,44 @@
+@model VendorEvaluation
+@{
+    var s = ViewBag.Score as SupplierScore; var existing = ViewBag.Existing as VendorEvaluation; var history = (List<VendorEvaluation>)ViewBag.History;
+    var fields = new (string Name, string Label, int Value, string Hint)[]
+    {
+        ("Quality", "Chất lượng hàng hóa / dịch vụ", existing?.Quality ?? Model.Quality, s?.RejectPercent != null ? $"Gợi ý từ tỷ lệ hàng không đạt {s.RejectPercent:0.#}%" : "Chưa có số liệu nhận hàng"),
+        ("Delivery", "Tiến độ giao hàng", existing?.Delivery ?? Model.Delivery, s?.OnTimePercent != null ? $"Gợi ý từ tỷ lệ giao đúng hạn {s.OnTimePercent:0.#}% ({s.Received} PO nhận đủ)" : "Chưa có PO nhận đủ"),
+        ("Price", "Giá cả, điều khoản thanh toán", existing?.Price ?? Model.Price, s?.Price != null ? $"TB phiếu: {s.Price:0.0}" : ""),
+        ("Service", "Dịch vụ hỗ trợ, bảo hành", existing?.Service ?? Model.Service, s?.Service != null ? $"TB phiếu: {s.Service:0.0}" : "")
+    };
+}
+<div class="row g-3">
+<div class="col-lg-7">
+    <form asp-action="Evaluate" method="post" class="card">
+        <input type="hidden" asp-for="VendorId" />
+        <div class="card-header">Kỳ đánh giá @Model.Period @if (existing != null) { <span class="badge bg-info text-dark">đã đánh giá – cập nhật</span> }</div>
+        <div class="card-body">
+            @if (s != null)
+            {
+                <div class="small mb-3 text-muted">12 tháng gần nhất: @s.Orders PO · @s.Value.ToMoney() đ · đúng hạn @(s.OnTimePercent?.ToString("0.#") ?? "—")% · không đạt @(s.RejectPercent?.ToString("0.#") ?? "—")% · @s.Evaluations phiếu đánh giá</div>
+            }
+            @foreach (var f in fields)
+            {
+                <div class="row align-items-center mb-2"><div class="col-md-5"><label class="form-label mb-0">@f.Label</label><div class="small text-muted">@f.Hint</div></div>
+                    <div class="col-md-7"><div class="btn-group btn-group-sm" role="group">
+                        @for (var i = 1; i <= 5; i++) { <input type="radio" class="btn-check" name="@f.Name" id="@(f.Name)@i" value="@i" @(f.Value == i ? "checked" : "") /><label class="btn btn-outline-primary" for="@(f.Name)@i">@i</label> }
+                    </div></div></div>
+            }
+            <label class="form-label mt-2">Nhận xét, đề xuất (cải thiện / tiếp tục / tạm ngưng)</label>
+            <textarea name="Comment" rows="3" maxlength="1000" class="form-control">@existing?.Comment</textarea>
+            <div class="small text-muted mt-2">Xếp loại: A ≥ 4,5 · B ≥ 3,5 · C ≥ 2,5 · D &lt; 2,5 (điểm 1–5).</div>
+            <button class="btn btn-primary mt-3">Lưu đánh giá</button> <a asp-action="Index" class="btn btn-outline-secondary mt-3">Quay lại</a>
+        </div>
+    </form>
+</div>
+<div class="col-lg-5"><div class="card"><div class="card-header">Các lần đánh giá gần đây</div><ul class="list-group list-group-flush small">
+    @foreach (var e in history)
+    {
+        <li class="list-group-item d-flex justify-content-between"><span>@(e.Period != null ? $"Định kỳ {e.Period}" : $"Sau giao hàng {e.PurchaseOrder?.Number}") · @e.Evaluator?.FullName · @e.CreatedAt.ToDate()
+            @if (!string.IsNullOrEmpty(e.Comment)) { <div class="text-muted">@e.Comment</div> }</span><b>@e.Average.ToString("0.00")</b></li>
+    }
+    @if (!history.Any()) { <li class="list-group-item text-muted">Chưa có đánh giá.</li> }
+</ul></div></div>
+</div>

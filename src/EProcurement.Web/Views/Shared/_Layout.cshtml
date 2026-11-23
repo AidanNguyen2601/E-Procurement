@@ -14,6 +14,8 @@
         ("Quotes", "Direct") => "q-direct",
         ("Quotes", "Competitive") => "q-comp",
         ("Quotes", "Evaluations") or ("Rfqs", "Evaluate" or "Compare") => "q-eval",
+        ("Reports", "Index") when Context.Request.Query["group"] == "sourcing" => "src-report",
+        ("Reports", "Show") when EProcurement.Web.Infrastructure.Reporting.StandardReports.SourcingKeys.Contains(ViewContext.RouteData.Values["id"]?.ToString()) => "src-report",
         _ => ctrl ?? ""
     };
     string On(string k) => navKey == k ? "active" : "";
@@ -21,7 +23,7 @@
     var purchasing = User.IsPurchasing();
     var director = User.IsInRole(AppRoles.Director);
     var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
-    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", _ => null };
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", "Prequalifications" => "clipboard", "SupplierEvaluations" => "users", "PriceBank" => "database", "StandardPrices" => "tag", _ => null };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -99,6 +101,18 @@
                 }
             </details>
 
+            @if (purchasing || director)
+            {
+                <details class="nav-tree" open>
+                    <summary>@Icon.Svg("network")<span>Quản lý nguồn cung</span></summary>
+                    <a class="lvl1 @On("Prequalifications")" asp-controller="Prequalifications" asp-action="Index">@Icon.Svg("clipboard", 15)<span>Quản lý NCC đăng ký sơ tuyển</span></a>
+                    <a class="lvl1 @On("SupplierEvaluations")" asp-controller="SupplierEvaluations" asp-action="Index">@Icon.Svg("users", 15)<span>Đánh giá nhà cung cấp</span></a>
+                    <a class="lvl1 @On("PriceBank")" asp-controller="PriceBank" asp-action="Index">@Icon.Svg("database", 15)<span>Ngân hàng giá</span></a>
+                    <a class="lvl1 @On("StandardPrices")" asp-controller="StandardPrices" asp-action="Index">@Icon.Svg("tag", 15)<span>Bảng giá tiêu chuẩn hàng hoá vật tư</span></a>
+                    <a class="lvl1 @On("src-report")" asp-controller="Reports" asp-action="Index" asp-route-group="sourcing">@Icon.Svg("bar-chart", 15)<span>Báo cáo</span></a>
+                </details>
+            }
+
             <div class="nav-group">Kế hoạch & ngân sách</div>
             <a class="@Active("Plans")" asp-controller="Plans" asp-action="Index">@Icon.Svg("clipboard")<span>Kế hoạch mua sắm năm</span></a>
             <a class="@Active("Ordering")" asp-controller="Ordering" asp-action="Index">@Icon.Svg("cart")<span>Mua theo hợp đồng khung</span></a>
@@ -111,7 +125,7 @@
             @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
             {
                 <div class="nav-group">Báo cáo</div>
-                <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index">@Icon.Svg("bar-chart")<span>Báo cáo mua sắm</span></a>
+                <a class="@On("Reports")" asp-controller="Reports" asp-action="Index">@Icon.Svg("bar-chart")<span>Báo cáo mua sắm</span></a>
                 <a class="@Active("ReportBuilder")" asp-controller="ReportBuilder" asp-action="Index">@Icon.Svg("sliders")<span>Báo cáo động</span></a>
             }
 

@@ -58,6 +58,13 @@ public class ApprovalsController : ProcControllerBase
         if (User.IsAdmin() || User.IsInRole(AppRoles.Director))
             vm.SelectionPlans = await Db.SelectionPlans.Include(p => p.CreatedBy).Include(p => p.Packages)
                 .Where(p => p.Status == SelectionPlanStatus.Submitted).OrderBy(p => p.SubmittedAt).ToListAsync();
+        if (User.IsAdmin() || User.IsInRole(AppRoles.Director))
+        {
+            vm.Prequalifications = await Db.Prequalifications.Include(p => p.Category).Include(p => p.Applications)
+                .Where(p => p.Status == PrequalificationStatus.PendingApproval).ToListAsync();
+            vm.StandardPriceLists = await Db.StandardPriceLists.Include(p => p.Lines).Include(p => p.CreatedBy)
+                .Where(p => p.Status == StandardPriceStatus.Submitted).OrderBy(p => p.SubmittedAt).ToListAsync();
+        }
         vm.Appraisals = await Db.TenderAppraisals.Include(a => a.Tender)
             .Where(a => a.AppraiserId == Me && !a.IsVoid && a.CompletedAt == null && a.Tender!.Status == TenderStatus.PendingResultApproval).ToListAsync();
 

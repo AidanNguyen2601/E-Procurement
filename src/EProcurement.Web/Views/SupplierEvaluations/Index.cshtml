@@ -1,0 +1,41 @@
+@model List<SupplierScore>
+@{
+    ViewData["Title"] = "Đánh giá nhà cung cấp";
+    DateTime from = ViewBag.From, to = ViewBag.To; var grade = ViewBag.Grade as string; var counts = (Dictionary<string, int>)ViewBag.Counts;
+    var cats = (List<Category>)ViewBag.Categories; var catId = ViewBag.CategoryId as int?; string period = ViewBag.Period; var periodic = (List<int>)ViewBag.Periodic;
+    string Css(string g) => g switch { "A" => "bg-success", "B" => "bg-primary", "C" => "bg-warning text-dark", "D" => "bg-danger", _ => "bg-light text-muted border" };
+}
+<div class="row g-3 mb-3">
+    @foreach (var g in new[] { "A", "B", "C", "D" })
+    {
+        <div class="col-6 col-md-3"><a asp-action="Index" asp-route-grade="@(grade == g ? null : g)" asp-route-from="@from.ToString("yyyy-MM-dd")" asp-route-to="@to.ToString("yyyy-MM-dd")" asp-route-categoryId="@catId" class="card stat text-decoration-none text-reset @(grade == g ? "border-primary" : "")">
+            <div class="label"><span class="badge @Css(g)">Loại @g</span> @SupplierScorecard.GradeText(g)</div><div class="value">@counts.GetValueOrDefault(g)</div></a></div>
+    }
+</div>
+<form method="get" class="toolbar">
+    <label class="small">Từ</label><input type="date" name="from" value="@from.ToString("yyyy-MM-dd")" class="form-control form-control-sm" style="width:auto" />
+    <label class="small">đến</label><input type="date" name="to" value="@to.ToString("yyyy-MM-dd")" class="form-control form-control-sm" style="width:auto" />
+    <select name="categoryId" class="form-select form-select-sm" style="width:auto"><option value="">-- Mọi nhóm hàng --</option>@foreach (var c in cats) { <option value="@c.Id" selected="@(catId == c.Id)">@c.Name</option> }</select>
+    <input type="hidden" name="grade" value="@grade" />
+    <button class="btn btn-sm btn-outline-secondary">Xem</button>
+    <span class="small text-muted ms-auto">Điểm = TB phiếu đánh giá (sau giao hàng + định kỳ); chưa có phiếu: suy từ % đúng hạn và % hàng không đạt.</span>
+</form>
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>Nhà cung cấp</th><th class="money">Số PO</th><th class="money">Giá trị</th><th class="money">% đúng hạn</th><th class="money">% không đạt</th>
+        <th class="money">Chất lượng</th><th class="money">Tiến độ</th><th class="money">Giá</th><th class="money">Dịch vụ</th><th class="money">Điểm</th><th>Xếp loại</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr><td><a asp-controller="Vendors" asp-action="Details" asp-route-id="@r.Vendor.Id" class="fw-semibold">@r.Vendor.Name</a>
+                <div class="small text-muted">@r.Vendor.Code · @r.Vendor.Status.GetDisplayName() · @r.Evaluations phiếu</div></td>
+            <td class="money">@r.Orders</td><td class="money">@r.Value.ToShortMoney()</td>
+            <td class="money @(r.OnTimePercent < 80 ? "text-danger" : "")">@(r.OnTimePercent?.ToString("0.#") + (r.OnTimePercent.HasValue ? "%" : ""))</td>
+            <td class="money @(r.RejectPercent > 5 ? "text-danger" : "")">@(r.RejectPercent?.ToString("0.#") + (r.RejectPercent.HasValue ? "%" : ""))</td>
+            <td class="money">@r.Quality?.ToString("0.0")</td><td class="money">@r.Delivery?.ToString("0.0")</td><td class="money">@r.Price?.ToString("0.0")</td><td class="money">@r.Service?.ToString("0.0")</td>
+            <td class="money fw-bold">@r.Score?.ToString("0.00")</td>
+            <td><span class="badge @Css(r.Grade)" title="@SupplierScorecard.GradeText(r.Grade)">@r.Grade</span></td>
+            <td class="text-end text-nowrap">@if (User.IsPurchasing()) { <a asp-action="Evaluate" asp-route-vendorId="@r.Vendor.Id" class="btn btn-sm @(periodic.Contains(r.Vendor.Id) ? "btn-outline-secondary" : "btn-outline-primary")">@(periodic.Contains(r.Vendor.Id) ? $"Đã đánh giá {period}" : $"Đánh giá {period}")</a> }</td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="12" class="text-muted p-3">Không có nhà cung cấp phát sinh giao dịch trong kỳ.</td></tr> }
+    </tbody>
+</table></div></div></div>

@@ -1,0 +1,19 @@
+@model List<Prequalification>
+@{
+    Layout = "_PortalLayout";
+    var mine = (Dictionary<int, PrequalificationApplication>)ViewBag.Mine; var myCats = (List<int>)ViewBag.MyCategories; var now = DateTime.Now;
+}
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>Số</th><th>Đợt sơ tuyển</th><th>Nhóm hàng</th><th>Hạn nộp</th><th>Quý công ty</th></tr></thead><tbody>
+    @foreach (var p in Model)
+    {
+        mine.TryGetValue(p.Id, out var a);
+        <tr><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td><td>@p.Title</td>
+            <td class="small">@p.Category?.Name @if (myCats.Contains(p.CategoryId)) { <span class="badge bg-primary-subtle text-primary">nhóm hàng của bạn</span> }</td>
+            <td class="small">@p.Deadline.ToDateTime()@if (p.Status == PrequalificationStatus.Open && p.Deadline > now) { <div class="text-muted">còn <span data-countdown="@((int)(p.Deadline - now).TotalSeconds)"></span></div> }</td>
+            <td class="small">@if (a == null) { <span class="text-muted">@(p.Status == PrequalificationStatus.Open && p.Deadline > now ? "Chưa nộp" : "")</span> }
+                else if (p.Status == PrequalificationStatus.Completed && a.Status != PrequalificationResult.Withdrawn) { <span class="badge @(a.Status == PrequalificationResult.Passed ? "bg-success" : "bg-danger")">@a.Status.GetDisplayName()</span> }
+                else { <span class="badge bg-light text-dark border">@(a.Status == PrequalificationResult.Withdrawn ? "Đã rút" : "Đã nộp – chờ kết quả")</span> }</td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">Hiện không có đợt sơ tuyển.</td></tr> }
+</tbody></table></div></div></div>

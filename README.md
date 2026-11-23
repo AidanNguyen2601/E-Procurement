@@ -16,6 +16,7 @@ Hệ thống mua sắm điện tử cơ bản, số hóa quy trình từ đề n
 | Dashboard | Chứng từ chờ tôi duyệt, PR chờ mua hàng, RFQ đang mở, PO trễ hạn giao; giá trị mua tháng / năm, tiết kiệm so với dự toán, chi tiêu 6 tháng, theo nhóm hàng, top NCC |
 | Đề nghị mua hàng (PR) | Tạo nhiều dòng (chọn từ danh mục hoặc hàng ngoài danh mục), dự toán tự tính; lưu nháp / gửi duyệt; duyệt 2 cấp theo ngưỡng; từ chối bắt buộc lý do; hủy; thanh tiến trình + nhật ký phê duyệt |
 | Gói mua sắm & KHLCNT | Gom 1 hoặc nhiều PR đã duyệt thành **gói mua sắm** (giá gói, nguồn vốn, hình thức + gợi ý theo hạn mức / PO tham chiếu, phương thức, loại HĐ, thời gian); **kế hoạch lựa chọn NCC** gồm nhiều gói, Giám đốc ký duyệt, in tờ trình / quyết định. Chỉ gói đã duyệt mới được lập hồ sơ chào giá chỉ định / chào giá cạnh tranh / HSMT / đơn mua sắm trực tiếp; dòng hàng lấy từ tất cả PR trong gói. Dữ liệu cũ tự sinh gói + KHLCNT "chuyển đổi" |
+| Quản lý nguồn cung | **Sơ tuyển NCC** theo nhóm hàng (tiêu chí bắt buộc + chấm điểm, NCC nộp hồ sơ trên cổng, chấm, Giám đốc ký duyệt; NCC đạt được ưu tiên mời chào giá, NCC chờ thẩm định chuyển Đã duyệt) + danh sách NCC tự đăng ký chờ thẩm định · **Đánh giá NCC**: bảng xếp loại A/B/C/D từ phiếu đánh giá + % đúng hạn + % hàng không đạt, đánh giá định kỳ theo quý có gợi ý điểm · **Ngân hàng giá**: đơn giá từ đơn hàng, báo giá, HSDT, chỉ định, hợp đồng và giá khảo sát nhập tay · **Bảng giá tiêu chuẩn**: giá chuẩn + giá trần theo thời kỳ, đề xuất từ ngân hàng giá, Giám đốc ký duyệt, thay giá tham khảo; PO vượt giá trần bắt buộc lý do + Giám đốc duyệt · 3 báo cáo nguồn cung |
 | Chờ tôi duyệt | Hộp duyệt tập trung: Trưởng bộ phận duyệt PR phòng mình; Giám đốc duyệt PR & PO vượt ngưỡng ngay trên danh sách |
 | Danh mục hàng hóa | Mã, nhóm hàng, đơn vị, giá tham khảo, quy cách |
 | Nhà cung cấp | Hồ sơ NCC, MST không trùng, nhóm hàng cung cấp, trạng thái (chờ thẩm định / đã duyệt / tạm ngưng / danh sách đen), điểm đánh giá, lịch sử PO và tham gia báo giá, tỷ lệ trúng thầu |
@@ -58,6 +59,7 @@ Ngưỡng duyệt cấu hình trong `appsettings.json`:
   "TenderAmendmentMinDays": 3,             // Đấu thầu: sửa đổi HSMT sát hạn hơn N ngày thì bắt buộc gia hạn đóng thầu
   "TenderQuestionMinDays": 3,              // Đấu thầu: nhà thầu gửi đề nghị làm rõ HSMT qua cổng chậm nhất N ngày trước đóng thầu
   "TenderAppraisalRequired": true,         // Đấu thầu: bắt buộc báo cáo thẩm định (thống nhất) trước khi Giám đốc phê duyệt kết quả LCNT
+  "StandardPriceCeilingPercent": 10,       // Bảng giá tiêu chuẩn: giá trần mặc định = giá tiêu chuẩn + N%
   "TenderMinCommittee": 3,                 // Đấu thầu: số thành viên tổ chuyên gia tối thiểu
   "TenderComplaintDays": 5,                // Đấu thầu: thời gian nhà thầu kiến nghị kết quả trước khi ký hợp đồng
   "BudgetControl": "Warn",                 // Off / Warn (duyệt vượt phải ghi lý do) / Block (chặn)

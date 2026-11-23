@@ -1,0 +1,42 @@
+@model List<Item>
+@{
+    ViewData["Title"] = "Bảng giá tiêu chuẩn hàng hoá vật tư";
+    var lists = (List<StandardPriceList>)ViewBag.Lists; var current = (Dictionary<int, StandardPrice>)ViewBag.Current;
+    string Css(StandardPriceStatus s) => s switch { StandardPriceStatus.Approved => "bg-success", StandardPriceStatus.Submitted => "bg-warning text-dark", StandardPriceStatus.Returned => "bg-danger", _ => "bg-secondary" };
+}
+<div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">Bảng giá
+    @if (User.IsPurchasing())
+    {
+        <form asp-action="Create" method="get" class="d-flex gap-1"><select name="categoryId" class="form-select form-select-sm" asp-items="ViewBag.Categories"><option value="">-- Mọi nhóm hàng --</option></select>
+            <button class="btn btn-sm btn-primary text-nowrap">@Icon.Svg("plus", 14) Lập bảng giá</button></form>
+    }</div>
+<div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>Số</th><th>Tên bảng giá</th><th>Hiệu lực</th><th class="money">Mặt hàng</th><th>Người lập</th><th>Trạng thái</th></tr></thead><tbody>
+    @foreach (var l in lists)
+    {
+        var active = l.Status == StandardPriceStatus.Approved && l.EffectiveFrom <= DateTime.Today && (l.EffectiveTo == null || l.EffectiveTo >= DateTime.Today);
+        <tr><td><a asp-action="Details" asp-route-id="@l.Id" class="fw-semibold">@l.Number</a></td><td>@l.Title</td>
+            <td class="small">@l.EffectiveFrom.ToDate() → @(l.EffectiveTo?.ToDate() ?? "không thời hạn")</td><td class="money">@l.Lines.Count</td>
+            <td class="small">@l.CreatedBy?.FullName</td>
+            <td><span class="badge @Css(l.Status)">@(l.Status == StandardPriceStatus.Approved ? (active ? "Đang hiệu lực" : l.EffectiveFrom > DateTime.Today ? "Đã duyệt – chưa tới ngày" : "Hết hiệu lực") : l.Status.GetDisplayName())</span></td></tr>
+    }
+    @if (!lists.Any()) { <tr><td colspan="6" class="text-muted p-3">Chưa có bảng giá tiêu chuẩn.</td></tr> }
+</tbody></table></div></div>
+
+<form method="get" class="toolbar">
+    <span class="fw-semibold">Giá tiêu chuẩn đang hiệu lực (@current.Count mặt hàng)</span>
+    <input name="q" value="@ViewBag.Q" class="form-control form-control-sm ms-auto" style="max-width:220px" placeholder="Mã / tên hàng" />
+    <select name="categoryId" class="form-select form-select-sm" style="width:auto" asp-items="ViewBag.Categories"><option value="">-- Mọi nhóm hàng --</option></select>
+    <button class="btn btn-sm btn-outline-secondary">Lọc</button>
+</form>
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+    <thead><tr><th>Mã</th><th>Hàng hóa</th><th>Nhóm</th><th>ĐVT</th><th class="money">Giá tiêu chuẩn</th><th class="money">Giá trần</th><th>Theo bảng giá</th><th></th></tr></thead><tbody>
+    @foreach (var i in Model)
+    {
+        var c = current[i.Id];
+        <tr><td>@i.Code</td><td>@i.Name</td><td class="small">@i.Category?.Name</td><td>@i.Unit</td><td class="money fw-semibold">@c.Price.ToMoney()</td><td class="money">@c.Ceiling.ToMoney()</td>
+            <td class="small"><a asp-action="Details" asp-route-id="@c.ListId">@c.ListNumber</a></td>
+            <td class="text-end"><a asp-controller="PriceBank" asp-action="Item" asp-route-id="@i.Id" class="small">Lịch sử giá</a></td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">Chưa có giá tiêu chuẩn đang hiệu lực.</td></tr> }
+</tbody></table></div></div></div>

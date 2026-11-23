@@ -20,6 +20,9 @@ public partial class StandardReports
         new("contracts", "Tình hình thực hiện hợp đồng", "Giá trị thực hiện, hợp đồng sắp hết hạn, bảo lãnh thực hiện sắp hết hiệu lực.", "file-check"),
         new("budget", "Ngân sách – thực hiện", "Ngân sách năm theo phòng ban × nhóm hàng: đã đặt hàng, giữ chỗ, còn lại, dòng vượt ngân sách.", "wallet"),
         new("prices", "Phân tích giá mua", "Biến động đơn giá theo mặt hàng, so với giá tham khảo; các dòng mua giá cao bất thường và ước tính chênh lệch.", "coins"),
+        new("supplier-grades", "Xếp loại nhà cung cấp", "Điểm đánh giá, % giao đúng hạn, % hàng không đạt, xếp loại A/B/C/D và khuyến nghị.", "trophy"),
+        new("price-vs-standard", "Giá mua so với bảng giá tiêu chuẩn", "Đơn giá thực tế so với giá tiêu chuẩn / giá trần đang hiệu lực, các dòng vượt trần và lý do.", "tag"),
+        new("prequal", "Kết quả sơ tuyển nhà cung cấp", "Các đợt sơ tuyển, tỷ lệ đạt, danh sách NCC đạt còn hiệu lực theo nhóm hàng.", "shield-check"),
         new("risk", "Cảnh báo rủi ro mua sắm", "Nghi chia nhỏ gói, NCC chi phối nhóm hàng, trúng liên tục, báo giá sát nhau, gói thầu một hồ sơ, mua không cạnh tranh.", "alert"),
     };
 
@@ -39,6 +42,9 @@ public partial class StandardReports
         "budget" => BudgetAsync(f),
         "prices" => PricesAsync(f),
         "risk" => RiskAsync(f),
+        "supplier-grades" => SupplierGradesAsync(f),
+        "price-vs-standard" => PriceVsStandardAsync(f),
+        "prequal" => PrequalAsync(f),
         _ => throw new KeyNotFoundException(key)
     };
 

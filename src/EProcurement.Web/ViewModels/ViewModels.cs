@@ -84,6 +84,7 @@ public class PoFormViewModel
     /// <summary>Mua sắm trực tiếp: PO tham chiếu (chỉ dùng khi tạo mới; khi sửa lấy theo PO đã lưu)</summary>
     public int? ReferencePoId { get; set; }
     [StringLength(1000)][Display(Name = "Lý do đơn giá cao hơn PO tham chiếu")] public string? PriceDeviationReason { get; set; }
+    [StringLength(1000)][Display(Name = "Lý do vượt giá trần bảng giá tiêu chuẩn")] public string? StandardPriceReason { get; set; }
     public List<LineInput> Lines { get; set; } = new();
 }
 
@@ -194,6 +195,8 @@ public class ApprovalInboxViewModel
     public List<SelectionPlan> SelectionPlans { get; set; } = new();
     /// <summary>Thẩm định kết quả LCNT được giao cho người dùng</summary>
     public List<TenderAppraisal> Appraisals { get; set; } = new();
+    public List<Prequalification> Prequalifications { get; set; } = new();
+    public List<StandardPriceList> StandardPriceLists { get; set; } = new();
 }
 
 public class UserFormViewModel

@@ -17,7 +17,11 @@ public class ReportsController : ProcControllerBase
     private readonly StandardReports _reports;
     public ReportsController(EProcDbContext db, IOptions<ProcurementSettings> s, StandardReports reports) : base(db, s) => _reports = reports;
 
-    public IActionResult Index() => View(StandardReports.All);
+    public IActionResult Index(string? group)
+    {
+        ViewBag.Group = group;
+        return View(group == "sourcing" ? StandardReports.All.Where(r => StandardReports.SourcingKeys.Contains(r.Key)).ToArray() : StandardReports.All);
+    }
 
     public async Task<IActionResult> Show(string id, ReportFilter f)
     {

@@ -1,0 +1,29 @@
+@model Prequalification
+@{
+    ViewData["Title"] = $"Kết quả sơ tuyển {Model.Number}";
+    var apps = Model.Applications.Where(a => a.Status != PrequalificationResult.Withdrawn).OrderByDescending(a => a.Status == PrequalificationResult.Passed).ThenByDescending(a => a.TotalScore).ToList();
+}
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="card paper mb-4"><div class="card-body p-4">
+    <div class="text-center mb-3"><h4 class="mb-0">BÁO CÁO KẾT QUẢ SƠ TUYỂN NHÀ CUNG CẤP</h4>
+        <div>@Model.Title (@Model.Number) · nhóm hàng: @Model.Category?.Name</div>
+        <div class="text-muted">Hạn nộp hồ sơ @Model.Deadline.ToDateTime()</div></div>
+    <p class="mb-1"><b>Tiêu chí:</b> mọi tiêu chí bắt buộc đạt; điểm tiêu chí chấm điểm quy đổi thang 100, tối thiểu @Model.MinScore điểm.</p>
+    <table class="table table-bordered table-sm small">
+        <thead><tr><th>TT</th><th>Nhà cung cấp</th><th>MST</th>@foreach (var c in Model.Criteria) { <th>@c.Name<div class="fw-normal">@(c.IsMandatory ? "Đ/KĐ" : $"/{c.MaxScore}")</div></th> }<th class="money">Điểm</th><th>Kết quả</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < apps.Count; i++)
+        {
+            var a = apps[i];
+            <tr><td>@(i + 1)</td><td>@a.Vendor?.Name</td><td>@a.Vendor?.TaxCode</td>
+                @foreach (var c in Model.Criteria) { var sc = a.Scores.FirstOrDefault(x => x.CriterionId == c.Id); <td>@(c.IsMandatory ? (sc?.Pass == true ? "Đạt" : sc?.Pass == false ? "Không đạt" : "") : sc?.Score?.ToString("0.##"))</td> }
+                <td class="money">@a.TotalScore?.ToString("0.##")</td><td>@a.Status.GetDisplayName()@(string.IsNullOrEmpty(a.ResultNote) ? "" : " – " + a.ResultNote)</td></tr>
+        }
+        </tbody>
+    </table>
+    <p>Số NCC đạt: <b>@apps.Count(a => a.Status == PrequalificationResult.Passed)/@apps.Count</b>@(Model.Status == PrequalificationStatus.Completed ? $". Kết quả được Giám đốc phê duyệt ngày {Model.DecidedAt:dd/MM/yyyy}, hiệu lực {Model.ValidityMonths} tháng." : ".")</p>
+    <div class="row text-center mt-4 small">
+        <div class="col">NGƯỜI LẬP<br /><br /><br /><br />@Model.CreatedBy?.FullName</div>
+        <div class="col">GIÁM ĐỐC<br />@(Model.Status == PrequalificationStatus.Completed ? $"(đã ký điện tử {Model.DecidedAt:dd/MM/yyyy HH:mm})" : "")<br /><br /><br />@Model.DecidedBy?.FullName</div>
+    </div>
+</div></div>

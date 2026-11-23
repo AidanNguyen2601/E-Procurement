@@ -62,7 +62,9 @@ public enum DocType
     [Display(Name = "Đề nghị thanh toán")] Payment = 8,
     [Display(Name = "Kế hoạch mua sắm")] Plan = 9,
     [Display(Name = "Gói mua sắm")] Package = 10,
-    [Display(Name = "Kế hoạch lựa chọn NCC")] SelectionPlan = 11
+    [Display(Name = "Kế hoạch lựa chọn NCC")] SelectionPlan = 11,
+    [Display(Name = "Sơ tuyển nhà cung cấp")] Prequalification = 12,
+    [Display(Name = "Bảng giá tiêu chuẩn")] StandardPriceList = 13
 }
 
 /// <summary>Hình thức lựa chọn nhà cung cấp (xếp theo mức độ cạnh tranh tăng dần)</summary>
@@ -255,5 +257,39 @@ public enum SelectionPlanStatus
     [Display(Name = "Nháp")] Draft = 1,
     [Display(Name = "Chờ Giám đốc duyệt")] Submitted = 2,
     [Display(Name = "Đã phê duyệt")] Approved = 3,
+    [Display(Name = "Trả lại")] Returned = 4
+}
+
+public enum PrequalificationStatus
+{
+    [Display(Name = "Nháp")] Draft = 1,
+    [Display(Name = "Đang nhận hồ sơ")] Open = 2,
+    [Display(Name = "Đang đánh giá")] Evaluating = 3,
+    [Display(Name = "Chờ Giám đốc duyệt kết quả")] PendingApproval = 4,
+    [Display(Name = "Đã có kết quả")] Completed = 5,
+    [Display(Name = "Đã hủy")] Cancelled = 6
+}
+
+public enum PrequalificationResult
+{
+    [Display(Name = "Đã nộp")] Submitted = 1,
+    [Display(Name = "Đạt")] Passed = 2,
+    [Display(Name = "Không đạt")] Failed = 3,
+    [Display(Name = "Đã rút")] Withdrawn = 4
+}
+
+public enum PriceSource
+{
+    [Display(Name = "Khảo sát / báo giá tham khảo")] Survey = 1,
+    [Display(Name = "Website / sàn thương mại")] Website = 2,
+    [Display(Name = "Công bố giá / thông báo giá")] Published = 3,
+    [Display(Name = "Khác")] Other = 9
+}
+
+public enum StandardPriceStatus
+{
+    [Display(Name = "Nháp")] Draft = 1,
+    [Display(Name = "Chờ Giám đốc duyệt")] Submitted = 2,
+    [Display(Name = "Đang hiệu lực / đã duyệt")] Approved = 3,
     [Display(Name = "Trả lại")] Returned = 4
 }
