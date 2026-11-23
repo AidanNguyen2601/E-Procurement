@@ -5,18 +5,38 @@
 }
 <div class="row g-3">
     <div class="col-lg-3">
-        <div class="card"><div class="list-group list-group-flush catalog-nav">
-            @foreach (var c in Catalogs.All)
+        <input type="search" class="form-control form-control-sm mb-2" placeholder="Tìm loại danh mục…" id="catalog-filter" autocomplete="off" />
+        <div class="card"><div class="list-group list-group-flush catalog-nav" id="catalog-nav">
+            @foreach (var c in Catalogs.All.OrderBy(c => c.Label))
             {
                 <a asp-action="Index" asp-route-type="@c.Type" class="list-group-item list-group-item-action @(c.Type == info.Type ? "active" : "")">
                     @Icon.Svg(c.Icon)<span class="flex-grow-1">@c.Label</span><span class="badge rounded-pill @(c.Type == info.Type ? "bg-light text-dark" : "bg-secondary-subtle text-secondary")">@Model.Counts.GetValueOrDefault(c.Type)</span>
                 </a>
             }
+            <div class="list-group-item small text-muted bg-light py-1">Danh mục quản lý ở trang riêng</div>
             <a asp-controller="Items" asp-action="Index" class="list-group-item list-group-item-action">
-                @Icon.Svg("tag")<span class="flex-grow-1">Nhóm hàng</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@Model.Categories.Count</span>
+                @Icon.Svg("package")<span class="flex-grow-1">Hàng hóa dịch vụ</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@ViewBag.ItemCount</span>
             </a>
+            <a asp-controller="Items" asp-action="Index" class="list-group-item list-group-item-action">
+                @Icon.Svg("tag")<span class="flex-grow-1">Nhóm hàng hóa dịch vụ</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@Model.Categories.Count</span>
+            </a>
+            <a asp-controller="Vendors" asp-action="Index" class="list-group-item list-group-item-action">
+                @Icon.Svg("building")<span class="flex-grow-1">Nhà cung cấp</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@ViewBag.VendorCount</span>
+            </a>
+            @if (User.IsAdmin())
+            {
+                <a asp-controller="Users" asp-action="Index" class="list-group-item list-group-item-action">
+                    @Icon.Svg("users")<span class="flex-grow-1">Nhân viên</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@ViewBag.UserCount</span>
+                </a>
+            }
         </div></div>
-        <div class="small text-muted mt-2 px-1">Nhóm hàng quản lý cùng danh mục hàng hóa.</div>
+        <div class="small text-muted mt-2 px-1">Hàng hóa và nhóm hàng quản lý cùng trang Hàng hóa; nhân viên (người dùng) do Quản trị quản lý.</div>
+        <script>
+            document.getElementById('catalog-filter').addEventListener('input', function () {
+                const k = this.value.trim().toLowerCase();
+                document.querySelectorAll('#catalog-nav a').forEach(a => a.style.display = !k || a.textContent.toLowerCase().includes(k) ? '' : 'none');
+            });
+        </script>
     </div>
 
     <div class="col-lg-9">

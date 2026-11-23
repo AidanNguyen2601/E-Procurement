@@ -103,7 +103,7 @@ public class PurchaseOrdersController : ProcControllerBase
         {
             Id = po.Id, Number = po.Number, VendorId = po.VendorId, PurchaseRequestId = po.PurchaseRequestId, PackageId = po.PackageId, RfqId = po.RfqId,
             OrderDate = po.OrderDate, DeliveryDate = po.DeliveryDate, DeliveryAddress = po.DeliveryAddress, PaymentTerms = po.PaymentTerms,
-            VatPercent = Math.Round(po.VatPercent, 0), Notes = po.Notes, ReferencePoId = po.ReferencePoId, PriceDeviationReason = po.PriceDeviationReason, StandardPriceReason = po.StandardPriceReason,
+            VatPercent = Math.Round(po.VatPercent, 0), Notes = po.Notes, ReferencePoId = po.ReferencePoId, PriceDeviationReason = po.PriceDeviationReason, StandardPriceReason = po.StandardPriceReason, OrderType = po.OrderType,
             Lines = po.Lines.OrderBy(l => l.SortOrder).Select(l => new LineInput { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, Price = l.UnitPrice }).ToList()
         };
         await LoadFormAsync(vm);
@@ -178,6 +178,7 @@ public class PurchaseOrdersController : ProcControllerBase
         po.PaymentTerms = vm.PaymentTerms ?? vendor?.PaymentTerms; po.VatPercent = vm.VatPercent; po.Notes = vm.Notes;
         po.PriceDeviationReason = priceDeviation ? vm.PriceDeviationReason!.Trim() : null;
         po.StandardPriceReason = string.IsNullOrWhiteSpace(vm.StandardPriceReason) ? null : vm.StandardPriceReason.Trim();
+        po.OrderType = string.IsNullOrWhiteSpace(vm.OrderType) ? null : vm.OrderType.Trim();
         var s = 1;
         foreach (var l in vm.Lines)
             po.Lines.Add(new PurchaseOrderLine { ItemId = l.ItemId, Description = l.Description.Trim(), Unit = l.Unit, Quantity = l.Quantity, UnitPrice = l.Price, SortOrder = s++ });

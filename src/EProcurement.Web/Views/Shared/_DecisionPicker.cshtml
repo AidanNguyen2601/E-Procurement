@@ -1,0 +1,18 @@
+@* Chèn quyết định / văn bản từ danh mục "Quyết định" vào ô căn cứ. Model = id của ô (input / textarea) cần chèn. *@
+@model string
+@{ var decisions = await Catalog.EntriesAsync(CatalogType.Decision); }
+@if (decisions.Any())
+{
+    <select class="form-select form-select-sm mt-1 decision-picker" data-target="@Model" style="max-width:520px">
+        <option value="">+ Chèn căn cứ từ danh mục Quyết định…</option>
+        @foreach (var d in decisions)
+        {
+            var text = string.Join(" ", new[] { d.Code, d.Name }.Where(x => !string.IsNullOrWhiteSpace(x))) + (string.IsNullOrWhiteSpace(d.Note) ? "" : $" ({d.Note})");
+            <option value="@text">@text</option>
+        }
+    </select>
+}
+else
+{
+    <div class="small text-muted mt-1">Chưa có quyết định trong <a asp-controller="Catalogs" asp-action="Index" asp-route-type="@CatalogType.Decision">danh mục Quyết định</a> để chèn nhanh.</div>
+}

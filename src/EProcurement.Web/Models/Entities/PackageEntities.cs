@@ -26,6 +26,7 @@ public class ProcurementPackage
     [StringLength(100)][Display(Name = "Loại hợp đồng")] public string? ContractType { get; set; } = "Trọn gói";
     [Range(1, 3650)][Display(Name = "Thời gian thực hiện HĐ (ngày)")] public int ContractDurationDays { get; set; } = 30;
     [DataType(DataType.Date)][Display(Name = "Thời gian bắt đầu tổ chức LCNT")] public DateTime PlannedStart { get; set; } = DateTime.Today.AddDays(7);
+    [StringLength(200)][Display(Name = "Tổ triển khai")] public string? Team { get; set; }
     [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
 
     [Display(Name = "KHLCNT")] public int? SelectionPlanId { get; set; }

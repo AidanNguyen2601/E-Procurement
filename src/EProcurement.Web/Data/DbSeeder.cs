@@ -316,6 +316,9 @@ public static class DbSeeder
             // Quản lý nguồn cung: đánh giá NCC định kỳ, lý do vượt giá trần bảng giá tiêu chuẩn
             "IF COL_LENGTH('VendorEvaluations','Period') IS NULL ALTER TABLE VendorEvaluations ADD Period nvarchar(20) NULL",
             "IF COL_LENGTH('PurchaseOrders','StandardPriceReason') IS NULL ALTER TABLE PurchaseOrders ADD StandardPriceReason nvarchar(1000) NULL",
+            // Danh mục: tổ triển khai gói mua sắm, loại đơn hàng
+            "IF COL_LENGTH('ProcurementPackages','Team') IS NULL ALTER TABLE ProcurementPackages ADD Team nvarchar(200) NULL",
+            "IF COL_LENGTH('PurchaseOrders','OrderType') IS NULL ALTER TABLE PurchaseOrders ADD OrderType nvarchar(100) NULL",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"

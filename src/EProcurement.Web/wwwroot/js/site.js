@@ -104,3 +104,15 @@ document.addEventListener('submit', function (e) {
     tick();
     setInterval(tick, 1000);
 })();
+
+// Chèn căn cứ từ danh mục Quyết định: <select class="decision-picker" data-target="id ô nhập">
+document.addEventListener('change', function (e) {
+    const sel = e.target;
+    if (!sel.classList || !sel.classList.contains('decision-picker') || !sel.value) return;
+    const box = document.getElementById(sel.getAttribute('data-target'));
+    if (box) {
+        const cur = box.value.trim();
+        if (!cur.includes(sel.value)) box.value = cur ? cur + (box.tagName === 'TEXTAREA' ? '\n' : '; ') + sel.value : sel.value;
+    }
+    sel.value = '';
+});

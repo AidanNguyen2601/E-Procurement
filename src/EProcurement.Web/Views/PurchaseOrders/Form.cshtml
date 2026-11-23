@@ -45,6 +45,7 @@
         {
             <div class="col-md-6"><label asp-for="VendorId" class="form-label"></label><select asp-for="VendorId" class="form-select" asp-items="ViewBag.Vendors"><option value="">-- Chọn NCC đã phê duyệt --</option></select><span asp-validation-for="VendorId" class="text-danger small"></span></div>
         }
+        <div class="col-md-4"><label asp-for="OrderType" class="form-label"></label><input asp-for="OrderType" class="form-control" list="dl-ordertype" placeholder="Chọn hoặc nhập" />@await Catalog.DatalistAsync(CatalogType.OrderType)</div>
         <div class="col-md-2"><label asp-for="OrderDate" class="form-label"></label><input asp-for="OrderDate" class="form-control" /></div>
         <div class="col-md-2"><label asp-for="DeliveryDate" class="form-label"></label><input asp-for="DeliveryDate" class="form-control" /><span asp-validation-for="DeliveryDate" class="text-danger small"></span></div>
         <div class="col-md-5"><label asp-for="DeliveryAddress" class="form-label"></label><input asp-for="DeliveryAddress" class="form-control" list="dl-deliverylocation" />@await Catalog.DatalistAsync(CatalogType.DeliveryLocation)</div>

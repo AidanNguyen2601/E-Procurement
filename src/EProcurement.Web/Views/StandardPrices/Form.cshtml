@@ -15,7 +15,7 @@
         <div class="col-md-6"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
         <div class="col-md-3"><label asp-for="EffectiveFrom" class="form-label"></label><input asp-for="EffectiveFrom" type="date" class="form-control" /></div>
         <div class="col-md-3"><label asp-for="EffectiveTo" class="form-label"></label><input asp-for="EffectiveTo" type="date" class="form-control" /></div>
-        <div class="col-12"><label asp-for="Basis" class="form-label"></label><input asp-for="Basis" class="form-control" /></div>
+        <div class="col-12"><label asp-for="Basis" class="form-label"></label><input asp-for="Basis" class="form-control" /><partial name="_DecisionPicker" model="@("Basis")" /></div>
     </div></div>
     <div class="card mb-3"><div class="card-header">Mặt hàng (@Model.Lines.Count) <span class="small fw-normal text-muted">– đề xuất: giá chuẩn = trung vị đơn giá thực tế 12 tháng (làm tròn nghìn), giá trần = +@pct.ToString("0.#")%</span></div>
     <div class="table-responsive"><table class="table table-sm mb-0 align-middle" id="sp-table">

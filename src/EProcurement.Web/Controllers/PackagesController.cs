@@ -23,6 +23,7 @@ public class PackageForm
     [StringLength(100)][Display(Name = "Loại hợp đồng")] public string? ContractType { get; set; } = "Trọn gói";
     [Range(1, 3650)][Display(Name = "Thời gian thực hiện HĐ (ngày)")] public int ContractDurationDays { get; set; } = 30;
     [DataType(DataType.Date)][Display(Name = "Thời gian bắt đầu tổ chức LCNT")] public DateTime PlannedStart { get; set; } = DateTime.Today.AddDays(7);
+    [StringLength(200)][Display(Name = "Tổ triển khai")] public string? Team { get; set; }
     [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
 
     // hiển thị
@@ -104,7 +105,7 @@ public class PackagesController : ProcControllerBase
         {
             Id = p.Id, Number = p.Number, Title = p.Title, PrIds = p.PurchaseRequests.Select(r => r.Id).ToList(), Budget = p.Budget, FundingSource = p.FundingSource,
             Method = p.Method, MethodReason = p.MethodReason, EnvelopeMethod = p.EnvelopeMethod, ContractType = p.ContractType,
-            ContractDurationDays = p.ContractDurationDays, PlannedStart = p.PlannedStart, Note = p.Note
+            ContractDurationDays = p.ContractDurationDays, PlannedStart = p.PlannedStart, Note = p.Note, Team = p.Team
         };
         await FillAsync(vm);
         return View("Form", vm);
@@ -142,6 +143,7 @@ public class PackagesController : ProcControllerBase
         p.MethodReason = string.IsNullOrWhiteSpace(vm.MethodReason) ? null : vm.MethodReason.Trim();
         p.EnvelopeMethod = vm.Method == ProcurementMethod.OpenTender ? vm.EnvelopeMethod : EnvelopeMethod.OneEnvelope;
         p.ContractType = vm.ContractType; p.ContractDurationDays = vm.ContractDurationDays; p.PlannedStart = vm.PlannedStart; p.Note = vm.Note;
+        p.Team = string.IsNullOrWhiteSpace(vm.Team) ? null : vm.Team.Trim();
         foreach (var r in p.PurchaseRequests.Where(r => !vm.PrIds.Contains(r.Id)).ToList()) { r.PackageId = null; r.Method = null; r.MethodReason = null; }
         var tracked = await Db.PurchaseRequests.Where(r => vm.PrIds.Contains(r.Id)).ToListAsync();
         foreach (var r in tracked) { r.Package = p; r.Method = p.Method; r.MethodReason = p.MethodReason; }

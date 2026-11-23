@@ -41,6 +41,9 @@ public class CatalogsController : Controller
         };
         vm.Editing = edit.HasValue ? vm.Entries.FirstOrDefault(e => e.Id == edit) : null;
         vm.Usage = await UsageAsync(type);
+        ViewBag.ItemCount = await _db.Items.CountAsync();
+        ViewBag.VendorCount = await _db.Vendors.CountAsync();
+        ViewBag.UserCount = await _db.Users.CountAsync();
         ViewData["Title"] = "Danh mục dùng chung";
         return View(vm);
     }
@@ -126,6 +129,9 @@ public class CatalogsController : Controller
             CatalogType.Unit => await _db.Items.GroupBy(i => i.Unit).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
             CatalogType.PaymentTerm => await _db.Vendors.Where(v => v.PaymentTerms != null).GroupBy(v => v.PaymentTerms!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
             CatalogType.Bank => await _db.Vendors.Where(v => v.BankName != null).GroupBy(v => v.BankName!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
+            CatalogType.FundingSource => await _db.ProcurementPackages.Where(p => p.FundingSource != null).GroupBy(p => p.FundingSource!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
+            CatalogType.ImplementationTeam => await _db.ProcurementPackages.Where(p => p.Team != null).GroupBy(p => p.Team!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
+            CatalogType.OrderType => await _db.PurchaseOrders.Where(p => p.OrderType != null).GroupBy(p => p.OrderType!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
             _ => new()
         };
         return rows.GroupBy(r => r.Key, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Sum(x => x.N), StringComparer.OrdinalIgnoreCase);

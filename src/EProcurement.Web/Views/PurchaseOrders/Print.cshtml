@@ -2,7 +2,7 @@
 @{ ViewData["Title"] = $"Đơn đặt hàng {Model.Number}"; }
 <div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
 <div class="card paper"><div class="card-body p-4">
-    <div class="text-center mb-3"><h4 class="mb-0">ĐƠN ĐẶT HÀNG</h4><div>Số: @Model.Number · Ngày: @Model.OrderDate.ToDate()</div></div>
+    <div class="text-center mb-3"><h4 class="mb-0">ĐƠN ĐẶT HÀNG</h4><div>Số: @Model.Number · Ngày: @Model.OrderDate.ToDate()@(string.IsNullOrEmpty(Model.OrderType) ? "" : " · " + Model.OrderType)</div></div>
     <div class="row small mb-3">
         <div class="col-6"><div class="text-muted">Bên bán (Nhà cung cấp)</div><b>@Model.Vendor?.Name</b><br />MST: @Model.Vendor?.TaxCode<br />@Model.Vendor?.Address<br />Người liên hệ: @Model.Vendor?.ContactPerson – @Model.Vendor?.ContactPhone</div>
         <div class="col-6"><div class="text-muted">Thông tin giao hàng</div>Địa điểm: @Model.DeliveryAddress<br />Ngày giao: <b>@Model.DeliveryDate.ToDate()</b><br />Thanh toán: @Model.PaymentTerms<br />Người đặt hàng: @Model.Buyer?.FullName</div>

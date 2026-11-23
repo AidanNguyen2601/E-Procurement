@@ -30,6 +30,17 @@ public static class Catalogs
             new[] { "Vietcombank", "VietinBank", "BIDV", "Agribank", "Techcombank", "ACB", "MB Bank", "VPBank", "Sacombank", "TPBank" }),
         new(CatalogType.Warranty, "Thời hạn bảo hành", "shield-check", "Gợi ý thời hạn bảo hành khi nhập báo giá và tờ trình chỉ định.", 200, false, false,
             new[] { "Không bảo hành", "6 tháng", "12 tháng", "24 tháng", "36 tháng" }),
+        // Giá trị mặc định dạng "MÃ|Tên" → nạp cả mã
+        new(CatalogType.Currency, "Đơn vị tiền tệ", "coins", "Đơn vị tiền tệ dùng khi ghi nhận báo giá / hợp đồng bằng ngoại tệ (mã ISO ở cột Mã, tỷ giá tham khảo ở Ghi chú). Chứng từ hạch toán bằng VND.", 100, true, false,
+            new[] { "VND|Việt Nam đồng", "USD|Đô la Mỹ", "EUR|Euro", "JPY|Yên Nhật", "CNY|Nhân dân tệ" }),
+        new(CatalogType.FundingSource, "Nguồn vốn", "wallet", "Nguồn vốn của gói mua sắm trong kế hoạch lựa chọn nhà cung cấp.", 200, false, false,
+            new[] { "Ngân sách hoạt động", "Vốn đầu tư phát triển", "Quỹ đầu tư phát triển", "Vốn vay", "Vốn tài trợ / viện trợ", "Nguồn vốn khác" }),
+        new(CatalogType.OrderType, "Loại đơn hàng", "cart", "Phân loại đơn mua hàng (lọc, báo cáo chi tiêu).", 100, false, false,
+            new[] { "Mua hàng hóa", "Mua dịch vụ", "Mua tài sản cố định", "Thuê tài sản / dịch vụ", "Sửa chữa, bảo trì", "Đặt hàng theo hợp đồng khung" }),
+        new(CatalogType.ImplementationTeam, "Tổ triển khai", "users", "Tổ / nhóm chịu trách nhiệm triển khai gói mua sắm (thành viên ghi ở Ghi chú).", 200, false, false,
+            new[] { "Tổ mua sắm thiết bị CNTT", "Tổ mua sắm hành chính – văn phòng", "Tổ mua sắm dịch vụ", "Tổ chuyên gia đấu thầu" }),
+        new(CatalogType.Decision, "Quyết định", "file-check", "Quyết định, văn bản làm căn cứ (số hiệu ở cột Mã, ngày ban hành / người ký ở Ghi chú) – chèn nhanh vào căn cứ của KHLCNT, bảng giá tiêu chuẩn.", 300, false, false,
+            Array.Empty<string>()),
     };
 
     public static CatalogInfo Info(CatalogType t) => All.First(x => x.Type == t);
@@ -51,9 +62,11 @@ public static class Catalogs
             var order = have.Count;
             foreach (var raw in candidates)
             {
-                var name = raw?.Trim();
+                var parts = raw?.Split('|', 2);
+                var code = parts?.Length == 2 ? parts[0].Trim() : null;
+                var name = (parts?.Length == 2 ? parts[1] : raw)?.Trim();
                 if (string.IsNullOrEmpty(name) || name.Length > info.MaxLength || !have.Add(name)) continue;
-                db.CatalogEntries.Add(new CatalogEntry { Type = info.Type, Name = name, SortOrder = ++order * 10 });
+                db.CatalogEntries.Add(new CatalogEntry { Type = info.Type, Code = code, Name = name, SortOrder = ++order * 10 });
             }
         }
         await db.SaveChangesAsync();
@@ -71,6 +84,9 @@ public static class Catalogs
         CatalogType.Bank => (await db.Vendors.Where(v => v.BankName != null).Select(v => v.BankName!).Distinct().ToListAsync()),
         CatalogType.Warranty => (await db.RfqVendors.Where(v => v.Warranty != null).Select(v => v.Warranty!)
             .Union(db.DirectAwards.Where(d => d.Warranty != null).Select(d => d.Warranty!)).Distinct().ToListAsync()),
+        CatalogType.FundingSource => await db.ProcurementPackages.Where(p => p.FundingSource != null).Select(p => p.FundingSource!).Distinct().ToListAsync(),
+        CatalogType.OrderType => await db.PurchaseOrders.Where(p => p.OrderType != null).Select(p => p.OrderType!).Distinct().ToListAsync(),
+        CatalogType.ImplementationTeam => await db.ProcurementPackages.Where(p => p.Team != null).Select(p => p.Team!).Distinct().ToListAsync(),
         _ => new()
     };
 }
@@ -90,6 +106,10 @@ public class CatalogService
                 .OrderBy(e => e.SortOrder).ThenBy(e => e.Name).Select(e => e.Name).ToListAsync();
         return list;
     }
+
+    /// <summary>Các mục đang sử dụng kèm mã, ghi chú (vd danh mục Quyết định: số hiệu + trích yếu + ngày ban hành)</summary>
+    public Task<List<CatalogEntry>> EntriesAsync(CatalogType t) =>
+        _db.CatalogEntries.AsNoTracking().Where(e => e.Type == t && e.IsActive).OrderBy(e => e.SortOrder).ThenBy(e => e.Name).ToListAsync();
 
     /// <summary>&lt;datalist&gt; gợi ý cho ô nhập (gắn bằng list="@Catalogs.ListId(...)")</summary>
     public async Task<IHtmlContent> DatalistAsync(CatalogType t)

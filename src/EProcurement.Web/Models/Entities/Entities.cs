@@ -444,6 +444,7 @@ public class PurchaseOrder
     [StringLength(1000)][Display(Name = "Lý do vượt giá tham chiếu")] public string? PriceDeviationReason { get; set; }
     /// <summary>Lý do đặt mua vượt giá trần bảng giá tiêu chuẩn (bắt buộc Giám đốc duyệt)</summary>
     [StringLength(1000)][Display(Name = "Lý do vượt giá trần tiêu chuẩn")] public string? StandardPriceReason { get; set; }
+    [StringLength(100)][Display(Name = "Loại đơn hàng")] public string? OrderType { get; set; }
     /// <summary>Chỉ định thầu: tờ trình đã được Giám đốc duyệt</summary>
     [Display(Name = "Tờ trình chỉ định")] public int? DirectAwardId { get; set; }
     public DirectAward? DirectAward { get; set; }

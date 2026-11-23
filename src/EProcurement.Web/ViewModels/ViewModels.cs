@@ -85,6 +85,7 @@ public class PoFormViewModel
     public int? ReferencePoId { get; set; }
     [StringLength(1000)][Display(Name = "Lý do đơn giá cao hơn PO tham chiếu")] public string? PriceDeviationReason { get; set; }
     [StringLength(1000)][Display(Name = "Lý do vượt giá trần bảng giá tiêu chuẩn")] public string? StandardPriceReason { get; set; }
+    [StringLength(100)][Display(Name = "Loại đơn hàng")] public string? OrderType { get; set; }
     public List<LineInput> Lines { get; set; } = new();
 }
 

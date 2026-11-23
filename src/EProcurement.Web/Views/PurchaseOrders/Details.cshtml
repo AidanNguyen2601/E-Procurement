@@ -75,6 +75,7 @@
                     @if (Model.PurchaseRequest != null) { <span>PR <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId">@Model.PurchaseRequest.Number</a></span> }
                     @if (Model.Rfq != null) { <span> · RFQ <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@Model.RfqId">@Model.Rfq.Number</a></span> }
                     @if (Model.PurchaseRequest == null && Model.Rfq == null) { <span>Lập trực tiếp</span> }</dd>
+                @if (!string.IsNullOrEmpty(Model.OrderType)) { <dt class="col-sm-3">Loại đơn hàng</dt><dd class="col-sm-9">@Model.OrderType</dd> }
                 @if (Model.Method.HasValue)
                 {
                     <dt class="col-sm-3">Hình thức</dt><dd class="col-sm-9"><b>@Model.Method.Value.GetDisplayName()</b>

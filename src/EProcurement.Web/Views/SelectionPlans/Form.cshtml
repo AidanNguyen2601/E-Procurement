@@ -5,7 +5,7 @@
     <div asp-validation-summary="All" class="alert alert-danger small" style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
     <div class="card mb-3"><div class="card-body row g-3">
         <div class="col-md-8"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
-        <div class="col-12"><label asp-for="Basis" class="form-label"></label><textarea asp-for="Basis" rows="2" class="form-control"></textarea></div>
+        <div class="col-12"><label asp-for="Basis" class="form-label"></label><textarea asp-for="Basis" rows="3" class="form-control"></textarea><partial name="_DecisionPicker" model="@("Basis")" /></div>
     </div></div>
     <div class="card mb-3"><div class="card-header">Gói mua sắm trong kế hoạch (gói ở trạng thái Nháp)</div><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
         <thead><tr><th></th><th>Số gói</th><th>Tên gói</th><th class="money">Giá gói</th><th>Nguồn vốn</th><th>Hình thức / phương thức</th><th>Bắt đầu LCNT</th><th>Loại HĐ</th><th class="money">Thời gian HĐ</th></tr></thead><tbody>

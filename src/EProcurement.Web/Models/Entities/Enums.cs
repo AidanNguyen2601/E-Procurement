@@ -142,7 +142,12 @@ public enum CatalogType
     [Display(Name = "Loại hợp đồng")] ContractType = 4,
     [Display(Name = "Địa điểm giao hàng")] DeliveryLocation = 5,
     [Display(Name = "Ngân hàng")] Bank = 6,
-    [Display(Name = "Thời hạn bảo hành")] Warranty = 7
+    [Display(Name = "Thời hạn bảo hành")] Warranty = 7,
+    [Display(Name = "Đơn vị tiền tệ")] Currency = 8,
+    [Display(Name = "Nguồn vốn")] FundingSource = 9,
+    [Display(Name = "Loại đơn hàng")] OrderType = 10,
+    [Display(Name = "Tổ triển khai")] ImplementationTeam = 11,
+    [Display(Name = "Quyết định")] Decision = 12
 }
 
 public enum NotificationKind
