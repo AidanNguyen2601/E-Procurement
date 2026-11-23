@@ -125,3 +125,15 @@ public enum ContractStatus
     [Display(Name = "Đã hoàn thành")] Completed = 2,
     [Display(Name = "Đã chấm dứt")] Terminated = 3
 }
+
+/// <summary>Các danh mục dùng chung (dữ liệu tham chiếu được chọn trên chứng từ)</summary>
+public enum CatalogType
+{
+    [Display(Name = "Phòng ban")] Department = 1,
+    [Display(Name = "Đơn vị tính")] Unit = 2,
+    [Display(Name = "Điều khoản thanh toán")] PaymentTerm = 3,
+    [Display(Name = "Loại hợp đồng")] ContractType = 4,
+    [Display(Name = "Địa điểm giao hàng")] DeliveryLocation = 5,
+    [Display(Name = "Ngân hàng")] Bank = 6,
+    [Display(Name = "Thời hạn bảo hành")] Warranty = 7
+}

@@ -47,6 +47,9 @@ public class ItemsController : ProcControllerBase
     {
         if (await Db.Items.AnyAsync(i => i.Code == model.Code && i.Id != model.Id))
             ModelState.AddModelError(nameof(model.Code), "Mã hàng đã tồn tại");
+        var oldUnit = model.Id == 0 ? null : await Db.Items.Where(i => i.Id == model.Id).Select(i => i.Unit).FirstOrDefaultAsync();
+        if (!await HttpContext.RequestServices.GetRequiredService<CatalogService>().IsValidAsync(CatalogType.Unit, model.Unit, oldUnit))
+            ModelState.AddModelError(nameof(model.Unit), "Chọn đơn vị tính trong danh mục");
         if (!ModelState.IsValid)
         {
             await LoadCategories(model.CategoryId);

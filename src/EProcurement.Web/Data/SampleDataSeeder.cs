@@ -35,6 +35,7 @@ public static class SampleDataSeeder
         await using var tx = await db.Database.BeginTransactionAsync();
         await new Builder(db, hasher).RunAsync();
         await tx.CommitAsync();
+        await Catalogs.EnsureAsync(db); // bổ sung phòng ban mới vào danh mục
     }
 
     /// <summary>Gỡ toàn bộ chứng từ mẫu (số "MAU-…") cùng lịch sử, file đính kèm; giữ lại danh mục.</summary>

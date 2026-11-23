@@ -283,6 +283,7 @@ public static class DbSeeder
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"
         };
         foreach (var sql in statements) await db.Database.ExecuteSqlRawAsync(sql);
+        await EProcurement.Web.Infrastructure.Catalogs.EnsureAsync(db); // danh mục dùng chung: nạp mặc định + giá trị đang dùng
     }
 
     /// <summary>

@@ -55,6 +55,9 @@ public class UsersController : Controller
             ModelState.AddModelError(nameof(vm.Password), "Vui lòng nhập mật khẩu");
         if (vm.Id == User.GetUserId() && (!vm.IsActive || vm.Role != AppRoles.Admin))
             ModelState.AddModelError(string.Empty, "Không thể tự khóa hoặc hạ quyền tài khoản đang đăng nhập.");
+        var oldDept = vm.Id == 0 ? null : await _db.Users.Where(u => u.Id == vm.Id).Select(u => u.Department).FirstOrDefaultAsync();
+        if (!await HttpContext.RequestServices.GetRequiredService<CatalogService>().IsValidAsync(CatalogType.Department, vm.Department, oldDept))
+            ModelState.AddModelError(nameof(vm.Department), "Chọn phòng ban trong danh mục");
         if (!ModelState.IsValid)
         {
             LoadRoles();

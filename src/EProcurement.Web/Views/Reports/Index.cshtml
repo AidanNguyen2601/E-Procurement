@@ -10,7 +10,7 @@
         <div class="col-md-6 col-xl-4">
             <a asp-action="Show" asp-route-id="@r.Key" class="card h-100 text-decoration-none text-reset">
                 <div class="card-body">
-                    <div class="fs-3 mb-1">@r.Icon</div>
+                    <span class="icon-tile mb-2">@Icon.Svg(r.Icon, 20)</span>
                     <h6 class="mb-1">@r.Title</h6>
                     <div class="small text-muted">@r.Description</div>
                 </div>

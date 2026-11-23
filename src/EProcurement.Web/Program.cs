@@ -44,6 +44,7 @@ if (!string.IsNullOrWhiteSpace(keysPath))
 builder.Services.Configure<EProcurement.Web.Infrastructure.ProcurementSettings>(builder.Configuration.GetSection("Procurement"));
 builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.Reporting.StandardReports>();
+builder.Services.AddScoped<EProcurement.Web.Infrastructure.CatalogService>();
 
 var app = builder.Build();
 

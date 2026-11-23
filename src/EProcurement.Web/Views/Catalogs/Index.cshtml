@@ -1,0 +1,89 @@
+@model EProcurement.Web.Controllers.CatalogsController.CatalogPage
+@{
+    var info = Model.Info;
+    var e = Model.Editing;
+}
+<div class="row g-3">
+    <div class="col-lg-3">
+        <div class="card"><div class="list-group list-group-flush catalog-nav">
+            @foreach (var c in Catalogs.All)
+            {
+                <a asp-action="Index" asp-route-type="@c.Type" class="list-group-item list-group-item-action @(c.Type == info.Type ? "active" : "")">
+                    @Icon.Svg(c.Icon)<span class="flex-grow-1">@c.Label</span><span class="badge rounded-pill @(c.Type == info.Type ? "bg-light text-dark" : "bg-secondary-subtle text-secondary")">@Model.Counts.GetValueOrDefault(c.Type)</span>
+                </a>
+            }
+            <a asp-controller="Items" asp-action="Index" class="list-group-item list-group-item-action">
+                @Icon.Svg("tag")<span class="flex-grow-1">Nhóm hàng</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@Model.Categories.Count</span>
+            </a>
+        </div></div>
+        <div class="small text-muted mt-2 px-1">Nhóm hàng quản lý cùng danh mục hàng hóa.</div>
+    </div>
+
+    <div class="col-lg-9">
+        <div class="card mb-3"><div class="card-body d-flex gap-3 align-items-start">
+            <span class="icon-tile">@Icon.Svg(info.Icon, 20)</span>
+            <div>
+                <h6 class="mb-1">@info.Label</h6>
+                <div class="small text-muted">@info.Description</div>
+                <div class="small mt-1">
+                    @if (info.Strict) { <span class="badge bg-primary-subtle text-primary">Bắt buộc chọn trong danh mục</span> }
+                    else { <span class="badge bg-light text-dark border">Gợi ý khi nhập – vẫn nhập tự do được</span> }
+                    @if (info.AdminOnly) { <span class="badge bg-warning-subtle text-warning-emphasis">Chỉ Quản trị được sửa</span> }
+                </div>
+            </div>
+        </div></div>
+
+        @if (Model.CanEdit)
+        {
+            <div class="card mb-3"><div class="card-header">@(e == null ? "Thêm giá trị" : $"Sửa: {e.Name}")</div><div class="card-body">
+                <form asp-action="Save" method="post" class="row g-2 align-items-end">
+                    <input type="hidden" name="Id" value="@(e?.Id ?? 0)" />
+                    <input type="hidden" name="Type" value="@info.Type" />
+                    <div class="col-md-5"><label class="form-label small mb-0">Tên / giá trị</label><input name="Name" value="@e?.Name" maxlength="@info.MaxLength" class="form-control form-control-sm" required /></div>
+                    <div class="col-md-2"><label class="form-label small mb-0">Mã</label><input name="Code" value="@e?.Code" maxlength="30" class="form-control form-control-sm" /></div>
+                    <div class="col-md-2"><label class="form-label small mb-0">Thứ tự</label><input name="SortOrder" type="number" value="@(e?.SortOrder ?? 0)" class="form-control form-control-sm" title="0 = cuối danh sách" /></div>
+                    <div class="col-md-3"><label class="form-label small mb-0">Ghi chú</label><input name="Note" value="@e?.Note" maxlength="500" class="form-control form-control-sm" /></div>
+                    @if (e != null)
+                    {
+                        <div class="col-12"><div class="form-check">
+                            <input type="checkbox" name="IsActive" value="true" class="form-check-input" id="act" @(e.IsActive ? "checked" : "") /><input type="hidden" name="IsActive" value="false" />
+                            <label for="act" class="form-check-label small">Đang sử dụng</label></div></div>
+                        @if (info.Type is CatalogType.Department or CatalogType.Unit or CatalogType.PaymentTerm or CatalogType.Bank)
+                        {
+                            <div class="col-12 small text-muted">Đổi tên sẽ cập nhật theo cho @(info.Type switch { CatalogType.Department => "người dùng và đề nghị mua hàng", CatalogType.Unit => "hàng hóa", _ => "nhà cung cấp" }) đang dùng tên cũ.</div>
+                        }
+                    }
+                    <div class="col-12">
+                        <button class="btn btn-sm btn-primary">@(e == null ? "Thêm" : "Lưu")</button>
+                        @if (e != null) { <a asp-action="Index" asp-route-type="@info.Type" class="btn btn-sm btn-light">Hủy</a> }
+                    </div>
+                </form>
+            </div></div>
+        }
+
+        <div class="card"><div class="card-body p-0"><table class="table mb-0 align-middle">
+            <thead><tr><th style="width:70px">Thứ tự</th><th>Tên / giá trị</th><th>Mã</th>@if (Model.Usage.Count > 0 || info.Strict) { <th class="text-end">Đang dùng</th> }<th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var x in Model.Entries)
+            {
+                <tr class="@(x.IsActive ? "" : "text-muted")">
+                    <td class="small">@x.SortOrder</td>
+                    <td>@x.Name @if (!string.IsNullOrEmpty(x.Note)) { <div class="small text-muted">@x.Note</div> }</td>
+                    <td class="small">@x.Code</td>
+                    @if (Model.Usage.Count > 0 || info.Strict) { <td class="text-end small">@Model.Usage.GetValueOrDefault(x.Name)</td> }
+                    <td>@if (x.IsActive) { <span class="badge bg-success-subtle text-success">Đang dùng</span> } else { <span class="badge bg-secondary-subtle text-secondary">Ngưng dùng</span> }</td>
+                    <td class="text-end text-nowrap">
+                        @if (Model.CanEdit)
+                        {
+                            <a asp-action="Index" asp-route-type="@info.Type" asp-route-edit="@x.Id" class="btn btn-sm btn-link">Sửa</a>
+                            <form asp-action="Toggle" asp-route-id="@x.Id" method="post" class="d-inline"><button class="btn btn-sm btn-link">@(x.IsActive ? "Ngưng dùng" : "Dùng lại")</button></form>
+                            <form asp-action="Delete" asp-route-id="@x.Id" method="post" class="d-inline" data-confirm="Xóa &quot;@x.Name&quot; khỏi danh mục?"><button class="btn btn-sm btn-link text-danger">Xóa</button></form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Entries.Any()) { <tr><td colspan="6" class="text-muted p-3">Danh mục trống.</td></tr> }
+            </tbody>
+        </table></div></div>
+    </div>
+</div>

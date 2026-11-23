@@ -642,3 +642,17 @@ public class ReportDefinition
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
+
+// =====================================================================
+//  DANH MỤC DÙNG CHUNG
+// =====================================================================
+public class CatalogEntry
+{
+    public int Id { get; set; }
+    [Display(Name = "Danh mục")] public CatalogType Type { get; set; }
+    [StringLength(30)][Display(Name = "Mã")] public string? Code { get; set; }
+    [Required(ErrorMessage = "Nhập tên / giá trị"), StringLength(300)][Display(Name = "Tên / giá trị")] public string Name { get; set; } = string.Empty;
+    [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    [Display(Name = "Thứ tự")] public int SortOrder { get; set; }
+    [Display(Name = "Đang sử dụng")] public bool IsActive { get; set; } = true;
+}

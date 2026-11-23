@@ -6,6 +6,7 @@
     var purchasing = User.IsPurchasing();
     var director = User.IsInRole(AppRoles.Director);
     var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", _ => null };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -22,42 +23,51 @@
         <a class="brand" asp-controller="Home" asp-action="Index">e<span>Procurement</span></a>
         <nav>
             <div class="nav-group">Tổng quan</div>
-            <a class="@Active("Home")" asp-controller="Home" asp-action="Index">Dashboard</a>
-            @if (approver) { <a class="@Active("Approvals")" asp-controller="Approvals" asp-action="Index">Chờ tôi duyệt</a> }
+            <a class="@Active("Home")" asp-controller="Home" asp-action="Index">@Icon.Svg("dashboard")<span>Dashboard</span></a>
+            @if (approver) { <a class="@Active("Approvals")" asp-controller="Approvals" asp-action="Index">@Icon.Svg("inbox")<span>Chờ tôi duyệt</span></a> }
 
             <div class="nav-group">Đề nghị</div>
-            <a class="@Active("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">Đề nghị mua hàng (PR)</a>
-            <a class="@Active("Items")" asp-controller="Items" asp-action="Index">Danh mục hàng hóa</a>
-            <a class="@Active("Tenders")" asp-controller="Tenders" asp-action="Index">Đấu thầu@(purchasing || director ? "" : " (tổ chuyên gia)")</a>
-            <a asp-controller="Tenders" asp-action="Public" target="_blank">Thông báo mời thầu ↗</a>
+            <a class="@Active("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">@Icon.Svg("file-text")<span>Đề nghị mua hàng (PR)</span></a>
+            <a class="@Active("Tenders")" asp-controller="Tenders" asp-action="Index">@Icon.Svg("gavel")<span>Đấu thầu@(purchasing || director ? "" : " (tổ chuyên gia)")</span></a>
+            <a asp-controller="Tenders" asp-action="Public" target="_blank">@Icon.Svg("megaphone")<span>Thông báo mời thầu</span>@Icon.Svg("external", 12, "ms-auto")</a>
 
             @if (purchasing || director)
             {
                 <div class="nav-group">Mua hàng</div>
-                <a class="@Active("Rfqs")" asp-controller="Rfqs" asp-action="Index">Yêu cầu báo giá (RFQ)</a>
-                <a class="@Active("DirectAwards")" asp-controller="DirectAwards" asp-action="Index">Chỉ định thầu</a>
-                <a class="@Active("Contracts")" asp-controller="Contracts" asp-action="Index">Hợp đồng</a>
-                <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">Đơn mua hàng (PO)</a>
-                <a class="@Active("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">Nhận hàng (GRN)</a>
-                <a class="@Active("Vendors")" asp-controller="Vendors" asp-action="Index">Nhà cung cấp</a>
+                <a class="@Active("Rfqs")" asp-controller="Rfqs" asp-action="Index">@Icon.Svg("send")<span>Yêu cầu báo giá (RFQ)</span></a>
+                <a class="@Active("DirectAwards")" asp-controller="DirectAwards" asp-action="Index">@Icon.Svg("award")<span>Chỉ định thầu</span></a>
+                <a class="@Active("Contracts")" asp-controller="Contracts" asp-action="Index">@Icon.Svg("file-check")<span>Hợp đồng</span></a>
+                <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">@Icon.Svg("cart")<span>Đơn mua hàng (PO)</span></a>
+                <a class="@Active("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">@Icon.Svg("truck")<span>Nhận hàng (GRN)</span></a>
 
                 <div class="nav-group">Báo cáo</div>
-                <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index">Báo cáo mua sắm</a>
-                <a class="@Active("ReportBuilder")" asp-controller="ReportBuilder" asp-action="Index">Báo cáo động</a>
+                <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index">@Icon.Svg("bar-chart")<span>Báo cáo mua sắm</span></a>
+                <a class="@Active("ReportBuilder")" asp-controller="ReportBuilder" asp-action="Index">@Icon.Svg("sliders")<span>Báo cáo động</span></a>
+            }
+
+            <div class="nav-group">Danh mục</div>
+            <a class="@Active("Items")" asp-controller="Items" asp-action="Index">@Icon.Svg("package")<span>Hàng hóa & nhóm hàng</span></a>
+            @if (purchasing || director)
+            {
+                <a class="@Active("Vendors")" asp-controller="Vendors" asp-action="Index">@Icon.Svg("building")<span>Nhà cung cấp</span></a>
+            }
+            @if (purchasing)
+            {
+                <a class="@Active("Catalogs")" asp-controller="Catalogs" asp-action="Index">@Icon.Svg("book")<span>Danh mục dùng chung</span></a>
             }
             @if (User.IsAdmin())
             {
                 <div class="nav-group">Hệ thống</div>
-                <a class="@Active("Users")" asp-controller="Users" asp-action="Index">Người dùng & phân quyền</a>
-                <a class="@Active("SampleData")" asp-controller="SampleData" asp-action="Index">Dữ liệu mẫu</a>
+                <a class="@Active("Users")" asp-controller="Users" asp-action="Index">@Icon.Svg("users")<span>Người dùng & phân quyền</span></a>
+                <a class="@Active("SampleData")" asp-controller="SampleData" asp-action="Index">@Icon.Svg("database")<span>Dữ liệu mẫu</span></a>
             }
         </nav>
     </aside>
     <div class="main">
         <header class="topbar">
-            <h1 class="page-title">@ViewData["Title"]</h1>
+            <h1 class="page-title d-flex align-items-center gap-2">@if (pageIcon != null) { <span class="text-primary d-inline-flex">@Icon.Svg(pageIcon, 20)</span> }@ViewData["Title"]</h1>
             <div class="d-flex align-items-center gap-2">
-                <a class="btn btn-primary btn-sm" asp-controller="PurchaseRequests" asp-action="Create">+ Đề nghị mua hàng</a>
+                <a class="btn btn-primary btn-sm" asp-controller="PurchaseRequests" asp-action="Create">@Icon.Svg("plus", 14)<span>Đề nghị mua hàng</span></a>
                 <div class="dropdown">
                     <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
                         <span class="avatar">@(User.GetFullName().Length > 0 ? char.ToUpper(User.GetFullName().Split(' ').Last()[0]) : '?')</span>

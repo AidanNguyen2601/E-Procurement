@@ -48,7 +48,9 @@ public class ReportsController : ProcControllerBase
     {
         var (cats, vendors) = await LookupsAsync();
         ViewBag.FilterText = f.Describe(cats, vendors);
-        ViewBag.Departments = new SelectList(await Db.PurchaseRequests.Select(p => p.Department).Union(Db.Users.Select(u => u.Department)).Distinct().OrderBy(d => d).ToListAsync(), f.Department);
+        var depts = await Db.CatalogEntries.Where(e => e.Type == CatalogType.Department).OrderBy(e => e.SortOrder).ThenBy(e => e.Name).Select(e => e.Name).ToListAsync();
+        depts.AddRange((await Db.PurchaseRequests.Select(p => p.Department).Distinct().ToListAsync()).Except(depts, StringComparer.OrdinalIgnoreCase).OrderBy(d => d));
+        ViewBag.Departments = new SelectList(depts, f.Department);
         ViewBag.Categories = new SelectList(cats.OrderBy(c => c.Value), "Key", "Value", f.CategoryId);
         ViewBag.Vendors = new SelectList(vendors.OrderBy(v => v.Value), "Key", "Value", f.VendorId);
     }

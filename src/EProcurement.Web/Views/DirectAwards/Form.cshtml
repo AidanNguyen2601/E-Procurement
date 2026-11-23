@@ -27,8 +27,8 @@
     <div class="card mb-3"><div class="card-header">2. Thương thảo với nhà cung cấp</div><div class="card-body row g-3">
         <div class="col-md-3"><label asp-for="NegotiationDate" class="form-label"></label><input asp-for="NegotiationDate" class="form-control" /></div>
         <div class="col-md-2"><label asp-for="LeadTimeDays" class="form-label"></label><input asp-for="LeadTimeDays" class="form-control" /></div>
-        <div class="col-md-3"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" placeholder="Để trống = theo NCC" /></div>
-        <div class="col-md-2"><label asp-for="Warranty" class="form-label"></label><input asp-for="Warranty" class="form-control" /></div>
+        <div class="col-md-3"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" placeholder="Để trống = theo NCC" list="dl-paymentterm" />@await Catalog.DatalistAsync(CatalogType.PaymentTerm)</div>
+        <div class="col-md-2"><label asp-for="Warranty" class="form-label"></label><input asp-for="Warranty" class="form-control" list="dl-warranty" />@await Catalog.DatalistAsync(CatalogType.Warranty)</div>
         <div class="col-md-2"><label asp-for="VatPercent" class="form-label"></label><select asp-for="VatPercent" class="form-select" id="vat"><option value="0">0%</option><option value="5">5%</option><option value="8">8%</option><option value="10">10%</option></select></div>
         <div class="col-12"><label asp-for="NegotiationNote" class="form-label"></label>
             <textarea asp-for="NegotiationNote" class="form-control" rows="2" placeholder="Thành phần, nội dung đã thống nhất (giảm giá, tiến độ, bảo hành, điều kiện thanh toán…)"></textarea></div>

@@ -11,13 +11,13 @@ public class StandardReports
 
     public static readonly Definition[] All =
     {
-        new("spend", "Tổng hợp chi tiêu mua sắm", "Chi tiêu theo tháng, phòng ban, nhóm hàng, nhà cung cấp; so sánh với dự toán.", "💰"),
-        new("methods", "Chi tiêu theo hình thức lựa chọn NCC", "Tỷ trọng mua sắm trực tiếp / chỉ định / chào hàng cạnh tranh / đấu thầu; tiết kiệm so với dự toán.", "⚖️"),
-        new("requests", "Tiến độ xử lý đề nghị mua hàng", "Số PR theo trạng thái, thời gian duyệt, thời gian từ duyệt đến đặt hàng theo phòng ban.", "⏱️"),
-        new("delivery", "Tiến độ giao hàng & chất lượng", "Tỷ lệ giao đúng hạn, số ngày trễ, tỷ lệ hàng không đạt theo nhà cung cấp.", "🚚"),
-        new("vendors", "Đánh giá nhà cung cấp", "Điểm đánh giá, giá trị mua, tỷ lệ phản hồi báo giá và trúng thầu.", "🏢"),
-        new("competition", "Hiệu quả cạnh tranh", "Số báo giá / HSDT bình quân, tỷ lệ không chọn giá thấp nhất, giá trúng so với giá gói thầu, chỉ định thầu.", "🏁"),
-        new("contracts", "Tình hình thực hiện hợp đồng", "Giá trị thực hiện, hợp đồng sắp hết hạn, bảo lãnh thực hiện sắp hết hiệu lực.", "📄"),
+        new("spend", "Tổng hợp chi tiêu mua sắm", "Chi tiêu theo tháng, phòng ban, nhóm hàng, nhà cung cấp; so sánh với dự toán.", "coins"),
+        new("methods", "Chi tiêu theo hình thức lựa chọn NCC", "Tỷ trọng mua sắm trực tiếp / chỉ định / chào hàng cạnh tranh / đấu thầu; tiết kiệm so với dự toán.", "scale"),
+        new("requests", "Tiến độ xử lý đề nghị mua hàng", "Số PR theo trạng thái, thời gian duyệt, thời gian từ duyệt đến đặt hàng theo phòng ban.", "clock"),
+        new("delivery", "Tiến độ giao hàng & chất lượng", "Tỷ lệ giao đúng hạn, số ngày trễ, tỷ lệ hàng không đạt theo nhà cung cấp.", "truck"),
+        new("vendors", "Đánh giá nhà cung cấp", "Điểm đánh giá, giá trị mua, tỷ lệ phản hồi báo giá và trúng thầu.", "building"),
+        new("competition", "Hiệu quả cạnh tranh", "Số báo giá / HSDT bình quân, tỷ lệ không chọn giá thấp nhất, giá trúng so với giá gói thầu, chỉ định thầu.", "trophy"),
+        new("contracts", "Tình hình thực hiện hợp đồng", "Giá trị thực hiện, hợp đồng sắp hết hạn, bảo lãnh thực hiện sắp hết hiệu lực.", "file-check"),
     };
 
     private readonly EProcDbContext _db;

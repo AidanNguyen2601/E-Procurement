@@ -7,7 +7,7 @@
         <div class="col-md-4"><label asp-for="Code" class="form-label"></label><input asp-for="Code" class="form-control" /><span asp-validation-for="Code" class="text-danger small"></span></div>
         <div class="col-md-8"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger small"></span></div>
         <div class="col-md-4"><label asp-for="CategoryId" class="form-label"></label><select asp-for="CategoryId" class="form-select" asp-items="ViewBag.Categories"><option value="">-- Chọn --</option></select><span asp-validation-for="CategoryId" class="text-danger small"></span></div>
-        <div class="col-md-4"><label asp-for="Unit" class="form-label"></label><input asp-for="Unit" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="Unit" class="form-label"></label><select asp-for="Unit" class="form-select" asp-items="@(await Catalog.SelectAsync(CatalogType.Unit, Model.Unit))"><option value="">-- Chọn --</option></select></div>
         <div class="col-md-4"><label asp-for="ReferencePrice" class="form-label"></label><input asp-for="ReferencePrice" class="form-control" /></div>
         <div class="col-12"><label asp-for="Specification" class="form-label"></label><textarea asp-for="Specification" class="form-control" rows="2"></textarea></div>
         <div class="col-12 form-check ms-2"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label"></label></div>
