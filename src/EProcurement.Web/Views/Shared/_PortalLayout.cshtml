@@ -1,7 +1,20 @@
 @{
     var ctrl = ViewContext.RouteData.Values["controller"]?.ToString();
+    var act = ViewContext.RouteData.Values["action"]?.ToString();
     var me = ViewBag.PortalUser as VendorUser;
-    string Active(string c) => ctrl == c ? "active" : "";
+    // Mục menu đang chọn (theo hình mẫu cổng nhà cung cấp)
+    var key = (ctrl, act) switch
+    {
+        ("PortalPublic", "Guide") => "guide",
+        ("PortalPublic", "Notices") => "notices",
+        ("PortalOrders", _) => "orders",
+        ("PortalTenders", _) => "tenders",
+        ("PortalQuotes", _) or ("PortalRfqs", _) or ("PortalDirectQuotes", _) => "quotes",
+        ("PortalPrequalifications", _) => "prequal",
+        _ => ""
+    };
+    string On(string k) => key == k ? "active" : "";
+    var hero = ViewData["Hero"] as string ?? ViewData["Title"] as string;
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -9,40 +22,61 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Cổng nhà cung cấp</title>
+    <link rel="icon" type="image/svg+xml" href="~/icon.svg" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body class="portal">
-<nav class="navbar navbar-expand-md portal-nav">
+<nav class="navbar navbar-expand-lg portal-nav">
     <div class="container-xl">
-        <a class="navbar-brand" asp-controller="Portal" asp-action="Index">e<span>Procurement</span> <small>· Cổng nhà cung cấp</small></a>
-        @if (me != null)
-        {
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pn" aria-label="Menu"><span class="navbar-toggler-icon"></span></button>
-            <div class="collapse navbar-collapse" id="pn">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link @Active("Portal")" asp-controller="Portal" asp-action="Index">@Icon.Svg("dashboard", 15) Tổng quan</a></li>
-                    <li class="nav-item"><a class="nav-link @Active("PortalTenders")" asp-controller="PortalTenders" asp-action="Index">@Icon.Svg("gavel", 15) Gói thầu</a></li>
-                    <li class="nav-item"><a class="nav-link @Active("PortalPrequalifications")" asp-controller="PortalPrequalifications" asp-action="Index">@Icon.Svg("shield-check", 15) Sơ tuyển</a></li>
-                    <li class="nav-item"><a class="nav-link @Active("PortalOrders")" asp-controller="PortalOrders" asp-action="Index">@Icon.Svg("cart", 15) Đơn hàng</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-controller="Portal" asp-action="Profile">@Icon.Svg("building", 15) Hồ sơ công ty</a></li>
-                </ul>
-                <span class="navbar-text small me-3">@me.FullName · @me.Vendor?.Name</span>
-                <form asp-controller="PortalAccount" asp-action="Logout" method="post"><button class="btn btn-sm btn-outline-light">Đăng xuất</button></form>
-            </div>
-        }
+        <a class="navbar-brand" href="@(me != null ? Url.Action("Index", "Portal") : Url.Action("Notices", "PortalPublic"))"><span class="brand-mark">e</span>Procurement <small>Cổng nhà cung cấp</small></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pn" aria-label="Menu"><span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="pn">
+            <ul class="navbar-nav me-auto portal-menu">
+                <li class="nav-item"><a class="nav-link @On("guide")" asp-controller="PortalPublic" asp-action="Guide">Hướng dẫn nộp thầu</a></li>
+                @if (me != null)
+                {
+                    <li class="nav-item"><a class="nav-link @On("orders")" asp-controller="PortalOrders" asp-action="Index">Quản lý đơn đặt hàng</a></li>
+                    <li class="nav-item"><a class="nav-link @On("tenders")" asp-controller="PortalTenders" asp-action="Index">Quản lý gói thầu</a></li>
+                    <li class="nav-item"><a class="nav-link @On("quotes")" asp-controller="PortalQuotes" asp-action="Index">Quản lý chào giá</a></li>
+                }
+                <li class="nav-item"><a class="nav-link @On("notices")" asp-controller="PortalPublic" asp-action="Notices">Thông báo mời thầu</a></li>
+                <li class="nav-item"><a class="nav-link @On("prequal")" asp-controller="PortalPrequalifications" asp-action="Index">Đăng ký sơ tuyển</a></li>
+            </ul>
+            @if (me == null)
+            {
+                <a asp-controller="PortalAccount" asp-action="Register" class="btn btn-danger btn-sm fw-semibold me-2">Đăng ký nhà cung cấp</a>
+                <a asp-controller="PortalAccount" asp-action="Login" class="btn btn-outline-primary btn-sm">Đăng nhập</a>
+            }
+            else
+            {
+                <div class="dropdown">
+                    <button class="btn btn-sm portal-user dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="avatar">@(me.FullName.Trim().Split(' ').LastOrDefault()?.FirstOrDefault())</span> @me.FullName
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text small text-muted">@me.Vendor?.Name</span></li>
+                        <li><a class="dropdown-item" asp-controller="Portal" asp-action="Index">Tổng quan</a></li>
+                        <li><a class="dropdown-item" asp-controller="Portal" asp-action="Profile">Hồ sơ công ty & hồ sơ pháp lý</a></li>
+                        <li><a class="dropdown-item" asp-controller="Portal" asp-action="Profile" asp-fragment="password">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><form asp-controller="PortalAccount" asp-action="Logout" method="post"><button class="dropdown-item text-danger">Đăng xuất</button></form></li>
+                    </ul>
+                </div>
+            }
+        </div>
     </div>
 </nav>
+<section class="portal-hero"><div class="container-xl"><h1>@hero</h1>@if (ViewData["HeroSub"] is string sub) { <div class="sub">@sub</div> }</div></section>
 <main class="container-xl py-4">
     @if (me != null && !me.IsApproved) { <div class="alert alert-warning">Tài khoản đang chờ bộ phận mua hàng xác nhận bạn thuộc <b>@me.Vendor?.Name</b>. Bạn chưa thể báo giá, dự thầu hoặc phản hồi đơn hàng.</div> }
-    else if (me?.Vendor?.Status == VendorStatus.Pending) { <div class="alert alert-info">Nhà cung cấp đang chờ thẩm định. Tải lên hồ sơ pháp lý trong <a asp-controller="Portal" asp-action="Profile">Hồ sơ công ty</a>. Trong thời gian này bạn có thể tham gia đấu thầu rộng rãi; báo giá theo lời mời chỉ dành cho NCC đã phê duyệt.</div> }
+    else if (me?.Vendor?.Status == VendorStatus.Pending) { <div class="alert alert-info">Nhà cung cấp đang chờ thẩm định. Tải lên hồ sơ pháp lý trong <a asp-controller="Portal" asp-action="Profile">Hồ sơ công ty</a> hoặc tham dự <a asp-controller="PortalPrequalifications" asp-action="Index">đợt sơ tuyển</a>. Trong thời gian này bạn có thể tham gia đấu thầu rộng rãi; báo giá theo lời mời chỉ dành cho NCC đã phê duyệt.</div> }
     else if (me?.Vendor?.Status == VendorStatus.Suspended) { <div class="alert alert-danger">Nhà cung cấp đang bị tạm ngưng giao dịch.</div> }
     @if (TempData["Success"] is string ok) { <div class="alert alert-success alert-dismissible fade show text-break">@ok<button class="btn-close" data-bs-dismiss="alert"></button></div> }
     @if (TempData["Error"] is string err) { <div class="alert alert-danger alert-dismissible fade show">@err<button class="btn-close" data-bs-dismiss="alert"></button></div> }
-    <h1 class="h4 mb-3">@ViewData["Title"]</h1>
     @RenderBody()
 </main>
-<footer class="container-xl small text-muted pb-4">Thông tin báo giá, hồ sơ dự thầu được mã hóa niêm phong và chỉ được mở sau thời hạn nộp.</footer>
+<footer class="container-xl small text-muted pb-4">Thông tin báo giá, hồ sơ dự thầu được mã hóa niêm phong và chỉ được mở sau thời hạn nộp. · <a asp-controller="PortalPublic" asp-action="Guide">Hướng dẫn</a></footer>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)

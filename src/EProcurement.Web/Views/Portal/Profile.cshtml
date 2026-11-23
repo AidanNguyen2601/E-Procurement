@@ -16,7 +16,7 @@
                 <div class="col-12"><button class="btn btn-sm btn-primary">Lưu</button></div>
             </form>
         </div></div>
-        <div class="card"><div class="card-header">Tài khoản & mật khẩu</div><div class="card-body">
+        <div class="card" id="password"><div class="card-header">Tài khoản & mật khẩu</div><div class="card-body">
             <table class="table table-sm small">@foreach (var u in users) { <tr><td>@u.FullName</td><td>@u.Email</td><td>@(u.IsApproved ? "đã xác nhận" : "chờ xác nhận")</td></tr> }</table>
             <form asp-action="ChangePassword" method="post" class="row g-2">
                 <div class="col-md-4"><input name="currentPassword" type="password" placeholder="Mật khẩu hiện tại" class="form-control form-control-sm" required /></div>

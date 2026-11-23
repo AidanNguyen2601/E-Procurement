@@ -1,0 +1,30 @@
+@model List<EProcurement.Web.Controllers.PortalPublicController.NoticeRow>
+@{ Layout = "_PortalLayout"; var tab = (string)ViewBag.Tab; var now = DateTime.Now; }
+<form method="get" class="portal-filter d-flex flex-wrap gap-2 align-items-center">
+    <input type="hidden" name="tab" value="@tab" />
+    <div class="input-group" style="max-width:460px"><span class="input-group-text bg-white border-0">@Icon.Svg("search", 18)</span>
+        <input name="q" value="@ViewBag.Q" class="form-control border-0" placeholder="Nhập số hoặc tên gói thầu / đợt sơ tuyển" /></div>
+    <div class="btn-group btn-group-sm ms-auto">
+        <a asp-route-tab="tenders" asp-route-q="@ViewBag.Q" class="btn btn-outline-primary @(tab == "tenders" ? "active" : "")">Mời thầu</a>
+        <a asp-route-tab="prequal" asp-route-q="@ViewBag.Q" class="btn btn-outline-primary @(tab == "prequal" ? "active" : "")">Mời sơ tuyển</a>
+        <a asp-route-tab="results" asp-route-q="@ViewBag.Q" class="btn btn-outline-primary @(tab == "results" ? "active" : "")">Kết quả</a>
+    </div>
+</form>
+<div class="card"><div class="table-responsive"><table class="table mb-0 align-middle portal-table">
+    <thead><tr><th>STT</th><th>Số</th><th>Tên gói thầu / đợt sơ tuyển</th><th>@(tab == "prequal" ? "Nhóm hàng" : tab == "tenders" ? "Phương thức" : "Loại")</th><th>@(tab == "results" ? "Ngày" : "Phát hành")</th><th>@(tab == "results" ? "Kết quả" : "Hạn nộp")</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+    @for (var i = 0; i < Model.Count; i++)
+    {
+        var r = Model[i];
+        <tr><td>@(i + 1)</td><td><a href="@r.Url" class="fw-semibold">@r.Number</a></td><td>@r.Title</td><td class="small">@(tab == "results" ? r.Kind : r.Category)</td>
+            <td class="small">@r.Published?.ToDate()</td>
+            <td class="small">@if (tab == "results") { @r.Result } else { @r.Deadline.ToDateTime() @if (r.Deadline > now && r.Css == "vstatus-ok") { <div class="text-muted">còn <span data-countdown="@((int)(r.Deadline!.Value - now).TotalSeconds)"></span></div> } }</td>
+            <td><span class="vstatus @r.Css">@r.Status</span></td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Hiện không có thông báo.</td></tr> }
+    </tbody>
+</table></div></div>
+@if (ViewBag.PortalUser == null)
+{
+    <div class="alert alert-light border mt-3 small">Để nhận HSMT, nộp hồ sơ dự thầu / dự sơ tuyển online, vui lòng <a asp-controller="PortalAccount" asp-action="Login">đăng nhập</a> hoặc <a asp-controller="PortalAccount" asp-action="Register">đăng ký nhà cung cấp</a>. Xem <a asp-action="Guide">hướng dẫn nộp thầu</a>.</div>
+}

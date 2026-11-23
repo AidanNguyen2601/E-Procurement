@@ -1,12 +1,51 @@
-@model List<PurchaseOrder>
-@{ Layout = "_PortalLayout"; }
-<div class="card"><div class="card-body p-0"><table class="table mb-0 align-middle">
-    <thead><tr><th>Số PO</th><th>Ngày đặt</th><th>Hạn giao</th><th class="money">Giá trị (gồm VAT)</th><th>Trạng thái</th><th>Phản hồi</th></tr></thead><tbody>
-    @foreach (var p in Model)
+@model List<EProcurement.Web.Controllers.PortalOrdersController.OrderRow>
+@{
+    Layout = "_PortalLayout";
+    var status = ViewBag.Status as string; var counts = (Dictionary<string, int>)ViewBag.Counts;
+}
+<form method="get" class="portal-filter d-flex flex-wrap gap-2 align-items-center">
+    <div class="input-group flex-grow-1" style="max-width:520px"><span class="input-group-text bg-white border-0">@Icon.Svg("search", 18)</span>
+        <input name="q" value="@ViewBag.Q" class="form-control border-0" placeholder="Nhập từ khóa (số PO, tên đơn hàng, mặt hàng)" /></div>
+    <div class="vr d-none d-md-block text-danger"></div>
+    <select name="status" class="form-select form-select-sm" style="max-width:260px" onchange="this.form.submit()">
+        <option value="">Trạng thái</option>
+        @foreach (var o in EProcurement.Web.Controllers.PortalOrdersController.StatusOptions)
+        {
+            <option value="@o.Key" selected="@(status == o.Key)">@o.Text (@counts.GetValueOrDefault(o.Key))</option>
+        }
+    </select>
+    <button class="btn btn-sm btn-primary">Tìm</button>
+</form>
+<div class="card"><div class="table-responsive"><table class="table mb-0 align-middle portal-table">
+    <thead><tr><th style="width:60px">STT</th><th>Số PO</th><th>Thời hạn giao hàng</th><th>Tên đơn hàng</th><th>Người yêu cầu</th><th>Trạng thái</th><th style="width:48px"></th></tr></thead>
+    <tbody>
+    @for (var i = 0; i < Model.Count; i++)
     {
-        <tr><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td><td>@p.OrderDate.ToDate()</td><td>@p.DeliveryDate.ToDate()</td>
-            <td class="money">@p.Total.ToMoney()</td><td><span class="badge bg-light text-dark border">@p.Status.GetDisplayName()</span></td>
-            <td class="small">@(p.VendorConfirmedAt != null ? $"Đã xác nhận, giao {p.VendorPromisedDate:dd/MM}" : p.VendorRejectedAt != null ? "Đã từ chối" : p.Status == PoStatus.Issued ? "Chờ xác nhận" : "")</td></tr>
+        var r = Model[i]; var p = r.Po;
+        <tr><td>@(i + 1)</td><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td>
+            <td class="@(r.Late ? "text-danger fw-semibold" : "")">@p.DeliveryDate.ToDate()@if (r.Late) { <div class="small">quá hạn</div> }</td>
+            <td>@r.Name</td><td>@r.Requester</td>
+            <td><span class="vstatus @r.Status.Css">@r.Status.Text</span></td>
+            <td><button class="expand-btn" type="button" data-bs-toggle="collapse" data-bs-target="#po@(p.Id)" aria-expanded="false" title="Xem nhanh">@Icon.Svg("chevron-down", 18)</button></td></tr>
+        <tr class="collapse" id="po@(p.Id)"><td colspan="7" class="bg-light">
+            <div class="row g-3 small">
+                <div class="col-lg-8"><table class="table table-sm mb-0 bg-white">
+                    <thead><tr><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL đặt</th><th class="money">Đã nhận</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead>
+                    <tbody>@foreach (var l in p.Lines) { <tr><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.ReceivedQuantity.ToQty()</td><td class="money">@l.UnitPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr> }</tbody>
+                    <tfoot><tr class="fw-semibold"><td colspan="5" class="text-end">Tổng gồm VAT @p.VatPercent.ToString("0.#")%</td><td class="money">@p.Total.ToMoney()</td></tr></tfoot>
+                </table></div>
+                <div class="col-lg-4">
+                    <div><span class="text-muted">Ngày đặt:</span> @p.OrderDate.ToDate()</div>
+                    <div><span class="text-muted">Địa điểm giao:</span> @p.DeliveryAddress</div>
+                    <div><span class="text-muted">Thanh toán:</span> @p.PaymentTerms</div>
+                    @if (!string.IsNullOrEmpty(p.OrderType)) { <div><span class="text-muted">Loại đơn hàng:</span> @p.OrderType</div> }
+                    @if (p.VendorPromisedDate.HasValue) { <div><span class="text-muted">Cam kết giao:</span> @p.VendorPromisedDate.ToDate()</div> }
+                    <div><span class="text-muted">Liên hệ bên mua:</span> @p.Buyer?.FullName – @p.Buyer?.Email</div>
+                    <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-primary mt-2">@(r.Status.Key == "waiting" ? "Xác nhận / từ chối đơn hàng" : r.Status.Key is "confirmed" or "shipping" or "partial" ? "Báo giao hàng / gửi hóa đơn" : "Xem chi tiết")</a>
+                </div>
+            </div>
+        </td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="6" class="text-muted p-3">Chưa có đơn hàng.</td></tr> }
-</tbody></table></div></div>
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Không có đơn đặt hàng.</td></tr> }
+    </tbody>
+</table></div></div>

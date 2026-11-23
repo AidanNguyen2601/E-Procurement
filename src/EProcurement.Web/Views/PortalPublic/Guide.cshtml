@@ -1,0 +1,55 @@
+@{ Layout = "_PortalLayout"; var loggedIn = ViewBag.PortalUser != null; }
+@{
+    var steps = new (string Title, string Body, string? Ctrl, string? Act, string? Link)[]
+    {
+        ("1. Đăng ký nhà cung cấp", "Khai báo mã số thuế, tên công ty, người liên hệ, nhóm hàng cung cấp. Doanh nghiệp đã có trên hệ thống thì tài khoản mới cần bộ phận mua hàng xác nhận.", "PortalAccount", "Register", "Đăng ký"),
+        ("2. Hoàn thiện hồ sơ pháp lý", "Tải lên giấy chứng nhận đăng ký doanh nghiệp, giấy phép, chứng chỉ ISO, ủy quyền hãng, báo cáo tài chính, hồ sơ năng lực. Hồ sơ sắp hết hạn sẽ được nhắc trên trang tổng quan.", "Portal", "Profile", "Hồ sơ công ty"),
+        ("3. Đăng ký sơ tuyển", "Tham dự các đợt sơ tuyển theo nhóm hàng: nộp thuyết minh năng lực và chọn hồ sơ chứng minh trước hạn. Nhà cung cấp đạt sơ tuyển được ưu tiên mời chào giá trong thời hạn hiệu lực.", "PortalPrequalifications", "Index", "Đăng ký sơ tuyển"),
+        ("4. Chào giá", "Khi được mời chào giá cạnh tranh hoặc chào giá chỉ định, nhập đơn giá từng dòng, thời gian giao, bảo hành, điều khoản thanh toán và đính kèm báo giá. Có thể nộp lại / rút trước hạn – chỉ bản cuối được mở.", "PortalQuotes", "Index", "Quản lý chào giá"),
+        ("5. Dự thầu online", "Đăng ký nhận HSMT, tải tài liệu HSMT, gửi đề nghị làm rõ, nộp HSDT nhiều thành phần (kỹ thuật, tài chính, bảo đảm dự thầu, năng lực). HSDT được mã hóa niêm phong; biên nhận có mã băm SHA-256 để đối chiếu khi mở thầu.", "PortalTenders", "Index", "Quản lý gói thầu"),
+        ("6. Thực hiện đơn đặt hàng", "Xác nhận hoặc từ chối đơn đặt hàng, thông báo giao hàng, theo dõi nhận hàng và gửi hóa đơn điện tử ngay trên đơn hàng.", "PortalOrders", "Index", "Quản lý đơn đặt hàng"),
+    };
+    var faqs = new (string Q, string A)[]
+    {
+        ("Bên mời thầu có xem được giá trước thời điểm mở thầu không?", "Không. Báo giá và HSDT nộp online được mã hóa ngay khi nhận và chỉ được giải mã khi mở báo giá / mở thầu. Với gói hai túi hồ sơ, đề xuất tài chính chỉ mở sau khi đánh giá kỹ thuật."),
+        ("Nộp sát giờ đóng thầu có được không?", "Hệ thống nhận HSDT đến đúng thời điểm đóng thầu theo giờ máy chủ; sau thời điểm đó nút nộp bị khóa. Nên nộp sớm và nộp lại nếu cần – bản nộp sau thay thế bản trước."),
+        ("HSMT được sửa đổi sau khi tôi đã nộp HSDT?", "Trang gói thầu sẽ hiện cảnh báo các sửa đổi sau lần nộp của bạn. Xem nội dung sửa đổi và nộp lại HSDT trước thời điểm đóng thầu nếu cần."),
+        ("Bảo đảm dự thầu cần thỏa mãn điều kiện gì?", "Số tiền không thấp hơn yêu cầu của HSMT và hiệu lực tối thiểu bằng hiệu lực HSDT cộng 30 ngày kể từ thời điểm đóng thầu. Hệ thống kiểm tra trước khi nhận HSDT."),
+        ("Không đồng ý với kết quả lựa chọn nhà thầu?", "Nhà thầu đã nộp HSDT được gửi kiến nghị online trên trang gói thầu trong thời hạn kiến nghị ghi trên thông báo kết quả."),
+        ("Quên mật khẩu hoặc tài khoản bị khóa?", "Tài khoản tạm khóa sau nhiều lần đăng nhập sai. Liên hệ bộ phận mua hàng để được hỗ trợ mở khóa / đặt lại mật khẩu."),
+    };
+}
+<div class="row g-3 mb-4">
+    @foreach (var s in steps)
+    {
+        <div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
+            <h6 class="fw-bold text-primary">@s.Title</h6>
+            <p class="small mb-2">@s.Body</p>
+            @if (s.Ctrl != null && (loggedIn || s.Ctrl is "PortalAccount")) { <a asp-controller="@s.Ctrl" asp-action="@s.Act" class="small fw-semibold">@s.Link →</a> }
+        </div></div></div>
+    }
+</div>
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card"><div class="card-header fw-semibold">Câu hỏi thường gặp</div>
+        <div class="accordion accordion-flush" id="faq">
+            @for (var i = 0; i < faqs.Length; i++)
+            {
+                <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed small fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#f@(i)">@faqs[i].Q</button></h2>
+                    <div id="f@(i)" class="accordion-collapse collapse" data-bs-parent="#faq"><div class="accordion-body small">@faqs[i].A</div></div></div>
+            }
+        </div></div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card"><div class="card-header fw-semibold">Yêu cầu kỹ thuật khi nộp online</div><ul class="list-group list-group-flush small">
+            <li class="list-group-item">Định dạng file: pdf, doc(x), xls(x), zip, rar, 7z, jpg, png.</li>
+            <li class="list-group-item">Dung lượng mỗi file theo quy định của bên mời thầu (mặc định 10 MB) – nén thành zip nếu nhiều tài liệu.</li>
+            <li class="list-group-item">Giá chào là giá trước VAT; VAT nhập riêng. Hệ thống tự tính thành tiền và tổng giá.</li>
+            <li class="list-group-item">Lưu biên nhận (mã băm SHA-256) sau mỗi lần nộp để đối chiếu khi mở thầu.</li>
+        </ul></div>
+        @if (!loggedIn)
+        {
+            <div class="d-flex gap-2 mt-3"><a asp-controller="PortalAccount" asp-action="Register" class="btn btn-danger">Đăng ký nhà cung cấp</a><a asp-controller="PortalAccount" asp-action="Login" class="btn btn-outline-primary">Đăng nhập</a></div>
+        }
+    </div>
+</div>

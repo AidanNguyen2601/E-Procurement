@@ -1,0 +1,43 @@
+@model List<EProcurement.Web.Controllers.PortalQuotesController.QuoteRow>
+@{
+    Layout = "_PortalLayout";
+    var status = ViewBag.Status as string; var kind = ViewBag.Kind as string; var counts = (Dictionary<string, int>)ViewBag.Counts; var now = DateTime.Now;
+}
+<form method="get" class="portal-filter d-flex flex-wrap gap-2 align-items-center">
+    <div class="input-group flex-grow-1" style="max-width:460px"><span class="input-group-text bg-white border-0">@Icon.Svg("search", 18)</span>
+        <input name="q" value="@ViewBag.Q" class="form-control border-0" placeholder="Nhập từ khóa (số hồ sơ, nội dung)" /></div>
+    <div class="vr d-none d-md-block text-danger"></div>
+    <select name="kind" class="form-select form-select-sm" style="max-width:220px" onchange="this.form.submit()">
+        <option value="">Loại chào giá</option>
+        <option value="competitive" selected="@(kind == "competitive")">Chào giá cạnh tranh</option>
+        <option value="direct" selected="@(kind == "direct")">Chào giá chỉ định</option>
+    </select>
+    <select name="status" class="form-select form-select-sm" style="max-width:240px" onchange="this.form.submit()">
+        <option value="">Trạng thái</option>
+        @foreach (var o in EProcurement.Web.Controllers.PortalQuotesController.StatusOptions) { <option value="@o.Key" selected="@(status == o.Key)">@o.Text (@counts.GetValueOrDefault(o.Key))</option> }
+    </select>
+    <button class="btn btn-sm btn-primary">Tìm</button>
+</form>
+<div class="card"><div class="table-responsive"><table class="table mb-0 align-middle portal-table">
+    <thead><tr><th style="width:60px">STT</th><th>Số hồ sơ</th><th>Loại</th><th>Nội dung chào giá</th><th>Hạn nộp</th><th>Trạng thái</th><th style="width:48px"></th></tr></thead>
+    <tbody>
+    @for (var i = 0; i < Model.Count; i++)
+    {
+        var r = Model[i];
+        <tr><td>@(i + 1)</td><td><a href="@r.Url" class="fw-semibold">@r.Number</a></td><td class="small">@r.Kind</td><td>@r.Title</td>
+            <td class="small">@r.Deadline.ToDateTime()@if (r.StatusKey is "todo" or "submitted" && r.Deadline > now) { <div class="text-muted">còn <span data-countdown="@((int)(r.Deadline!.Value - now).TotalSeconds)"></span></div> }</td>
+            <td><span class="vstatus @r.Css">@r.Status</span></td>
+            <td><button class="expand-btn" type="button" data-bs-toggle="collapse" data-bs-target="#q@(i)" aria-expanded="false" title="Xem nhanh">@Icon.Svg("chevron-down", 18)</button></td></tr>
+        <tr class="collapse" id="q@(i)"><td colspan="7" class="bg-light small">
+            <div class="d-flex flex-wrap gap-4">
+                <div><span class="text-muted">Số dòng hàng:</span> @r.Lines</div>
+                <div><span class="text-muted">Bên mua:</span> @r.Buyer</div>
+                <div><span class="text-muted">Nộp gần nhất:</span> @(r.SubmittedAt?.ToString("dd/MM/yyyy HH:mm") ?? "chưa nộp")</div>
+            </div>
+            @if (!string.IsNullOrEmpty(r.Requirements)) { <div class="pre mt-1"><span class="text-muted">Yêu cầu:</span> @r.Requirements</div> }
+            <a href="@r.Url" class="btn btn-sm btn-primary mt-2">@(r.StatusKey == "todo" ? "Nộp báo giá" : r.StatusKey == "submitted" ? "Xem / nộp lại báo giá" : "Xem chi tiết")</a>
+        </td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Chưa có lời mời chào giá.</td></tr> }
+    </tbody>
+</table></div></div>

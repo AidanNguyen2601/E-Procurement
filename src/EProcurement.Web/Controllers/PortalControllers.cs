@@ -647,11 +647,54 @@ public class PortalOrdersController : PortalControllerBase
 
     private static readonly PoStatus[] Visible = { PoStatus.Issued, PoStatus.PartiallyReceived, PoStatus.Received, PoStatus.Cancelled };
 
-    public async Task<IActionResult> Index()
+    /// <summary>Trạng thái đơn theo góc nhìn nhà cung cấp</summary>
+    public static (string Key, string Text, string Css) VendorStatus(PurchaseOrder p, bool shipped) => p.Status switch
     {
-        ViewData["Title"] = "Đơn hàng";
-        return View(await Db.PurchaseOrders.AsNoTracking().Where(p => p.VendorId == MyVendor.Id && Visible.Contains(p.Status) && p.IssuedAt != null)
-            .OrderByDescending(p => p.OrderDate).Take(200).ToListAsync());
+        PoStatus.Cancelled => ("cancelled", "Đã hủy", "vstatus-muted"),
+        PoStatus.Received => ("done", "Hoàn thành giao hàng", "vstatus-ok"),
+        PoStatus.PartiallyReceived => ("partial", "Giao một phần", "vstatus-info"),
+        _ when p.VendorRejectedAt != null => ("rejected", "Đã từ chối", "vstatus-bad"),
+        _ when p.VendorConfirmedAt != null && shipped => ("shipping", "Đang giao hàng", "vstatus-info"),
+        _ when p.VendorConfirmedAt != null => ("confirmed", "Đã xác nhận", "vstatus-info"),
+        _ => ("waiting", "Chờ xác nhận", "vstatus-wait")
+    };
+
+    public static readonly (string Key, string Text)[] StatusOptions =
+    {
+        ("waiting", "Chờ xác nhận"), ("confirmed", "Đã xác nhận"), ("shipping", "Đang giao hàng"), ("partial", "Giao một phần"),
+        ("done", "Hoàn thành giao hàng"), ("rejected", "Đã từ chối"), ("cancelled", "Đã hủy")
+    };
+
+    public record OrderRow(PurchaseOrder Po, string Name, string? Requester, (string Key, string Text, string Css) Status, bool Late);
+
+    public async Task<IActionResult> Index(string? q, string? status)
+    {
+        var query = Db.PurchaseOrders.AsNoTracking().Include(p => p.Lines).Include(p => p.Buyer)
+            .Include(p => p.PurchaseRequest).ThenInclude(r => r!.Requester).Include(p => p.Package).Include(p => p.Contract)
+            .Where(p => p.VendorId == MyVendor.Id && Visible.Contains(p.Status) && p.IssuedAt != null);
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var k = q.Trim();
+            query = query.Where(p => p.Number.Contains(k) || (p.PurchaseRequest != null && p.PurchaseRequest.Title.Contains(k))
+                                     || (p.Package != null && p.Package.Title.Contains(k)) || p.Lines.Any(l => l.Description.Contains(k)));
+        }
+        var pos = await query.OrderByDescending(p => p.OrderDate).ThenByDescending(p => p.Id).Take(500).ToListAsync();
+        var ids = pos.Select(p => p.Id).ToList();
+        var shipped = (await Db.PoShipments.Where(s => ids.Contains(s.PurchaseOrderId)).Select(s => s.PurchaseOrderId).Distinct().ToListAsync()).ToHashSet();
+        var rows = pos.Select(p =>
+        {
+            p.Lines = p.Lines.OrderBy(l => l.SortOrder).ToList();
+            var name = p.PurchaseRequest?.Title ?? p.Package?.Title ?? p.Contract?.Title
+                       ?? (p.Lines.Count > 0 ? p.Lines.First().Description + (p.Lines.Count > 1 ? $" và {p.Lines.Count - 1} mặt hàng khác" : "") : p.Number);
+            var st = VendorStatus(p, shipped.Contains(p.Id));
+            return new OrderRow(p, name, p.PurchaseRequest?.Requester?.FullName ?? p.Buyer?.FullName, st,
+                st.Key is "waiting" or "confirmed" or "shipping" or "partial" && p.DeliveryDate < DateTime.Today);
+        }).ToList();
+        ViewBag.Counts = rows.GroupBy(r => r.Status.Key).ToDictionary(g => g.Key, g => g.Count());
+        if (!string.IsNullOrEmpty(status)) rows = rows.Where(r => r.Status.Key == status).ToList();
+        ViewBag.Q = q; ViewBag.Status = status;
+        ViewData["Title"] = "Quản lý đơn đặt hàng";
+        return View(rows);
     }
 
     private Task<PurchaseOrder?> LoadAsync(int id, bool track = false)
