@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace EProcurement.Web.Infrastructure.Reporting;
 
 /// <summary>Bộ báo cáo chuẩn về mua sắm. Chi tiêu = giá trị trước VAT của PO đã duyệt trở lên (không tính nháp / chờ duyệt / hủy).</summary>
-public class StandardReports
+public partial class StandardReports
 {
     public record Definition(string Key, string Title, string Description, string Icon);
 
@@ -19,10 +19,13 @@ public class StandardReports
         new("competition", "Hiệu quả cạnh tranh", "Số báo giá / HSDT bình quân, tỷ lệ không chọn giá thấp nhất, giá trúng so với giá gói thầu, chỉ định thầu.", "trophy"),
         new("contracts", "Tình hình thực hiện hợp đồng", "Giá trị thực hiện, hợp đồng sắp hết hạn, bảo lãnh thực hiện sắp hết hiệu lực.", "file-check"),
         new("budget", "Ngân sách – thực hiện", "Ngân sách năm theo phòng ban × nhóm hàng: đã đặt hàng, giữ chỗ, còn lại, dòng vượt ngân sách.", "wallet"),
+        new("prices", "Phân tích giá mua", "Biến động đơn giá theo mặt hàng, so với giá tham khảo; các dòng mua giá cao bất thường và ước tính chênh lệch.", "coins"),
+        new("risk", "Cảnh báo rủi ro mua sắm", "Nghi chia nhỏ gói, NCC chi phối nhóm hàng, trúng liên tục, báo giá sát nhau, gói thầu một hồ sơ, mua không cạnh tranh.", "alert"),
     };
 
     private readonly EProcDbContext _db;
-    public StandardReports(EProcDbContext db) => _db = db;
+    private readonly ProcurementSettings _settings;
+    public StandardReports(EProcDbContext db, Microsoft.Extensions.Options.IOptions<ProcurementSettings> settings) { _db = db; _settings = settings.Value; }
 
     public Task<ReportResult> BuildAsync(string key, ReportFilter f) => key switch
     {
@@ -34,6 +37,8 @@ public class StandardReports
         "competition" => CompetitionAsync(f),
         "contracts" => ContractsAsync(f),
         "budget" => BudgetAsync(f),
+        "prices" => PricesAsync(f),
+        "risk" => RiskAsync(f),
         _ => throw new KeyNotFoundException(key)
     };
 
