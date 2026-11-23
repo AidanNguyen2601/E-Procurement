@@ -82,3 +82,13 @@ dl.info dt { color: #64748b; font-weight: 500; }
 .notif-kind.k3 { background: #fff6e0; color: #a16207; }
 .notif-kind.k4 { background: #fdecec; color: #b42318; }
 @media (max-width: 480px) { .notif-menu { width: calc(100vw - 32px); } }
+
+/* Cổng NCC */
+.portal { background: var(--bg); }
+.portal-nav { background: var(--sidebar-bg); }
+.portal-nav .navbar-brand { color: #fff; font-weight: 700; }
+.portal-nav .navbar-brand span { font-weight: 300; color: #a5b4fc; }
+.portal-nav .navbar-brand small { font-weight: 400; color: #cfd0f3; font-size: .8rem; }
+.portal-nav .nav-link, .portal-nav .navbar-text { color: #cfd0f3; }
+.portal-nav .nav-link.active, .portal-nav .nav-link:hover { color: #fff; }
+.portal-nav .navbar-toggler { border-color: rgba(255,255,255,.3); filter: invert(1); }

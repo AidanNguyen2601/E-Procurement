@@ -38,6 +38,8 @@ public class AppUser
 
     public DateTime? LastLoginAt { get; set; }
     [Display(Name = "Nhận thông báo qua email")] public bool EmailNotifications { get; set; } = true;
+    public int FailedLogins { get; set; }
+    [Display(Name = "Tạm khóa đến")] public DateTime? LockoutEnd { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
 
@@ -447,6 +449,12 @@ public class PurchaseOrder
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime? IssuedAt { get; set; }
 
+    // ----- Phản hồi của NCC trên cổng -----
+    [Display(Name = "NCC xác nhận lúc")] public DateTime? VendorConfirmedAt { get; set; }
+    [DataType(DataType.Date)][Display(Name = "NCC cam kết giao")] public DateTime? VendorPromisedDate { get; set; }
+    [Display(Name = "NCC từ chối lúc")] public DateTime? VendorRejectedAt { get; set; }
+    [StringLength(1000)][Display(Name = "Phản hồi của NCC")] public string? VendorResponse { get; set; }
+
     public ICollection<PurchaseOrderLine> Lines { get; set; } = new List<PurchaseOrderLine>();
 
     [NotMapped] public bool IsLate => Status is PoStatus.Issued or PoStatus.PartiallyReceived && DeliveryDate < DateTime.Today;
@@ -725,4 +733,91 @@ public class ApprovalDelegation
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime? RevokedAt { get; set; }
     [NotMapped] public bool IsActive => RevokedAt == null && StartDate.Date <= DateTime.Today && EndDate.Date >= DateTime.Today;
+}
+
+// =====================================================================
+//  CỔNG NHÀ CUNG CẤP
+// =====================================================================
+/// <summary>Tài khoản đăng nhập cổng NCC (tách biệt tài khoản nội bộ)</summary>
+public class VendorUser
+{
+    public int Id { get; set; }
+    public int VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+    [Required, StringLength(150), EmailAddress][Display(Name = "Email đăng nhập")] public string Email { get; set; } = string.Empty;
+    [Required, StringLength(150)][Display(Name = "Họ và tên")] public string FullName { get; set; } = string.Empty;
+    [StringLength(20)][Display(Name = "Điện thoại")] public string? Phone { get; set; }
+    [StringLength(100)][Display(Name = "Chức vụ")] public string? Position { get; set; }
+    [Required, StringLength(500)] public string PasswordHash { get; set; } = string.Empty;
+    /// <summary>Tài khoản đăng ký vào NCC đã có trên hệ thống phải được mua hàng xác nhận</summary>
+    [Display(Name = "Đã được xác nhận")] public bool IsApproved { get; set; }
+    [Display(Name = "Kích hoạt")] public bool IsActive { get; set; } = true;
+    public int FailedLogins { get; set; }
+    public DateTime? LockoutEnd { get; set; }
+    public DateTime? LastLoginAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>Hồ sơ pháp lý / năng lực NCC tự tải lên, mua hàng xác minh; cảnh báo khi hết hạn</summary>
+public class VendorDocument
+{
+    public int Id { get; set; }
+    public int VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+    [Display(Name = "Loại hồ sơ")] public VendorDocumentType Type { get; set; }
+    [StringLength(100)][Display(Name = "Số hiệu")] public string? Number { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Ngày cấp")] public DateTime? IssueDate { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Hiệu lực đến")] public DateTime? ExpiryDate { get; set; }
+    [Required, StringLength(260)] public string FileName { get; set; } = string.Empty;
+    [Required, StringLength(100)] public string ContentType { get; set; } = "application/octet-stream";
+    public long Size { get; set; }
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+    [Display(Name = "Trạng thái")] public VendorDocumentStatus Status { get; set; } = VendorDocumentStatus.Pending;
+    [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    public int? UploadedByVendorUserId { get; set; }
+    public DateTime UploadedAt { get; set; } = DateTime.Now;
+    public int? VerifiedById { get; set; }
+    public AppUser? VerifiedBy { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+}
+
+/// <summary>
+/// Báo giá / HSDT nộp online: nội dung được mã hóa (niêm phong) đến thời điểm mở; lưu mã băm SHA-256 làm bằng chứng
+/// thời điểm và nội dung nộp. Mỗi lần nộp lại tạo bản mới, chỉ bản cuối cùng trước hạn có hiệu lực.
+/// </summary>
+public class VendorSubmission
+{
+    public int Id { get; set; }
+    public SubmissionKind Kind { get; set; }
+    public int? RfqVendorId { get; set; }
+    public RfqVendor? RfqVendor { get; set; }
+    public int? TenderBidderId { get; set; }
+    public TenderBidder? TenderBidder { get; set; }
+    public int VendorUserId { get; set; }
+    public VendorUser? VendorUser { get; set; }
+    public int Revision { get; set; } = 1;
+    public DateTime SubmittedAt { get; set; } = DateTime.Now;
+    /// <summary>Nội dung niêm phong (Data Protection)</summary>
+    [Required] public string SealedPayload { get; set; } = string.Empty;
+    [Required, StringLength(64)] public string Sha256 { get; set; } = string.Empty;
+    [StringLength(260)] public string? FileName { get; set; }
+    public long FileSize { get; set; }
+    public bool IsLatest { get; set; } = true;
+    public bool IsWithdrawn { get; set; }
+    public DateTime? UnsealedAt { get; set; }
+}
+
+/// <summary>Thông báo giao hàng của NCC cho một PO</summary>
+public class PoShipment
+{
+    public int Id { get; set; }
+    public int PurchaseOrderId { get; set; }
+    public PurchaseOrder? PurchaseOrder { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Ngày xuất hàng")] public DateTime ShipDate { get; set; } = DateTime.Today;
+    [DataType(DataType.Date)][Display(Name = "Dự kiến giao")] public DateTime ExpectedDate { get; set; } = DateTime.Today.AddDays(1);
+    [StringLength(100)][Display(Name = "Số phiếu xuất / vận đơn")] public string? Reference { get; set; }
+    [StringLength(1000)][Display(Name = "Nội dung / ghi chú")] public string? Note { get; set; }
+    public int VendorUserId { get; set; }
+    public VendorUser? VendorUser { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }

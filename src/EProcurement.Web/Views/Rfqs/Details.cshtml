@@ -130,7 +130,8 @@
                         else if (v.TechnicalPass == false) { <span class="text-danger" title="@v.TechnicalNote">Không đạt</span> }</td>
                     <td class="text-end text-nowrap">
                         <a class="btn btn-sm btn-outline-secondary" asp-action="Invitation" asp-route-id="@Model.Id" asp-route-vendorId="@v.VendorId" target="_blank">Thư mời</a>
-                        @if (buyer && Model.Status == RfqStatus.Open) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterQuote" asp-route-rfqVendorId="@v.Id">@(v.Responded ? "Sửa báo giá" : "Nhập báo giá")</a> }
+                        @if (((Dictionary<int, string>)ViewBag.Online).TryGetValue(v.Id, out var onl)) { <span class="badge bg-success-subtle text-success" title="@onl">Online</span><div class="small text-muted">@onl</div> }
+                        else if (buyer && Model.Status == RfqStatus.Open) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterQuote" asp-route-rfqVendorId="@v.Id">@(v.Responded ? "Sửa báo giá" : "Nhập báo giá")</a> }
                         @if (Model.Status == RfqStatus.Awarded && v.Responded) { <a class="btn btn-sm btn-outline-success" asp-action="ResultNotice" asp-route-id="@Model.Id" asp-route-vendorId="@v.VendorId" target="_blank">Thông báo KQ</a> }
                     </td>
                 </tr>

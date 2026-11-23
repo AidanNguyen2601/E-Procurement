@@ -1,0 +1,48 @@
+@model EProcurement.Web.Controllers.PortalController.Dashboard
+@{ Layout = "_PortalLayout"; }
+@if (Model.DocCount == 0) { <div class="alert alert-light border">Chưa có hồ sơ pháp lý. <a asp-action="Profile">Tải lên giấy chứng nhận đăng ký doanh nghiệp và các chứng chỉ</a> để được thẩm định.</div> }
+@if (Model.Expiring.Any())
+{
+    <div class="alert alert-warning">Hồ sơ sắp / đã hết hiệu lực: @string.Join(", ", Model.Expiring.Select(d => $"{d.Type.GetDisplayName()} ({d.ExpiryDate.ToDate()})")). <a asp-action="Profile">Cập nhật</a></div>
+}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card mb-3"><div class="card-header">Yêu cầu báo giá được mời</div><div class="card-body p-0"><table class="table mb-0 small">
+            <thead><tr><th>Số</th><th>Nội dung</th><th>Hạn nộp</th><th>Trạng thái</th></tr></thead><tbody>
+            @foreach (var x in Model.Invitations)
+            {
+                var r = x.Rfq!;
+                var status = r.Status == RfqStatus.Open ? (x.Responded ? "Đã nộp" : "Chưa nộp") : r.Status == RfqStatus.Awarded ? (r.AwardedVendorId == x.VendorId ? "Được chọn" : "Không được chọn") : r.Status.GetDisplayName();
+                <tr><td><a asp-controller="PortalRfqs" asp-action="Details" asp-route-id="@r.Id">@r.Number</a></td><td>@r.Title</td><td>@r.Deadline.ToDate()</td>
+                    <td><span class="badge @(status == "Chưa nộp" ? "bg-warning text-dark" : status == "Được chọn" ? "bg-success" : "bg-light text-dark border")">@status</span></td></tr>
+            }
+            @if (!Model.Invitations.Any()) { <tr><td colspan="4" class="text-muted">Chưa có lời mời báo giá.</td></tr> }
+            </tbody></table></div></div>
+        <div class="card"><div class="card-header">Đơn hàng đang thực hiện</div><div class="card-body p-0"><table class="table mb-0 small">
+            <thead><tr><th>Số PO</th><th>Ngày đặt</th><th>Hạn giao</th><th class="money">Giá trị</th><th></th></tr></thead><tbody>
+            @foreach (var p in Model.Orders)
+            {
+                <tr><td><a asp-controller="PortalOrders" asp-action="Details" asp-route-id="@p.Id">@p.Number</a></td><td>@p.OrderDate.ToDate()</td><td>@p.DeliveryDate.ToDate()</td><td class="money">@p.Total.ToMoney()</td>
+                    <td>@if (p.VendorConfirmedAt == null && p.VendorRejectedAt == null && p.Status == PoStatus.Issued) { <span class="badge bg-warning text-dark">Chờ xác nhận</span> }</td></tr>
+            }
+            @if (!Model.Orders.Any()) { <tr><td colspan="5" class="text-muted">Không có đơn hàng đang thực hiện.</td></tr> }
+            </tbody></table></div></div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card mb-3"><div class="card-header">Gói thầu đã tham gia</div><div class="list-group list-group-flush small">
+            @foreach (var b in Model.MyTenders)
+            {
+                <a class="list-group-item list-group-item-action" asp-controller="PortalTenders" asp-action="Details" asp-route-id="@b.TenderId">
+                    <b>@b.Tender!.Number</b> – @b.Tender.Title<div class="text-muted">@b.Tender.Status.GetDisplayName() · @(b.Submitted ? "đã nộp HSDT" : "chưa nộp HSDT")</div></a>
+            }
+            @if (!Model.MyTenders.Any()) { <div class="list-group-item text-muted">Chưa tham gia gói thầu nào.</div> }
+        </div></div>
+        <div class="card"><div class="card-header">Gói thầu đang mời thầu</div><div class="list-group list-group-flush small">
+            @foreach (var t in Model.OpenTenders)
+            {
+                <a class="list-group-item list-group-item-action" asp-controller="PortalTenders" asp-action="Details" asp-route-id="@t.Id"><b>@t.Number</b> – @t.Title<div class="text-muted">Đóng thầu @t.ClosingAt.ToDateTime()</div></a>
+            }
+            @if (!Model.OpenTenders.Any()) { <div class="list-group-item text-muted">Không có gói thầu mới.</div> }
+        </div></div>
+    </div>
+</div>

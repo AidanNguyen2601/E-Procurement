@@ -152,3 +152,27 @@ public enum ApprovalLimitType
     [Display(Name = "PR vượt mức này cần Giám đốc duyệt (sau trưởng bộ phận)")] PrDirector = 1,
     [Display(Name = "PO vượt mức này (gồm VAT) cần Giám đốc duyệt")] PoDirector = 2
 }
+
+public enum VendorDocumentType
+{
+    [Display(Name = "Giấy chứng nhận đăng ký doanh nghiệp")] BusinessLicense = 1,
+    [Display(Name = "Giấy phép / chứng chỉ hành nghề")] Permit = 2,
+    [Display(Name = "Chứng chỉ ISO / chất lượng")] Quality = 3,
+    [Display(Name = "Ủy quyền / giấy phép bán hàng của hãng")] Authorization = 4,
+    [Display(Name = "Báo cáo tài chính")] Financial = 5,
+    [Display(Name = "Hồ sơ năng lực / hợp đồng tương tự")] Experience = 6,
+    [Display(Name = "Khác")] Other = 9
+}
+
+public enum VendorDocumentStatus
+{
+    [Display(Name = "Chờ xác minh")] Pending = 1,
+    [Display(Name = "Đã xác minh")] Verified = 2,
+    [Display(Name = "Không chấp nhận")] Rejected = 3
+}
+
+public enum SubmissionKind
+{
+    [Display(Name = "Báo giá")] Quote = 1,
+    [Display(Name = "Hồ sơ dự thầu")] Bid = 2
+}

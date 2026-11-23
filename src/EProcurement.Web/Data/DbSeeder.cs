@@ -254,6 +254,13 @@ public static class DbSeeder
                 "CREATE INDEX IX_PurchaseOrders_ContractId ON PurchaseOrders(ContractId)",
             // Hình thức lựa chọn NCC trên PR
             "IF COL_LENGTH('Users','EmailNotifications') IS NULL ALTER TABLE Users ADD EmailNotifications bit NOT NULL CONSTRAINT DF_Users_EmailNotifications DEFAULT 1",
+            "IF COL_LENGTH('Users','FailedLogins') IS NULL ALTER TABLE Users ADD FailedLogins int NOT NULL CONSTRAINT DF_Users_FailedLogins DEFAULT 0",
+            "IF COL_LENGTH('Users','LockoutEnd') IS NULL ALTER TABLE Users ADD LockoutEnd datetime2 NULL",
+            // Cổng NCC: phản hồi PO
+            "IF COL_LENGTH('PurchaseOrders','VendorConfirmedAt') IS NULL ALTER TABLE PurchaseOrders ADD VendorConfirmedAt datetime2 NULL",
+            "IF COL_LENGTH('PurchaseOrders','VendorPromisedDate') IS NULL ALTER TABLE PurchaseOrders ADD VendorPromisedDate datetime2 NULL",
+            "IF COL_LENGTH('PurchaseOrders','VendorRejectedAt') IS NULL ALTER TABLE PurchaseOrders ADD VendorRejectedAt datetime2 NULL",
+            "IF COL_LENGTH('PurchaseOrders','VendorResponse') IS NULL ALTER TABLE PurchaseOrders ADD VendorResponse nvarchar(1000) NULL",
             "IF COL_LENGTH('PurchaseRequests','Method') IS NULL ALTER TABLE PurchaseRequests ADD Method int NULL",
             "IF COL_LENGTH('PurchaseRequests','MethodReason') IS NULL ALTER TABLE PurchaseRequests ADD MethodReason nvarchar(1000) NULL",
             // Hình thức + căn cứ mua sắm trực tiếp trên PO

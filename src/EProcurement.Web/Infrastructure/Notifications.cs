@@ -184,6 +184,14 @@ public class NotificationService
                     c.PerformanceSecurityRef, DocType.Contract, c.Id, $"rem:HD:{c.Id}:security:{(ps < today ? "past" : "soon")}");
         }
 
+        // Hồ sơ pháp lý NCC sắp / đã hết hiệu lực (đang hợp tác, hồ sơ đã xác minh)
+        var buyers = await UsersAsync(u => u.Role == AppRoles.Buyer);
+        foreach (var d in await _db.VendorDocuments.AsNoTracking().Include(x => x.Vendor)
+                     .Where(x => x.ExpiryDate != null && x.ExpiryDate <= soon && x.Status == VendorDocumentStatus.Verified && x.Vendor!.Status == VendorStatus.Approved).ToListAsync())
+            created += Add(buyers, NotificationKind.Warning,
+                (d.ExpiryDate < today ? "Hồ sơ NCC đã hết hiệu lực: " : "Hồ sơ NCC sắp hết hiệu lực: ") + $"{d.Vendor!.Name} – {d.Type.GetDisplayName()} ({d.ExpiryDate.ToDate()})",
+                "Đề nghị NCC cập nhật hồ sơ trên cổng nhà cung cấp.", null, $"rem:VD:{d.Id}:{(d.ExpiryDate < today ? "past" : "soon")}", $"/Vendors/Details/{d.VendorId}");
+
         // Ngân sách sắp hết / đã vượt
         foreach (var b in await new BudgetService(_db).StatusAsync(today.Year))
         {

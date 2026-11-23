@@ -41,6 +41,9 @@ public class TendersController : ProcControllerBase
         var t = await LoadAsync(id);
         if (t == null) return NotFound();
         if (!CanView(t)) return Forbid();
+        var bIds = t.Bidders.Select(b => b.Id).ToList();
+        ViewBag.Online = await Db.VendorSubmissions.Where(s => s.TenderBidderId != null && bIds.Contains(s.TenderBidderId.Value) && s.IsLatest && !s.IsWithdrawn)
+            .ToDictionaryAsync(s => s.TenderBidderId!.Value, s => $"Nộp online lần {s.Revision} lúc {s.SubmittedAt:dd/MM HH:mm} · mã {s.Sha256.Substring(0, 10)}…" + (s.UnsealedAt == null ? " · niêm phong" : ""));
         ViewBag.History = await HistoryAsync(DocType.Tender, id);
         ViewBag.Results = TenderEvaluation.Evaluate(t);
         ViewBag.Contract = await Db.Contracts.FirstOrDefaultAsync(c => c.TenderId == id);
@@ -307,6 +310,8 @@ public class TendersController : ProcControllerBase
         if (b == null) return NotFound();
         if (b.Tender!.Status != TenderStatus.Published || DateTime.Now > b.Tender.ClosingAt)
         { TempData["Error"] = "Đã quá thời điểm đóng thầu – không tiếp nhận HSDT."; return RedirectToAction(nameof(Details), new { id = b.TenderId }); }
+        if (await Db.VendorSubmissions.AnyAsync(s => s.TenderBidderId == b.Id && s.IsLatest && !s.IsWithdrawn))
+        { TempData["Error"] = $"{b.Vendor?.Name} đã nộp HSDT online (niêm phong) – không nhập thay."; return RedirectToAction(nameof(Details), new { id = b.TenderId }); }
         return View(new BidEntryViewModel
         {
             TenderBidderId = b.Id, Bidder = b, DiscountPercent = b.DiscountPercent, VatPercent = Math.Round(b.VatPercent, 0), LeadTimeDays = b.LeadTimeDays,
@@ -324,6 +329,7 @@ public class TendersController : ProcControllerBase
         var b = await Db.TenderBidders.Include(x => x.Vendor).Include(x => x.Lines).Include(x => x.Tender).ThenInclude(t => t!.Lines).FirstOrDefaultAsync(x => x.Id == vm.TenderBidderId);
         if (b == null) return NotFound();
         var t = b.Tender!;
+        if (await Db.VendorSubmissions.AnyAsync(s => s.TenderBidderId == b.Id && s.IsLatest && !s.IsWithdrawn)) return BadRequest();
         if (t.Status != TenderStatus.Published || DateTime.Now > t.ClosingAt)
         {
             Log(DocType.Tender, t.Id, "Từ chối HSDT nộp muộn", $"{b.Vendor?.Name} nộp lúc {DateTime.Now.ToDateTime()}, đóng thầu {t.ClosingAt.ToDateTime()}");
@@ -360,6 +366,9 @@ public class TendersController : ProcControllerBase
         if (t == null) return NotFound();
         if (t.Status != TenderStatus.Published) return BadRequest();
         if (DateTime.Now < t.ClosingAt) { TempData["Error"] = $"Chưa đến thời điểm đóng thầu {t.ClosingAt.ToDateTime()}."; return RedirectToAction(nameof(Details), new { id }); }
+        // HSDT nộp online: mở niêm phong (hai túi: giá còn niêm phong đến khi mở hồ sơ tài chính)
+        var online = await HttpContext.RequestServices.GetRequiredService<SealingService>()
+            .UnsealBidsAsync(t, Me, includePrices: t.EnvelopeMethod == EnvelopeMethod.OneEnvelope);
         var bids = t.Bidders.Where(b => b.Submitted).ToList();
         if (bids.Count == 0) { TempData["Error"] = "Không có HSDT nào. Gia hạn bằng sửa đổi HSMT hoặc hủy gói thầu."; return RedirectToAction(nameof(Details), new { id }); }
         t.Status = TenderStatus.Opened;
@@ -367,7 +376,7 @@ public class TendersController : ProcControllerBase
         var record = t.EnvelopeMethod == EnvelopeMethod.OneEnvelope
             ? string.Join("; ", bids.OrderBy(b => b.Vendor?.Name).Select(b => $"{b.Vendor?.Name}: {b.BidPrice.ToMoney()} đ, giảm {b.DiscountPercent:0.##}%, BĐDT {b.BidSecurityAmount.ToMoney()} đ"))
             : string.Join("; ", bids.OrderBy(b => b.Vendor?.Name).Select(b => $"{b.Vendor?.Name}: BĐDT {b.BidSecurityAmount.ToMoney()} đ")) + " (hồ sơ tài chính còn niêm phong)";
-        Log(DocType.Tender, id, $"Mở thầu – {bids.Count} HSDT", record);
+        Log(DocType.Tender, id, $"Mở thầu – {bids.Count} HSDT", record + (online.Count > 0 ? " | Nộp online: " + string.Join("; ", online) : ""));
         await Db.SaveChangesAsync();
         TempData["Success"] = "Đã mở thầu. Tiếp theo: đánh giá tính hợp lệ và năng lực từng HSDT.";
         return RedirectToAction(nameof(Details), new { id });
@@ -509,6 +518,7 @@ public class TendersController : ProcControllerBase
         if (t.Status != TenderStatus.Opened || t.EnvelopeMethod != EnvelopeMethod.TwoEnvelope || t.FinancialOpenedAt.HasValue) return BadRequest();
         if (!TenderEvaluation.ScoringComplete(t)) { TempData["Error"] = "Tổ chuyên gia chưa hoàn thành đánh giá kỹ thuật."; return RedirectToAction(nameof(Details), new { id }); }
         t.FinancialOpenedAt = DateTime.Now;
+        await HttpContext.RequestServices.GetRequiredService<SealingService>().UnsealBidsAsync(t, Me, includePrices: true, pricesOnly: true);
         var passed = TenderEvaluation.Evaluate(t).Where(r => r.TechnicalPass).ToList();
         Log(DocType.Tender, id, $"Mở hồ sơ tài chính – {passed.Count} HSDT đạt kỹ thuật",
             string.Join("; ", passed.Select(r => $"{r.Bid.Vendor?.Name}: {r.Bid.BidPrice.ToMoney()} đ, giảm {r.Bid.DiscountPercent:0.##}%")));

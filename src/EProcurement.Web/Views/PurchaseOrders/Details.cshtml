@@ -130,5 +130,18 @@
             </div></div>
         }
     </div>
-    <div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+    <div class="col-lg-4">
+        @{ var ships = (List<PoShipment>)ViewBag.Shipments; }
+        @if (Model.VendorConfirmedAt != null || Model.VendorRejectedAt != null || ships.Any() || Model.Status == PoStatus.Issued)
+        {
+            <div class="card mb-3"><div class="card-header">Phản hồi của NCC (cổng NCC)</div><div class="card-body small">
+                @if (Model.VendorConfirmedAt != null) { <div class="@(Model.VendorPromisedDate > Model.DeliveryDate ? "text-warning" : "text-success")">Đã xác nhận @Model.VendorConfirmedAt.ToDateTime() – cam kết giao @Model.VendorPromisedDate.ToDate()@(Model.VendorPromisedDate > Model.DeliveryDate ? " (trễ hơn yêu cầu)" : "")</div> }
+                else if (Model.VendorRejectedAt != null) { <div class="text-danger">NCC từ chối @Model.VendorRejectedAt.ToDateTime()</div> }
+                else if (Model.Status == PoStatus.Issued) { <div class="text-muted">Chưa phản hồi.</div> }
+                @if (!string.IsNullOrEmpty(Model.VendorResponse)) { <div class="pre">@Model.VendorResponse</div> }
+                @foreach (var s in ships) { <div class="mt-1">Báo giao @s.CreatedAt.ToDateTime(): xuất @s.ShipDate.ToDate(), dự kiến @s.ExpectedDate.ToDate() @s.Reference <span class="text-muted">@s.Note · @s.VendorUser?.FullName</span></div> }
+            </div></div>
+        }
+        <div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div>
+    </div>
 </div>

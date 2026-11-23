@@ -36,6 +36,7 @@ public class PurchaseOrdersController : ProcControllerBase
         ViewBag.History = await HistoryAsync(DocType.PO, id);
         ViewBag.Receipts = await Db.GoodsReceipts.Include(g => g.ReceivedBy).Include(g => g.Lines).Where(g => g.PurchaseOrderId == id).OrderBy(g => g.ReceiptDate).ToListAsync();
         ViewBag.Evaluation = await Db.VendorEvaluations.Include(e => e.Evaluator).FirstOrDefaultAsync(e => e.PurchaseOrderId == id);
+        ViewBag.Shipments = await Db.PoShipments.Include(s => s.VendorUser).Where(s => s.PurchaseOrderId == id).OrderBy(s => s.CreatedAt).ToListAsync();
         ViewBag.Threshold = await Matrix.PoDirectorAsync(po.PurchaseRequest?.Department);
         return View(po);
     }

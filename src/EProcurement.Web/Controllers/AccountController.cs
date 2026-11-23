@@ -39,12 +39,26 @@ public class AccountController : Controller
 
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == vm.Username);
 
+        if (user != null && LoginGuard.IsLocked(user.LockoutEnd))
+        {
+            ModelState.AddModelError(string.Empty, LoginGuard.LockedMessage(user.LockoutEnd!.Value));
+            return View(vm);
+        }
         if (user == null || !user.IsActive ||
             _hasher.VerifyHashedPassword(user, user.PasswordHash, vm.Password) == PasswordVerificationResult.Failed)
         {
+            if (user != null)
+            {
+                int failed = user.FailedLogins; DateTime? until = user.LockoutEnd;
+                var locked = LoginGuard.Fail(ref failed, ref until);
+                user.FailedLogins = failed; user.LockoutEnd = until;
+                await _db.SaveChangesAsync();
+                if (locked) { ModelState.AddModelError(string.Empty, LoginGuard.LockedMessage(until!.Value)); return View(vm); }
+            }
             ModelState.AddModelError(string.Empty, "Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa.");
             return View(vm);
         }
+        user.FailedLogins = 0; user.LockoutEnd = null;
 
         var claims = new List<Claim>
         {

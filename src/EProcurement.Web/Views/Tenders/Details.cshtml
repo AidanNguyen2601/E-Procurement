@@ -138,7 +138,8 @@
                     <td class="money">@(b.Submitted && pricesVisible ? b.EvaluatedPrice.ToMoney() : "")</td>
                     <td class="small">@if (b.Submitted && Model.OpenedAt.HasValue) { @b.BidSecurityAmount.ToMoney() <span>đ</span> @if (sec.Any()) { <div class="text-danger">@string.Join("; ", sec)</div> } }</td>
                     <td class="text-end text-nowrap">
-                        @if (buyer && s == TenderStatus.Published && !closed) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterBid" asp-route-bidderId="@b.Id">@(b.Submitted ? "Nộp HSDT thay thế" : "Tiếp nhận HSDT")</a> }
+                        @if (((Dictionary<int, string>)ViewBag.Online).TryGetValue(b.Id, out var onl)) { <span class="badge bg-success-subtle text-success" title="@onl">Online</span><div class="small text-muted">@onl</div> }
+                        else if (buyer && s == TenderStatus.Published && !closed) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterBid" asp-route-bidderId="@b.Id">@(b.Submitted ? "Nộp HSDT thay thế" : "Tiếp nhận HSDT")</a> }
                         @if (s is TenderStatus.Awarded or TenderStatus.Contracted && b.Submitted) { <a class="btn btn-sm btn-outline-success" asp-action="ResultNotice" asp-route-id="@Model.Id" asp-route-vendorId="@b.VendorId" target="_blank">Thông báo KQ</a> }
                     </td>
                 </tr>

@@ -91,3 +91,24 @@ public class PagedList<T>
     public PagedList(IReadOnlyList<T> items, int totalCount, int page, int pageSize)
     { Items = items; TotalCount = totalCount; Page = page; PageSize = pageSize; }
 }
+
+/// <summary>Chống dò mật khẩu: khóa tạm sau N lần sai liên tiếp (dùng cho tài khoản nội bộ và tài khoản NCC)</summary>
+public static class LoginGuard
+{
+    public const int MaxFailed = 5;
+    public static readonly TimeSpan LockFor = TimeSpan.FromMinutes(15);
+
+    public static bool IsLocked(DateTime? lockoutEnd) => lockoutEnd.HasValue && lockoutEnd > DateTime.Now;
+
+    /// <summary>Ghi nhận một lần sai; trả về true nếu tài khoản vừa bị khóa</summary>
+    public static bool Fail(ref int failed, ref DateTime? lockoutEnd)
+    {
+        failed++;
+        if (failed < MaxFailed) return false;
+        failed = 0; lockoutEnd = DateTime.Now.Add(LockFor);
+        return true;
+    }
+
+    public static string LockedMessage(DateTime lockoutEnd) =>
+        $"Tài khoản tạm khóa do nhập sai mật khẩu {MaxFailed} lần, thử lại sau {lockoutEnd:HH:mm}.";
+}

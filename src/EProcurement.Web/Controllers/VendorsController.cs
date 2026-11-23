@@ -39,7 +39,51 @@ public class VendorsController : ProcControllerBase
         ViewBag.Evaluations = await Db.VendorEvaluations.Include(e => e.Evaluator).Include(e => e.PurchaseOrder)
             .Where(e => e.VendorId == id).OrderByDescending(e => e.CreatedAt).ToListAsync();
         ViewBag.Rfqs = await Db.RfqVendors.Include(r => r.Rfq).Where(r => r.VendorId == id).OrderByDescending(r => r.RfqId).ToListAsync();
+        ViewBag.PortalUsers = await Db.VendorUsers.AsNoTracking().Where(u => u.VendorId == id).OrderBy(u => u.CreatedAt).ToListAsync();
+        ViewBag.Documents = await Db.VendorDocuments.AsNoTracking().Include(d => d.VerifiedBy).Where(d => d.VendorId == id).OrderBy(d => d.Type).ThenByDescending(d => d.UploadedAt)
+            .Select(d => new VendorDocument { Id = d.Id, Type = d.Type, Number = d.Number, IssueDate = d.IssueDate, ExpiryDate = d.ExpiryDate, FileName = d.FileName, Size = d.Size,
+                Status = d.Status, Note = d.Note, UploadedAt = d.UploadedAt, VerifiedAt = d.VerifiedAt, VerifiedBy = d.VerifiedBy }).ToListAsync();
         return View(v);
+    }
+
+    // ------------------------------------------------------------------ Cổng NCC: tài khoản & hồ sơ
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> PortalUser(int id, int userId, string op)
+    {
+        var u = await Db.VendorUsers.FirstOrDefaultAsync(x => x.Id == userId && x.VendorId == id);
+        if (u == null) return NotFound();
+        switch (op)
+        {
+            case "approve": u.IsApproved = true; u.IsActive = true; break;
+            case "lock": u.IsActive = false; break;
+            case "unlock": u.IsActive = true; u.FailedLogins = 0; u.LockoutEnd = null; break;
+            default: return BadRequest();
+        }
+        await Db.SaveChangesAsync();
+        TempData["Success"] = op switch { "approve" => $"Đã xác nhận tài khoản {u.Email}.", "lock" => $"Đã khóa tài khoản {u.Email}.", _ => $"Đã mở khóa {u.Email}." };
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+    public async Task<IActionResult> Document(int id, int docId)
+    {
+        var d = await Db.VendorDocuments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == docId && x.VendorId == id);
+        return d == null ? NotFound() : File(d.Data, d.ContentType, d.FileName);
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> VerifyDocument(int id, int docId, bool accept, string? note)
+    {
+        var d = await Db.VendorDocuments.FirstOrDefaultAsync(x => x.Id == docId && x.VendorId == id);
+        if (d == null) return NotFound();
+        if (!accept && string.IsNullOrWhiteSpace(note)) { TempData["Error"] = "Nhập lý do không chấp nhận hồ sơ."; return RedirectToAction(nameof(Details), new { id }); }
+        d.Status = accept ? VendorDocumentStatus.Verified : VendorDocumentStatus.Rejected;
+        d.Note = string.IsNullOrWhiteSpace(note) ? d.Note : note.Trim(); d.VerifiedById = Me; d.VerifiedAt = DateTime.Now;
+        await Db.SaveChangesAsync();
+        TempData["Success"] = accept ? "Đã xác minh hồ sơ." : "Đã đánh dấu hồ sơ không chấp nhận.";
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [Authorize(Roles = AppRoles.Purchasing)]

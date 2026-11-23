@@ -1,0 +1,52 @@
+@model PurchaseOrder
+@{ Layout = "_PortalLayout"; var ships = (List<PoShipment>)ViewBag.Shipments; var receipts = (List<GoodsReceipt>)ViewBag.Receipts; }
+<div class="card mb-3"><div class="card-body small">
+    <div class="d-flex flex-wrap gap-4">
+        <div>Ngày đặt <b>@Model.OrderDate.ToDate()</b></div><div>Hạn giao <b>@Model.DeliveryDate.ToDate()</b></div>
+        <div>Địa điểm <b>@Model.DeliveryAddress</b></div><div>Thanh toán <b>@Model.PaymentTerms</b></div><div>Người phụ trách <b>@Model.Buyer?.FullName</b> @Model.Buyer?.Email</div>
+        <div>Trạng thái <b>@Model.Status.GetDisplayName()</b></div>
+    </div>
+    @if (!string.IsNullOrEmpty(Model.Notes)) { <div class="mt-2 pre">@Model.Notes</div> }
+</div></div>
+<div class="card mb-3"><div class="card-body p-0"><table class="table table-sm mb-0">
+    <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL đặt</th><th class="money">Đã nhận</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead><tbody>
+    @{ var n = 1; }
+    @foreach (var l in Model.Lines) { <tr><td>@(n++)</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.ReceivedQuantity.ToQty()</td><td class="money">@l.UnitPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr> }
+    <tr><td colspan="6" class="text-end">Cộng</td><td class="money">@Model.SubTotal.ToMoney()</td></tr>
+    <tr><td colspan="6" class="text-end">VAT @Model.VatPercent.ToString("0.#")%</td><td class="money">@Model.VatAmount.ToMoney()</td></tr>
+    <tr class="fw-semibold"><td colspan="6" class="text-end">Tổng cộng</td><td class="money">@Model.Total.ToMoney()</td></tr>
+</tbody></table></div></div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card"><div class="card-header">Xác nhận đơn hàng</div><div class="card-body small">
+            @if (Model.VendorConfirmedAt != null) { <div class="text-success">Đã xác nhận lúc @Model.VendorConfirmedAt.ToDateTime(), cam kết giao @Model.VendorPromisedDate.ToDate(). @Model.VendorResponse</div> }
+            else if (Model.VendorRejectedAt != null) { <div class="text-danger">Đã từ chối lúc @Model.VendorRejectedAt.ToDateTime(): @Model.VendorResponse</div> }
+            else if (Model.Status == PoStatus.Issued)
+            {
+                <form asp-action="Respond" asp-route-id="@Model.Id" method="post" class="row g-2">
+                    <div class="col-md-5"><label class="form-label small mb-0">Cam kết giao ngày</label><input name="promisedDate" type="date" value="@Model.DeliveryDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                    <div class="col-md-7"><label class="form-label small mb-0">Ghi chú / lý do từ chối</label><input name="response" maxlength="1000" class="form-control form-control-sm" /></div>
+                    <div class="col-12 d-flex gap-2"><button name="accept" value="true" class="btn btn-sm btn-success">Xác nhận đơn hàng</button>
+                        <button name="accept" value="false" class="btn btn-sm btn-outline-danger" data-confirm="Từ chối đơn hàng này?">Từ chối</button></div>
+                </form>
+            }
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card"><div class="card-header">Giao hàng</div><div class="card-body small">
+            @foreach (var s in ships) { <div class="mb-1">@s.CreatedAt.ToDateTime(): xuất @s.ShipDate.ToDate(), dự kiến giao @s.ExpectedDate.ToDate() @s.Reference <span class="text-muted">@s.Note</span></div> }
+            @foreach (var g in receipts) { <div class="mb-1 text-success">Bên mua đã nhận hàng @g.ReceiptDate.ToDate() (@g.Number): @g.Lines.Sum(l => l.QuantityAccepted).ToQty() đạt@(g.Lines.Sum(l => l.QuantityRejected) > 0 ? $", {g.Lines.Sum(l => l.QuantityRejected).ToQty()} trả lại" : "")</div> }
+            @if (Model.Status is PoStatus.Issued or PoStatus.PartiallyReceived && Model.VendorRejectedAt == null)
+            {
+                <form asp-action="Ship" asp-route-id="@Model.Id" method="post" class="row g-2 mt-2">
+                    <div class="col-md-6"><label class="form-label small mb-0">Ngày xuất hàng</label><input name="shipDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                    <div class="col-md-6"><label class="form-label small mb-0">Dự kiến giao</label><input name="expectedDate" type="date" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                    <div class="col-md-6"><input name="reference" maxlength="100" placeholder="Số phiếu xuất / vận đơn" class="form-control form-control-sm" /></div>
+                    <div class="col-md-6"><input name="note" maxlength="1000" placeholder="Nội dung giao (đợt, số lượng…)" class="form-control form-control-sm" /></div>
+                    <div class="col-12"><button class="btn btn-sm btn-primary">Báo giao hàng</button></div>
+                </form>
+            }
+        </div></div>
+    </div>
+</div>

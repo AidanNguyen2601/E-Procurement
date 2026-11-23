@@ -1,0 +1,53 @@
+@model Vendor
+@{ Layout = "_PortalLayout"; var docs = (List<VendorDocument>)ViewBag.Documents; var users = (List<VendorUser>)ViewBag.Users; }
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card mb-3"><div class="card-header">Thông tin công ty</div><div class="card-body">
+            <div class="small mb-2"><b>@Model.Name</b> · MST @Model.TaxCode · Mã NCC @Model.Code · <span class="badge bg-light text-dark border">@Model.Status.GetDisplayName()</span></div>
+            <form asp-action="Profile" method="post" class="row g-2">
+                <div class="col-12"><label class="form-label small mb-0">Địa chỉ</label><input name="address" value="@Model.Address" class="form-control form-control-sm" /></div>
+                <div class="col-md-6"><label class="form-label small mb-0">Điện thoại</label><input name="phone" value="@Model.Phone" class="form-control form-control-sm" /></div>
+                <div class="col-md-6"><label class="form-label small mb-0">Email công ty</label><input name="email" type="email" value="@Model.Email" class="form-control form-control-sm" /></div>
+                <div class="col-md-6"><label class="form-label small mb-0">Người liên hệ</label><input name="contactPerson" value="@Model.ContactPerson" class="form-control form-control-sm" /></div>
+                <div class="col-md-6"><label class="form-label small mb-0">SĐT người liên hệ</label><input name="contactPhone" value="@Model.ContactPhone" class="form-control form-control-sm" /></div>
+                <div class="col-md-6"><label class="form-label small mb-0">Ngân hàng</label><input name="bankName" value="@Model.BankName" class="form-control form-control-sm" list="dl-bank" />@await Catalog.DatalistAsync(CatalogType.Bank)</div>
+                <div class="col-md-6"><label class="form-label small mb-0">Số tài khoản</label><input name="bankAccount" value="@Model.BankAccount" class="form-control form-control-sm" /></div>
+                <div class="col-12"><label class="form-label small mb-0">Điều khoản thanh toán mong muốn</label><input name="paymentTerms" value="@Model.PaymentTerms" class="form-control form-control-sm" /></div>
+                <div class="col-12"><button class="btn btn-sm btn-primary">Lưu</button></div>
+            </form>
+        </div></div>
+        <div class="card"><div class="card-header">Tài khoản & mật khẩu</div><div class="card-body">
+            <table class="table table-sm small">@foreach (var u in users) { <tr><td>@u.FullName</td><td>@u.Email</td><td>@(u.IsApproved ? "đã xác nhận" : "chờ xác nhận")</td></tr> }</table>
+            <form asp-action="ChangePassword" method="post" class="row g-2">
+                <div class="col-md-4"><input name="currentPassword" type="password" placeholder="Mật khẩu hiện tại" class="form-control form-control-sm" required /></div>
+                <div class="col-md-4"><input name="newPassword" type="password" placeholder="Mật khẩu mới (≥ 8 ký tự)" class="form-control form-control-sm" required minlength="8" /></div>
+                <div class="col-md-4"><input name="confirmPassword" type="password" placeholder="Nhập lại" class="form-control form-control-sm" required /></div>
+                <div class="col-12"><button class="btn btn-sm btn-outline-primary">Đổi mật khẩu</button></div>
+            </form>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card"><div class="card-header">Hồ sơ pháp lý & năng lực</div><div class="card-body">
+            <form asp-action="UploadDocument" method="post" enctype="multipart/form-data" class="row g-2 mb-3">
+                <div class="col-md-6"><select name="type" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<VendorDocumentType>()"></select></div>
+                <div class="col-md-6"><input name="number" placeholder="Số hiệu" class="form-control form-control-sm" /></div>
+                <div class="col-md-6"><label class="form-label small mb-0">Ngày cấp</label><input name="issueDate" type="date" class="form-control form-control-sm" /></div>
+                <div class="col-md-6"><label class="form-label small mb-0">Hiệu lực đến</label><input name="expiryDate" type="date" class="form-control form-control-sm" /></div>
+                <div class="col-12"><input type="file" name="file" class="form-control form-control-sm" required /></div>
+                <div class="col-12"><input name="note" placeholder="Ghi chú" class="form-control form-control-sm" /></div>
+                <div class="col-12"><button class="btn btn-sm btn-primary">Tải lên</button></div>
+            </form>
+            <table class="table table-sm small mb-0">
+                <thead><tr><th>Loại</th><th>Số hiệu</th><th>Hiệu lực đến</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+                @foreach (var d in docs)
+                {
+                    <tr class="@(d.ExpiryDate < DateTime.Today ? "table-danger" : "")"><td><a asp-action="Document" asp-route-id="@d.Id">@d.Type.GetDisplayName()</a><div class="text-muted">@d.FileName</div></td>
+                        <td>@d.Number</td><td>@d.ExpiryDate.ToDate()</td>
+                        <td>@d.Status.GetDisplayName() @if (!string.IsNullOrEmpty(d.Note)) { <div class="text-muted">@d.Note</div> }</td>
+                        <td>@if (d.Status != VendorDocumentStatus.Verified) { <form asp-action="DeleteDocument" asp-route-id="@d.Id" method="post" data-confirm="Xóa hồ sơ này?"><button class="btn btn-sm btn-link text-danger p-0">Xóa</button></form> }</td></tr>
+                }
+                @if (!docs.Any()) { <tr><td colspan="5" class="text-muted">Chưa có hồ sơ.</td></tr> }
+            </tbody></table>
+        </div></div>
+    </div>
+</div>

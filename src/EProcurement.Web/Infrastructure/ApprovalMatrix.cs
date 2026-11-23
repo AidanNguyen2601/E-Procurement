@@ -48,7 +48,7 @@ public class DelegationClaimsTransformation : IClaimsTransformation
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
-        if (principal.Identity?.IsAuthenticated != true || principal.HasClaim(c => c.Type == BaseRoleClaim)) return principal;
+        if (principal.Identity?.IsAuthenticated != true || principal.HasClaim(c => c.Type == BaseRoleClaim) || principal.IsVendorPrincipal()) return principal;
         var me = principal.GetUserId();
         if (me == 0) return principal;
         var list = await _cache.GetOrCreateAsync("deleg:" + me, async e =>

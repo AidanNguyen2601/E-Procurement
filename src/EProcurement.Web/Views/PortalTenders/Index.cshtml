@@ -1,0 +1,12 @@
+@model List<Tender>
+@{ Layout = "_PortalLayout"; var mine = (List<int>)ViewBag.Mine; }
+<div class="card"><div class="card-body p-0"><table class="table mb-0 align-middle">
+    <thead><tr><th>Số</th><th>Tên gói thầu</th><th>Đóng thầu</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+    @foreach (var t in Model)
+    {
+        <tr><td><a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold">@t.Number</a></td><td>@t.Title</td><td class="small">@t.ClosingAt.ToDateTime()</td>
+            <td><span class="badge bg-light text-dark border">@t.Status.GetDisplayName()</span></td>
+            <td>@if (mine.Contains(t.Id)) { <span class="badge bg-primary-subtle text-primary">Đã tham gia</span> }</td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">Không có gói thầu.</td></tr> }
+</tbody></table></div></div>

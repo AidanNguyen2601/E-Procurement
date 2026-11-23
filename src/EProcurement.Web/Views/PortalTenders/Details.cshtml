@@ -1,0 +1,78 @@
+@model Tender
+@{
+    Layout = "_PortalLayout";
+    var me = ViewBag.Bidder as TenderBidder; var subs = (List<VendorSubmission>)ViewBag.Submissions; bool open = ViewBag.Open; bool canTrade = ViewBag.CanTrade;
+    var latest = subs.FirstOrDefault(s => s.IsLatest && !s.IsWithdrawn);
+    var lines = Model.Lines.OrderBy(l => l.SortOrder).ToList();
+}
+<div class="card mb-3"><div class="card-body">
+    <h5 class="mb-1">@Model.Title</h5>
+    <div class="small text-muted mb-2">@Model.EnvelopeMethod.GetDisplayName() · @Model.EvaluationMethod.GetDisplayName() · Hợp đồng @Model.ContractType, @Model.ContractDurationDays ngày@(Model.IsFramework ? " (hợp đồng khung)" : "")</div>
+    <div class="small"><b>Đóng thầu: @Model.ClosingAt.ToDateTime()</b> · Bảo đảm dự thầu @Model.BidSecurityAmount.ToMoney() đ · Hiệu lực HSDT tối thiểu @Model.BidValidityDays ngày · Bảo đảm thực hiện HĐ @Model.PerformanceSecurityPercent.ToString("0.#")%</div>
+    <div class="row g-3 mt-1 small">
+        <div class="col-md-6"><b>Yêu cầu kỹ thuật</b><div class="pre">@Model.TechnicalRequirements</div></div>
+        <div class="col-md-6"><b>Tiêu chí năng lực, kinh nghiệm</b><div class="pre">@Model.QualificationCriteria</div></div>
+        @if (!string.IsNullOrEmpty(Model.ContractTerms)) { <div class="col-12"><b>Điều kiện hợp đồng</b><div class="pre">@Model.ContractTerms</div></div> }
+    </div>
+</div></div>
+
+@if (Model.Status is TenderStatus.Awarded or TenderStatus.Contracted && Model.AwardedVendor != null)
+{
+    <div class="alert @(me != null && Model.AwardedVendorId == me.VendorId ? "alert-success" : "alert-secondary")">Kết quả lựa chọn nhà thầu: <b>@Model.AwardedVendor.Name</b>, giá trúng thầu @Model.AwardPrice?.ToMoney() đ (trước VAT).</div>
+}
+
+@if (Model.Clarifications.Any())
+{
+    <div class="card mb-3"><div class="card-header">Làm rõ & sửa đổi HSMT</div><ul class="list-group list-group-flush small">
+        @foreach (var c in Model.Clarifications.OrderBy(c => c.CreatedAt))
+        {
+            <li class="list-group-item">@if (c.IsAmendment) { <span class="badge bg-warning text-dark">Sửa đổi</span> } <span class="text-muted">@c.CreatedAt.ToDateTime()</span>
+                @if (!string.IsNullOrEmpty(c.Question)) { <div><b>Hỏi:</b> @c.Question</div> }<div class="pre">@c.Answer</div></li>
+        }
+    </ul></div>
+}
+
+@if (me == null)
+{
+    @if (open && canTrade) { <form asp-action="Register" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">Đăng ký nhận HSMT / tham dự thầu</button></form> }
+    else if (open) { <div class="alert alert-warning">Tài khoản cần được xác nhận trước khi tham dự thầu.</div> }
+}
+else
+{
+    @if (latest != null)
+    {
+        <div class="card mb-3 border-success"><div class="card-body small">
+            <b>Biên nhận HSDT online</b> – lần @latest.Revision, nộp lúc @latest.SubmittedAt.ToString("dd/MM/yyyy HH:mm:ss"), file @latest.FileName<br />
+            Mã băm SHA-256: <code class="text-break">@latest.Sha256</code><br />
+            @(Model.OpenedAt == null ? "Đang niêm phong đến thời điểm mở thầu." : $"Đã mở thầu lúc {Model.OpenedAt:dd/MM/yyyy HH:mm}.")
+            @if (open) { <form asp-action="Withdraw" asp-route-id="@Model.Id" method="post" class="d-inline ms-2" data-confirm="Rút HSDT đã nộp?"><button class="btn btn-sm btn-link text-danger p-0">Rút HSDT</button></form> }
+        </div></div>
+    }
+    else if (me.Submitted) { <div class="alert alert-info">HSDT bản giấy đã được bên mời thầu tiếp nhận.</div> }
+    @if (open && canTrade && !(me.Submitted && latest == null))
+    {
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="card"><div class="card-header">@(latest == null ? "Nộp HSDT online" : "Nộp lại HSDT (thay bản trước)")</div><div class="card-body">
+            <div class="table-responsive"><table class="table table-sm">
+                <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">Khối lượng</th><th style="width:170px">Đơn giá dự thầu (chưa VAT)</th></tr></thead><tbody>
+                @for (var i = 0; i < lines.Count; i++)
+                {
+                    <tr><td>@(i + 1)</td><td>@lines[i].Description</td><td>@lines[i].Unit</td><td class="money">@lines[i].Quantity.ToQty()</td>
+                        <td><input name="prices" type="number" min="1" step="1" class="form-control form-control-sm text-end" required /></td></tr>
+                }
+            </tbody></table></div>
+            <div class="row g-2">
+                <div class="col-md-2"><label class="form-label small mb-0">Giảm giá (%)</label><input name="discountPercent" type="number" min="0" max="100" step="0.1" value="0" class="form-control form-control-sm" /></div>
+                <div class="col-md-2"><label class="form-label small mb-0">VAT (%)</label><input name="vatPercent" type="number" min="0" max="20" step="0.5" value="10" class="form-control form-control-sm" /></div>
+                <div class="col-md-2"><label class="form-label small mb-0">Tiến độ (ngày)</label><input name="leadTimeDays" type="number" min="0" class="form-control form-control-sm" required /></div>
+                <div class="col-md-2"><label class="form-label small mb-0">Hiệu lực HSDT (ngày)</label><input name="validityDays" type="number" min="1" value="@Model.BidValidityDays" class="form-control form-control-sm" required /></div>
+                <div class="col-md-4"><label class="form-label small mb-0">File HSDT (đề xuất kỹ thuật, năng lực, bảo lãnh scan)</label><input name="file" type="file" class="form-control form-control-sm" required /></div>
+                <div class="col-md-4"><label class="form-label small mb-0">Bảo đảm dự thầu (đ)</label><input name="bidSecurityAmount" type="number" min="0" value="@Model.BidSecurityAmount.ToString("0")" class="form-control form-control-sm" /></div>
+                <div class="col-md-4"><label class="form-label small mb-0">Số bảo lãnh</label><input name="bidSecurityRef" maxlength="100" class="form-control form-control-sm" /></div>
+                <div class="col-md-4"><label class="form-label small mb-0">Bảo lãnh hiệu lực đến</label><input name="bidSecurityExpiry" type="date" value="@Model.ClosingAt.Date.AddDays(Model.BidValidityDays + 30).ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                <div class="col-12"><label class="form-label small mb-0">Ghi chú</label><input name="note" maxlength="1000" class="form-control form-control-sm" /></div>
+            </div>
+            <button class="btn btn-primary mt-3" data-confirm="Nộp HSDT? Nội dung được niêm phong đến thời điểm mở thầu.">Nộp HSDT</button>
+        </div></form>
+    }
+    else if (!open && latest == null && !me.Submitted) { <div class="alert alert-secondary">Đã đóng thầu – quý công ty không nộp HSDT.</div> }
+}

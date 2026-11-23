@@ -31,6 +31,9 @@ public class RfqsController : ProcControllerBase
         var r = await LoadRfqAsync(id);
         if (r == null) return NotFound();
         ViewBag.History = await HistoryAsync(DocType.RFQ, id);
+        var rvIds = r.Vendors.Select(v => v.Id).ToList();
+        ViewBag.Online = await Db.VendorSubmissions.Where(s => s.RfqVendorId != null && rvIds.Contains(s.RfqVendorId.Value) && s.IsLatest && !s.IsWithdrawn)
+            .ToDictionaryAsync(s => s.RfqVendorId!.Value, s => $"Nộp online lần {s.Revision} lúc {s.SubmittedAt:dd/MM HH:mm} · mã {s.Sha256.Substring(0, 10)}…" + (s.UnsealedAt == null ? " · niêm phong" : ""));
         ViewBag.Po = await Db.PurchaseOrders.FirstOrDefaultAsync(p => p.RfqId == id && p.Status != PoStatus.Cancelled);
         return View(r);
     }
@@ -174,10 +177,13 @@ public class RfqsController : ProcControllerBase
                 : "Chưa có báo giá nào. Gia hạn hoặc hủy RFQ.";
             return RedirectToAction(nameof(Details), new { id });
         }
+        // Báo giá nộp online: giải niêm phong, kiểm tra mã băm
+        var online = await HttpContext.RequestServices.GetRequiredService<SealingService>().UnsealQuotesAsync(r, Me);
         r.Status = RfqStatus.Opened;
         r.OpenedAt = DateTime.Now;
         var summary = string.Join("; ", r.Vendors.Where(v => v.Responded).OrderBy(v => v.GrandTotal)
-            .Select(v => $"{v.Vendor?.Name}: {v.GrandTotal.ToMoney()} đ (gồm VAT)"));
+            .Select(v => $"{v.Vendor?.Name}: {v.GrandTotal.ToMoney()} đ (gồm VAT)"))
+            + (online.Count > 0 ? " | Niêm phong online: " + string.Join("; ", online) : "");
         var missing = r.Vendors.Count(v => !v.Responded);
         Log(DocType.RFQ, id, $"Mở báo giá – {r.Vendors.Count(v => v.Responded)} báo giá" + (missing > 0 ? $", {missing} NCC không nộp" : ""), summary);
         await Db.SaveChangesAsync();
@@ -258,6 +264,11 @@ public class RfqsController : ProcControllerBase
             TempData["Error"] = "Chỉ nhập báo giá khi RFQ đang mở.";
             return RedirectToAction(nameof(Details), new { id = rv.RfqId });
         }
+        if (await Db.VendorSubmissions.AnyAsync(s => s.RfqVendorId == rv.Id && s.IsLatest && !s.IsWithdrawn))
+        {
+            TempData["Error"] = $"{rv.Vendor?.Name} đã nộp báo giá online (niêm phong) – không nhập thay.";
+            return RedirectToAction(nameof(Details), new { id = rv.RfqId });
+        }
         return View(new QuoteEntryViewModel
         {
             RfqVendorId = rv.Id, RfqVendor = rv, LeadTimeDays = rv.LeadTimeDays,
@@ -280,6 +291,7 @@ public class RfqsController : ProcControllerBase
             .FirstOrDefaultAsync(x => x.Id == vm.RfqVendorId);
         if (rv == null) return NotFound();
         if (rv.Rfq!.Status != RfqStatus.Open) return BadRequest();
+        if (await Db.VendorSubmissions.AnyAsync(s => s.RfqVendorId == rv.Id && s.IsLatest && !s.IsWithdrawn)) return BadRequest();
         if (vm.Lines.All(l => l.UnitPrice <= 0)) ModelState.AddModelError(string.Empty, "Nhập đơn giá cho ít nhất một dòng.");
         if (vm.ReceivedDate.Date > rv.Rfq.Deadline)
             ModelState.AddModelError(nameof(vm.ReceivedDate), $"Báo giá gửi sau hạn {rv.Rfq.Deadline.ToDate()} – không được chấp nhận.");

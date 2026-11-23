@@ -22,13 +22,25 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.AccessDeniedPath = "/Account/AccessDenied";
         o.ExpireTimeSpan = TimeSpan.FromHours(8);
         o.SlidingExpiration = true;
+    })
+    .AddCookie(EProcurement.Web.Infrastructure.PortalAuth.Scheme, o =>
+    {
+        o.Cookie.Name = ".EProc.Vendor";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SameSite = SameSiteMode.Lax;
+        o.LoginPath = "/PortalAccount/Login";
+        o.LogoutPath = "/PortalAccount/Logout";
+        o.AccessDeniedPath = "/PortalAccount/Login";
+        o.ExpireTimeSpan = TimeSpan.FromHours(4);
+        o.SlidingExpiration = true;
     });
 
 // Mặc định mọi trang đều yêu cầu đăng nhập (trừ [AllowAnonymous])
+// Cổng NCC (controller Portal*) dùng cookie riêng – không áp yêu cầu đăng nhập nội bộ
 builder.Services.AddControllersWithViews(o =>
 {
     var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
-    o.Filters.Add(new AuthorizeFilter(policy));
+    o.Conventions.Add(new EProcurement.Web.Infrastructure.InternalAuthConvention(new AuthorizeFilter(policy)));
 });
 
 // Lưu khóa mã hóa cookie ra thư mục (volume Docker) để restart container không bị đăng xuất
@@ -43,12 +55,14 @@ if (!string.IsNullOrWhiteSpace(keysPath))
 // ---------- Services ----------
 builder.Services.Configure<EProcurement.Web.Infrastructure.ProcurementSettings>(builder.Configuration.GetSection("Procurement"));
 builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
+builder.Services.AddScoped<IPasswordHasher<VendorUser>, PasswordHasher<VendorUser>>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.Reporting.StandardReports>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.CatalogService>();
 builder.Services.Configure<EProcurement.Web.Infrastructure.NotificationSettings>(builder.Configuration.GetSection("Notifications"));
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.NotificationService>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.BudgetService>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.ApprovalMatrix>();
+builder.Services.AddScoped<EProcurement.Web.Infrastructure.SealingService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, EProcurement.Web.Infrastructure.DelegationClaimsTransformation>();
 if (builder.Configuration.GetValue("Notifications:BackgroundEnabled", true)) builder.Services.AddHostedService<EProcurement.Web.Infrastructure.NotificationWorker>();

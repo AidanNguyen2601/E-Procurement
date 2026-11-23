@@ -77,7 +77,7 @@ public class UsersController : Controller
         user.Department = vm.Department.Trim();
         user.Role = vm.Role;
         user.IsActive = vm.IsActive;
-        if (!string.IsNullOrWhiteSpace(vm.Password)) user.PasswordHash = _hasher.HashPassword(user, vm.Password);
+        if (!string.IsNullOrWhiteSpace(vm.Password)) { user.PasswordHash = _hasher.HashPassword(user, vm.Password); user.FailedLogins = 0; user.LockoutEnd = null; }
         await _db.SaveChangesAsync();
         TempData["Success"] = $"Đã lưu tài khoản {user.Username}.";
         return RedirectToAction(nameof(Index));

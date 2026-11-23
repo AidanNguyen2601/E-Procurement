@@ -66,3 +66,44 @@
         </table></div></div>
     </div>
 </div>
+
+@{ var portalUsers = (List<VendorUser>)ViewBag.PortalUsers; var vdocs = (List<VendorDocument>)ViewBag.Documents; var canManage = User.IsPurchasing(); }
+<div class="row g-3 mt-1">
+    <div class="col-lg-5">
+        <div class="card"><div class="card-header">Tài khoản cổng NCC (@portalUsers.Count)</div><div class="card-body p-0"><table class="table table-sm mb-0 small align-middle">
+            @foreach (var u in portalUsers)
+            {
+                <tr><td>@u.FullName<div class="text-muted">@u.Email · @u.Position</div></td>
+                    <td>@if (!u.IsApproved) { <span class="badge bg-warning text-dark">Chờ xác nhận</span> } else if (!u.IsActive) { <span class="badge bg-secondary">Đã khóa</span> } else if (LoginGuard.IsLocked(u.LockoutEnd)) { <span class="badge bg-danger">Tạm khóa</span> } else { <span class="badge bg-success-subtle text-success">Hoạt động</span> }
+                        <div class="text-muted">@(u.LastLoginAt == null ? "chưa đăng nhập" : "đăng nhập " + u.LastLoginAt.ToDateTime())</div></td>
+                    <td class="text-end text-nowrap">@if (canManage)
+                    {
+                        <form asp-action="PortalUser" asp-route-id="@Model.Id" method="post" class="d-inline"><input type="hidden" name="userId" value="@u.Id" />
+                            @if (!u.IsApproved) { <button name="op" value="approve" class="btn btn-sm btn-success" data-confirm="Xác nhận @u.Email thuộc @Model.Name?">Xác nhận</button> }
+                            @if (u.IsActive) { <button name="op" value="lock" class="btn btn-sm btn-link text-danger">Khóa</button> } else { <button name="op" value="unlock" class="btn btn-sm btn-link">Mở khóa</button> }
+                        </form>
+                    }</td></tr>
+            }
+            @if (!portalUsers.Any()) { <tr><td class="text-muted p-3">NCC chưa có tài khoản trên cổng.</td></tr> }
+        </table></div></div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card"><div class="card-header">Hồ sơ pháp lý & năng lực (@vdocs.Count)</div><div class="card-body p-0"><table class="table table-sm mb-0 small align-middle">
+            <thead><tr><th>Loại / file</th><th>Số hiệu</th><th>Hiệu lực đến</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+            @foreach (var d in vdocs)
+            {
+                <tr class="@(d.ExpiryDate < DateTime.Today ? "table-danger" : d.ExpiryDate < DateTime.Today.AddDays(30) ? "table-warning" : "")">
+                    <td><a asp-action="Document" asp-route-id="@Model.Id" asp-route-docId="@d.Id">@d.Type.GetDisplayName()</a><div class="text-muted">@d.FileName · @d.UploadedAt.ToDate()</div></td>
+                    <td>@d.Number<div class="text-muted">@(d.IssueDate == null ? "" : "cấp " + d.IssueDate.ToDate())</div></td><td>@d.ExpiryDate.ToDate()</td>
+                    <td>@d.Status.GetDisplayName()<div class="text-muted">@d.Note @(d.VerifiedBy == null ? "" : "· " + d.VerifiedBy.FullName)</div></td>
+                    <td class="text-end">@if (canManage && d.Status == VendorDocumentStatus.Pending)
+                    {
+                        <form asp-action="VerifyDocument" asp-route-id="@Model.Id" method="post" class="d-flex gap-1"><input type="hidden" name="docId" value="@d.Id" />
+                            <input name="note" class="form-control form-control-sm" placeholder="Ghi chú" style="width:110px" />
+                            <button name="accept" value="true" class="btn btn-sm btn-success">Đạt</button><button name="accept" value="false" class="btn btn-sm btn-outline-danger">Không</button></form>
+                    }</td></tr>
+            }
+            @if (!vdocs.Any()) { <tr><td colspan="5" class="text-muted p-3">Chưa có hồ sơ tải lên qua cổng.</td></tr> }
+            </tbody></table></div></div>
+    </div>
+</div>

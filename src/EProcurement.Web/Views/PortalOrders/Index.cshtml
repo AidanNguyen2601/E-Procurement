@@ -1,0 +1,12 @@
+@model List<PurchaseOrder>
+@{ Layout = "_PortalLayout"; }
+<div class="card"><div class="card-body p-0"><table class="table mb-0 align-middle">
+    <thead><tr><th>Số PO</th><th>Ngày đặt</th><th>Hạn giao</th><th class="money">Giá trị (gồm VAT)</th><th>Trạng thái</th><th>Phản hồi</th></tr></thead><tbody>
+    @foreach (var p in Model)
+    {
+        <tr><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td><td>@p.OrderDate.ToDate()</td><td>@p.DeliveryDate.ToDate()</td>
+            <td class="money">@p.Total.ToMoney()</td><td><span class="badge bg-light text-dark border">@p.Status.GetDisplayName()</span></td>
+            <td class="small">@(p.VendorConfirmedAt != null ? $"Đã xác nhận, giao {p.VendorPromisedDate:dd/MM}" : p.VendorRejectedAt != null ? "Đã từ chối" : p.Status == PoStatus.Issued ? "Chờ xác nhận" : "")</td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="6" class="text-muted p-3">Chưa có đơn hàng.</td></tr> }
+</tbody></table></div></div>

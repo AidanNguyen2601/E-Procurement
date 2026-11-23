@@ -43,6 +43,10 @@ public class EProcDbContext : DbContext
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<ApprovalLimit> ApprovalLimits => Set<ApprovalLimit>();
     public DbSet<ApprovalDelegation> ApprovalDelegations => Set<ApprovalDelegation>();
+    public DbSet<VendorUser> VendorUsers => Set<VendorUser>();
+    public DbSet<VendorDocument> VendorDocuments => Set<VendorDocument>();
+    public DbSet<VendorSubmission> VendorSubmissions => Set<VendorSubmission>();
+    public DbSet<PoShipment> PoShipments => Set<PoShipment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +74,11 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.ReadAt });
         modelBuilder.Entity<Budget>().HasIndex(x => new { x.Year, x.Department, x.CategoryId }).IsUnique();
         modelBuilder.Entity<ApprovalDelegation>().HasIndex(x => new { x.ToUserId, x.StartDate, x.EndDate });
+        modelBuilder.Entity<VendorUser>().HasIndex(x => x.Email).IsUnique();
+        modelBuilder.Entity<VendorDocument>().HasIndex(x => new { x.VendorId, x.ExpiryDate });
+        modelBuilder.Entity<VendorSubmission>().HasIndex(x => new { x.RfqVendorId, x.IsLatest });
+        modelBuilder.Entity<VendorSubmission>().HasIndex(x => new { x.TenderBidderId, x.IsLatest });
+        modelBuilder.Entity<PoShipment>().HasIndex(x => x.PurchaseOrderId);
         modelBuilder.Entity<ApprovalDelegation>().HasOne(x => x.FromUser).WithMany().HasForeignKey(x => x.FromUserId);
         modelBuilder.Entity<ApprovalDelegation>().HasOne(x => x.ToUser).WithMany().HasForeignKey(x => x.ToUserId);
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.Key }).IsUnique().HasFilter("[Key] IS NOT NULL");

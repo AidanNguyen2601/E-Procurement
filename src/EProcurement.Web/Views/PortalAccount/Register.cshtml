@@ -1,0 +1,26 @@
+@model EProcurement.Web.Controllers.PortalRegisterModel
+@{ ViewData["Title"] = "Đăng ký nhà cung cấp"; Layout = "_AuthLayout"; var cats = (List<Category>)ViewBag.Categories; }
+<div class="auth-card" style="max-width:720px">
+    <h3 class="mb-1 fw-bold">Đăng ký nhà cung cấp</h3>
+    <p class="text-muted small mb-3">Nếu mã số thuế đã có trên hệ thống, tài khoản của bạn sẽ được bộ phận mua hàng xác nhận trước khi sử dụng.</p>
+    <form asp-action="Register" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+        <div class="row g-2">
+            <div class="col-md-4"><label asp-for="TaxCode" class="form-label small mb-0"></label><input asp-for="TaxCode" class="form-control form-control-sm" /><span asp-validation-for="TaxCode" class="text-danger small"></span></div>
+            <div class="col-md-8"><label asp-for="CompanyName" class="form-label small mb-0"></label><input asp-for="CompanyName" class="form-control form-control-sm" /><span asp-validation-for="CompanyName" class="text-danger small"></span></div>
+            <div class="col-md-8"><label asp-for="Address" class="form-label small mb-0"></label><input asp-for="Address" class="form-control form-control-sm" /></div>
+            <div class="col-md-4"><label asp-for="Phone" class="form-label small mb-0"></label><input asp-for="Phone" class="form-control form-control-sm" /></div>
+            <div class="col-md-5"><label asp-for="FullName" class="form-label small mb-0"></label><input asp-for="FullName" class="form-control form-control-sm" /><span asp-validation-for="FullName" class="text-danger small"></span></div>
+            <div class="col-md-3"><label asp-for="Position" class="form-label small mb-0"></label><input asp-for="Position" class="form-control form-control-sm" /></div>
+            <div class="col-md-4"><label asp-for="Mobile" class="form-label small mb-0"></label><input asp-for="Mobile" class="form-control form-control-sm" /></div>
+            <div class="col-md-4"><label asp-for="Email" class="form-label small mb-0"></label><input asp-for="Email" class="form-control form-control-sm" /><span asp-validation-for="Email" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="Password" class="form-label small mb-0"></label><input asp-for="Password" class="form-control form-control-sm" /><span asp-validation-for="Password" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="ConfirmPassword" class="form-label small mb-0"></label><input asp-for="ConfirmPassword" class="form-control form-control-sm" /><span asp-validation-for="ConfirmPassword" class="text-danger small"></span></div>
+            <div class="col-12"><label class="form-label small mb-0">Nhóm hàng cung cấp</label>
+                <div class="d-flex flex-wrap gap-3">@foreach (var c in cats) { <label class="small"><input type="checkbox" name="CategoryIds" value="@c.Id" checked="@Model.CategoryIds.Contains(c.Id)" /> @c.Name</label> }</div></div>
+            <div class="col-12"><label class="small"><input type="checkbox" name="Agree" value="true" /> Tôi cam kết thông tin kê khai là chính xác và đồng ý điều khoản sử dụng cổng nhà cung cấp.</label>
+                <span asp-validation-for="Agree" class="text-danger small d-block"></span></div>
+        </div>
+        <button class="btn btn-primary mt-3">Đăng ký</button> <a asp-action="Login" class="btn btn-light mt-3">Đã có tài khoản</a>
+    </form>
+</div>
