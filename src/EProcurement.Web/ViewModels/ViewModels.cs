@@ -72,6 +72,8 @@ public class PoFormViewModel
     [Display(Name = "Số PO")] public string Number { get; set; } = string.Empty;
     [Required(ErrorMessage = "Chọn nhà cung cấp")][Display(Name = "Nhà cung cấp")] public int? VendorId { get; set; }
     public int? PurchaseRequestId { get; set; }
+    /// <summary>Gói mua sắm (đã duyệt trong KHLCNT) – hồ sơ lập theo gói</summary>
+    public int? PackageId { get; set; }
     public int? RfqId { get; set; }
     [DataType(DataType.Date)][Display(Name = "Ngày đặt hàng")] public DateTime OrderDate { get; set; } = DateTime.Today;
     [DataType(DataType.Date)][Display(Name = "Ngày giao hàng")] public DateTime DeliveryDate { get; set; } = DateTime.Today.AddDays(7);
@@ -88,6 +90,8 @@ public class PoFormViewModel
 public class RfqCreateViewModel
 {
     public int? PurchaseRequestId { get; set; }
+    /// <summary>Gói mua sắm (đã duyệt trong KHLCNT) – hồ sơ lập theo gói</summary>
+    public int? PackageId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
     [Required(ErrorMessage = "Nhập tiêu đề"), StringLength(200)][Display(Name = "Tiêu đề")] public string Title { get; set; } = string.Empty;
     [DataType(DataType.Date)][Display(Name = "Hạn nộp báo giá")] public DateTime Deadline { get; set; } = DateTime.Today.AddDays(7);
@@ -187,6 +191,9 @@ public class ApprovalInboxViewModel
     public List<Tender> TenderPlans { get; set; } = new();
     public List<Tender> TenderResults { get; set; } = new();
     public List<TenderComplaint> Complaints { get; set; } = new();
+    public List<SelectionPlan> SelectionPlans { get; set; } = new();
+    /// <summary>Thẩm định kết quả LCNT được giao cho người dùng</summary>
+    public List<TenderAppraisal> Appraisals { get; set; } = new();
 }
 
 public class UserFormViewModel
@@ -209,6 +216,8 @@ public class DirectAwardFormViewModel
     public int Id { get; set; }
     [Display(Name = "Số tờ trình")] public string Number { get; set; } = string.Empty;
     public int PurchaseRequestId { get; set; }
+    /// <summary>Gói mua sắm (đã duyệt trong KHLCNT) – hồ sơ lập theo gói</summary>
+    public int? PackageId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
     [Required(ErrorMessage = "Nhập tiêu đề"), StringLength(200)][Display(Name = "Tiêu đề")] public string Title { get; set; } = string.Empty;
     [Required(ErrorMessage = "Chọn nhà cung cấp")][Display(Name = "Nhà cung cấp được chỉ định")] public int? VendorId { get; set; }
@@ -247,6 +256,8 @@ public class TenderFormViewModel
     public int Id { get; set; }
     [Display(Name = "Số gói thầu")] public string Number { get; set; } = string.Empty;
     public int PurchaseRequestId { get; set; }
+    /// <summary>Gói mua sắm (đã duyệt trong KHLCNT) – hồ sơ lập theo gói</summary>
+    public int? PackageId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
     [Required(ErrorMessage = "Nhập tên gói thầu"), StringLength(200)][Display(Name = "Tên gói thầu")] public string Title { get; set; } = string.Empty;
     [Range(1, 1_000_000_000_000, ErrorMessage = "Nhập giá gói thầu")][Display(Name = "Giá gói thầu (trước VAT)")] public decimal PackageBudget { get; set; }

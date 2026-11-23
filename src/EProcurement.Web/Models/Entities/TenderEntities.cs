@@ -17,6 +17,8 @@ public class Tender
     [Required(ErrorMessage = "Nhập tên gói thầu"), StringLength(200)][Display(Name = "Tên gói thầu")] public string Title { get; set; } = string.Empty;
     [Display(Name = "Từ đề nghị")] public int PurchaseRequestId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
+    [Display(Name = "Gói mua sắm")] public int? PackageId { get; set; }
+    public ProcurementPackage? Package { get; set; }
     [Display(Name = "Bên mời thầu")] public int BuyerId { get; set; }
     public AppUser? Buyer { get; set; }
     [Display(Name = "Trạng thái")] public TenderStatus Status { get; set; } = TenderStatus.Draft;
@@ -62,6 +64,8 @@ public class Tender
     public ICollection<TenderClarification> Clarifications { get; set; } = new List<TenderClarification>();
     public ICollection<TenderComplaint> Complaints { get; set; } = new List<TenderComplaint>();
     public ICollection<TenderQuestion> Questions { get; set; } = new List<TenderQuestion>();
+    public ICollection<TenderNegotiation> Negotiations { get; set; } = new List<TenderNegotiation>();
+    public ICollection<TenderAppraisal> Appraisals { get; set; } = new List<TenderAppraisal>();
 }
 
 public class TenderLine

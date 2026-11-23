@@ -102,6 +102,37 @@ public static class TenderEvaluation
     public static List<TenderClarification> AmendmentsAfter(Tender t, DateTime? submittedAt) =>
         submittedAt == null ? new() : t.Clarifications.Where(c => c.IsAmendment && c.CreatedAt > submittedAt).OrderBy(c => c.CreatedAt).ToList();
 
+    /// <summary>Đàm phán thành công còn hiệu lực (căn cứ đề xuất trúng thầu)</summary>
+    public static TenderNegotiation? SuccessfulNegotiation(IEnumerable<TenderNegotiation> negotiations) =>
+        negotiations.Where(n => !n.IsVoid && n.Success).OrderByDescending(n => n.CreatedAt).FirstOrDefault();
+
+    /// <summary>
+    /// Nhà thầu được mời đàm phán tiếp theo: xếp hạng cao nhất trong các HSDT đạt kỹ thuật, chưa đàm phán không thành công.
+    /// Null nếu đã có đàm phán thành công hoặc không còn nhà thầu nào.
+    /// </summary>
+    public static BidResult? NegotiationCandidate(List<BidResult> results, IEnumerable<TenderNegotiation> negotiations)
+    {
+        var active = negotiations.Where(n => !n.IsVoid).ToList();
+        if (active.Any(n => n.Success)) return null;
+        var failed = active.Where(n => !n.Success).Select(n => n.TenderBidderId).ToHashSet();
+        return results.Where(r => r.Rank.HasValue && !failed.Contains(r.Bid.Id)).OrderBy(r => r.Rank).FirstOrDefault();
+    }
+
+    /// <summary>Thẩm định kết quả còn hiệu lực gần nhất</summary>
+    public static TenderAppraisal? CurrentAppraisal(IEnumerable<TenderAppraisal> appraisals) =>
+        appraisals.Where(a => !a.IsVoid).OrderByDescending(a => a.AssignedAt).FirstOrDefault();
+
+    /// <summary>Lý do Giám đốc chưa được phê duyệt kết quả (thiếu thẩm định đồng ý); null = được duyệt</summary>
+    public static string? ApprovalBlocker(Tender t, bool appraisalRequired)
+    {
+        if (!appraisalRequired) return null;
+        var a = CurrentAppraisal(t.Appraisals);
+        if (a == null) return "Chưa giao thẩm định kết quả lựa chọn nhà thầu.";
+        if (a.CompletedAt == null) return $"Đang chờ {a.Appraiser?.FullName ?? "người thẩm định"} lập báo cáo thẩm định.";
+        if (a.Agree != true) return "Báo cáo thẩm định không thống nhất với đề xuất – trả lại bên mời thầu để xem xét.";
+        return null;
+    }
+
     /// <summary>Nhà thầu được kiến nghị: đã nộp HSDT, kết quả đã công bố và còn trong thời hạn kiến nghị</summary>
     public static bool CanComplain(Tender t, TenderBidder? b, DateTime now) =>
         b?.Submitted == true && t.Status == TenderStatus.Awarded && t.ComplaintDeadline.HasValue && now <= t.ComplaintDeadline;

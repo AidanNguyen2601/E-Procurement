@@ -6,6 +6,7 @@
     var orders = (List<PurchaseOrder>)ViewBag.Orders;
     var awards = (List<DirectAward>)ViewBag.DirectAwards;
     var tenders = (List<Tender>)ViewBag.Tenders;
+    var pkg = ViewBag.Package as ProcurementPackage;
     bool canApprove = ViewBag.CanApprove;
     decimal threshold = ViewBag.Threshold;
     var me = User.GetUserId();
@@ -46,23 +47,15 @@
     {
         <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">Gửi duyệt</button></form>
     }
-    @if (User.IsPurchasing() && Model.Status is PrStatus.Approved or PrStatus.Processing)
+    @if (User.IsPurchasing() && Model.ContractId == null && Model.Status is PrStatus.Approved or PrStatus.Processing)
     {
-        @if (Model.Method == ProcurementMethod.CompetitiveQuotation)
+        @if (pkg == null && Model.Status == PrStatus.Approved && !rfqs.Any() && !orders.Any() && !awards.Any() && !tenders.Any())
         {
-            <a class="btn btn-primary" asp-controller="Rfqs" asp-action="Create" asp-route-prId="@Model.Id">Lập yêu cầu báo giá (RFQ)</a>
+            <a class="btn btn-primary" asp-controller="Packages" asp-action="Create" asp-route-prId="@Model.Id">Lập gói mua sắm</a>
         }
-        else if (Model.Method == ProcurementMethod.DirectPurchase)
+        else if (pkg != null)
         {
-            <a class="btn btn-primary" asp-controller="PurchaseOrders" asp-action="Create" asp-route-prId="@Model.Id">Lập PO mua sắm trực tiếp</a>
-        }
-        else if (Model.Method == ProcurementMethod.DirectAward && !awards.Any(a => a.Status != DirectAwardStatus.Cancelled))
-        {
-            <a class="btn btn-primary" asp-controller="DirectAwards" asp-action="Create" asp-route-prId="@Model.Id">Lập tờ trình chỉ định thầu</a>
-        }
-        else if (Model.Method == ProcurementMethod.OpenTender && !tenders.Any(t => t.Status != TenderStatus.Cancelled))
-        {
-            <a class="btn btn-primary" asp-controller="Tenders" asp-action="Create" asp-route-prId="@Model.Id">Lập gói thầu (KH &amp; HSMT)</a>
+            <a class="btn btn-primary" asp-controller="Packages" asp-action="Details" asp-route-id="@pkg.Id">Gói @pkg.Number</a>
         }
     }
     @if ((mine && Model.Status is PrStatus.Draft or PrStatus.Submitted or PrStatus.Rejected) || (User.IsPurchasing() && Model.Status == PrStatus.Approved))
@@ -121,7 +114,19 @@
                 }
             </dl>
         </div></div>
-        <partial name="_MethodPicker" model="Model" />
+        @if (pkg != null)
+        {
+            <div class="card mb-3 border-info"><div class="card-body small d-flex flex-wrap gap-2 align-items-center">
+                <span>Thuộc gói mua sắm <a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg.Id" class="fw-semibold">@pkg.Number</a> – @pkg.Title
+                    · @pkg.Method.GetDisplayName() · giá gói @pkg.Budget.ToMoney() đ@(pkg.PurchaseRequests.Count > 1 ? $" · gom {pkg.PurchaseRequests.Count} đề nghị" : "")
+                    @if (pkg.SelectionPlan != null) { <span>· KHLCNT <a asp-controller="SelectionPlans" asp-action="Details" asp-route-id="@pkg.SelectionPlanId">@pkg.SelectionPlan.Number</a></span> }</span>
+                <span class="ms-auto"><partial name="_Badge" model="pkg.Status" /></span>
+            </div></div>
+        }
+        else if (User.IsPurchasing() && Model.ContractId == null && Model.Status == PrStatus.Approved)
+        {
+            <div class="alert alert-info small">Đề nghị đã duyệt, chờ gom vào <b>gói mua sắm</b>. Hình thức lựa chọn NCC được xác định ở gói và phê duyệt trong kế hoạch lựa chọn NCC (KHLCNT).</div>
+        }
         <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
             <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL</th><th class="money">Đơn giá dự toán</th><th class="money">Thành tiền</th></tr></thead>
             <tbody>

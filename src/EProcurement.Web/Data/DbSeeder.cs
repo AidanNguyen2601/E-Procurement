@@ -295,11 +295,30 @@ public static class DbSeeder
                 "ALTER TABLE Attachments ADD IsPublic bit NOT NULL CONSTRAINT DF_Attachments_IsPublic DEFAULT 0; " +
                 "EXEC('UPDATE a SET IsPublic = 1 FROM Attachments a JOIN Tenders t ON a.DocumentType = 5 AND a.DocumentId = t.Id " +
                 "WHERE a.UploadedAt < t.ClosingAt AND (a.Note IS NULL OR a.Note NOT LIKE N''HSDT online%'')') END",
+            // Gói mua sắm: PR, RFQ, gói thầu, tờ trình chỉ định, PO gắn với gói
+            "IF COL_LENGTH('PurchaseRequests','PackageId') IS NULL ALTER TABLE PurchaseRequests ADD PackageId int NULL CONSTRAINT FK_PurchaseRequests_ProcurementPackages_PackageId REFERENCES ProcurementPackages(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseRequests_PackageId') CREATE INDEX IX_PurchaseRequests_PackageId ON PurchaseRequests(PackageId)",
+            "IF COL_LENGTH('Rfqs','PackageId') IS NULL ALTER TABLE Rfqs ADD PackageId int NULL CONSTRAINT FK_Rfqs_ProcurementPackages_PackageId REFERENCES ProcurementPackages(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Rfqs_PackageId') CREATE INDEX IX_Rfqs_PackageId ON Rfqs(PackageId)",
+            "IF COL_LENGTH('Tenders','PackageId') IS NULL ALTER TABLE Tenders ADD PackageId int NULL CONSTRAINT FK_Tenders_ProcurementPackages_PackageId REFERENCES ProcurementPackages(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Tenders_PackageId') CREATE INDEX IX_Tenders_PackageId ON Tenders(PackageId)",
+            "IF COL_LENGTH('DirectAwards','PackageId') IS NULL ALTER TABLE DirectAwards ADD PackageId int NULL CONSTRAINT FK_DirectAwards_ProcurementPackages_PackageId REFERENCES ProcurementPackages(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DirectAwards_PackageId') CREATE INDEX IX_DirectAwards_PackageId ON DirectAwards(PackageId)",
+            "IF COL_LENGTH('PurchaseOrders','PackageId') IS NULL ALTER TABLE PurchaseOrders ADD PackageId int NULL CONSTRAINT FK_PurchaseOrders_ProcurementPackages_PackageId REFERENCES ProcurementPackages(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseOrders_PackageId') CREATE INDEX IX_PurchaseOrders_PackageId ON PurchaseOrders(PackageId)",
+            // Chỉ định thầu: yêu cầu báo giá gửi NCC qua cổng, báo giá niêm phong
+            "IF COL_LENGTH('DirectAwards','QuoteRequestedAt') IS NULL ALTER TABLE DirectAwards ADD QuoteRequestedAt datetime2 NULL",
+            "IF COL_LENGTH('DirectAwards','QuoteDeadline') IS NULL ALTER TABLE DirectAwards ADD QuoteDeadline datetime2 NULL",
+            "IF COL_LENGTH('DirectAwards','QuoteRequirements') IS NULL ALTER TABLE DirectAwards ADD QuoteRequirements nvarchar(2000) NULL",
+            "IF COL_LENGTH('DirectAwards','QuoteOpenedAt') IS NULL ALTER TABLE DirectAwards ADD QuoteOpenedAt datetime2 NULL",
+            "IF COL_LENGTH('VendorSubmissions','DirectAwardId') IS NULL ALTER TABLE VendorSubmissions ADD DirectAwardId int NULL CONSTRAINT FK_VendorSubmissions_DirectAwards_DirectAwardId REFERENCES DirectAwards(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_VendorSubmissions_DirectAwardId_IsLatest') CREATE INDEX IX_VendorSubmissions_DirectAwardId_IsLatest ON VendorSubmissions(DirectAwardId, IsLatest)",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"
         };
         foreach (var sql in statements) await db.Database.ExecuteSqlRawAsync(sql);
+        await EProcurement.Web.Infrastructure.Packages.EnsureLegacyAsync(db); // PR đã chọn hình thức trước khi có gói → sinh gói + KHLCNT tương ứng
         await EProcurement.Web.Infrastructure.Catalogs.EnsureAsync(db); // danh mục dùng chung: nạp mặc định + giá trị đang dùng
     }
 

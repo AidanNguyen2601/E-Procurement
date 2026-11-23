@@ -77,7 +77,8 @@ public class ContractsController : ProcControllerBase
         if (!ModelState.IsValid) { vm.Tender = t; return View(vm); }
 
         var bid = t.Bidders.First(b => b.VendorId == t.AwardedVendorId);
-        var factor = 1 - bid.DiscountPercent / 100m;
+        // Đơn giá hợp đồng = đơn giá dự thầu quy đổi theo giá trúng thầu (đã gồm giảm giá và kết quả đàm phán)
+        var factor = bid.BidPrice > 0 && value > 0 ? value / bid.BidPrice : 1 - bid.DiscountPercent / 100m;
         var c = new Contract
         {
             Number = await DocNumbers.NextAsync(Db.Contracts.Select(x => x.Number), "HD"), Title = vm.Title, TenderId = t.Id, VendorId = bid.VendorId,
@@ -100,11 +101,20 @@ public class ContractsController : ProcControllerBase
         if (!c.IsFramework)
         {
             po = await NewPoAsync(c, t.PurchaseRequestId, c.StartDate.AddDays(bid.LeadTimeDays ?? t.ContractDurationDays));
+            po.PackageId = t.PackageId;
             foreach (var l in c.Lines) po.Lines.Add(new PurchaseOrderLine { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, UnitPrice = l.UnitPrice, SortOrder = l.SortOrder });
             po.Recalculate();
             Db.PurchaseOrders.Add(po);
             await Db.SaveChangesAsync();
             Log(DocType.PO, po.Id, $"Tạo theo hợp đồng {c.Number}");
+        }
+        // Hợp đồng khung: gói đã hoàn tất lựa chọn NCC; các đợt đặt hàng đi theo đề nghị riêng
+        if (c.IsFramework && t.PackageId.HasValue)
+        {
+            var pkg = await Db.ProcurementPackages.Include(x => x.PurchaseRequests).FirstAsync(x => x.Id == t.PackageId);
+            pkg.Status = PackageStatus.Completed;
+            foreach (var r in pkg.PurchaseRequests.Where(r => r.Status == PrStatus.Processing)) r.Status = PrStatus.Completed;
+            Log(DocType.Package, pkg.Id, $"Ký hợp đồng khung {c.Number} – hoàn tất gói");
         }
         await Db.SaveChangesAsync();
         TempData["Success"] = po != null ? $"Đã ký {c.Number} và tạo đơn mua hàng nháp {po.Number}." : $"Đã ký hợp đồng khung {c.Number}. Đặt hàng từng đợt từ trang hợp đồng.";

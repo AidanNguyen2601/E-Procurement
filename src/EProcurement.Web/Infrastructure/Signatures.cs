@@ -73,6 +73,8 @@ public class SignatureService
             DocType.Payment => await _db.Payments.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.Number, x.VendorId, x.InvoiceId, x.ContractId, x.Amount, x.PenaltyAmount, x.AdvanceDeduction, x.NetAmount }).FirstOrDefaultAsync(),
             DocType.Plan => await _db.ProcurementPlans.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.Year, x.Department,
                 Lines = x.Lines.OrderBy(l => l.Id).Select(l => new { l.ItemId, l.Description, l.Quantity, l.EstimatedPrice, l.Quarter }) }).FirstOrDefaultAsync(),
+            DocType.SelectionPlan => await _db.SelectionPlans.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.Number, x.Title,
+                Packages = x.Packages.OrderBy(p => p.Id).Select(p => new { p.Number, p.Budget, p.Method, p.EnvelopeMethod, p.ContractType, p.ContractDurationDays, p.PlannedStart }) }).FirstOrDefaultAsync(),
             _ => null
         };
         var json = JsonSerializer.Serialize(snap);
@@ -125,11 +127,12 @@ public class RequireSignatureAttribute : Attribute, IAsyncActionFilter
         if (ctx.Controller is EProcurement.Web.Controllers.ProcControllerBase pc && !pc.HasSavedLog) return; // bị từ chối do thiếu điều kiện – không có gì để ký
         if (!ctx.ActionArguments.TryGetValue("id", out var idObj) || idObj is not int id) return;
         var form = http.Request.Form;
-        var approve = form["approve"].ToString() is "true" || form["accept"].ToString() is "true";
+        var approve = form["approve"].ToString() is "true" || form["accept"].ToString() is "true" || form["agree"].ToString() is "true";
         var label = (approve ? "Ký duyệt" : "Ký quyết định không duyệt / từ chối") + " – " + Type.GetDisplayName().ToLowerInvariant()
                     + (ctx.ActionDescriptor.RouteValues["action"] is string a && a.Contains("Plan") ? " (kế hoạch & HSMT)" : "")
                     + (ctx.ActionDescriptor.RouteValues["action"] is string b && b.Contains("Amendment") ? " (phụ lục)" : "")
-                    + (ctx.ActionDescriptor.RouteValues["action"] is string c && c == "DecideResult" ? " (kết quả)" : "");
+                    + (ctx.ActionDescriptor.RouteValues["action"] is string c && c == "DecideResult" ? " (kết quả)" : "")
+                    + (ctx.ActionDescriptor.RouteValues["action"] is string e && e == "Appraise" ? " (thẩm định kết quả LCNT)" : "");
         await sp.GetRequiredService<SignatureService>().SignAsync(Type, id, me, label, http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString());
     }
 }

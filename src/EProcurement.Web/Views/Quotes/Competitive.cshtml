@@ -1,0 +1,39 @@
+@model List<RfqVendor>
+@{
+    ViewData["Title"] = "Báo giá chào hàng cạnh tranh";
+    var online = (List<int>)ViewBag.Online; bool pending = ViewBag.Pending;
+}
+<form method="get" class="toolbar">
+    <input name="q" value="@ViewBag.Q" class="form-control form-control-sm" style="max-width:280px" placeholder="Số / tên hồ sơ, nhà cung cấp" />
+    <label class="small d-flex align-items-center gap-1"><input type="checkbox" name="pending" value="true" class="form-check-input mt-0" @(pending ? "checked" : "") onchange="this.form.submit()" /> Chỉ hồ sơ đang nhận báo giá</label>
+    <button class="btn btn-sm btn-outline-secondary">Lọc</button>
+</form>
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>Hồ sơ chào giá</th><th>Nhà cung cấp</th><th>Báo giá</th><th class="money">Tổng trước VAT</th><th class="money">Gồm VAT</th><th>Giao / bảo hành</th><th>Kỹ thuật</th><th>Kết quả</th></tr></thead>
+    <tbody>
+    @foreach (var g in Model.GroupBy(v => v.RfqId))
+    {
+        var r = g.First().Rfq!;
+        var sealedStage = r.Status == RfqStatus.Open;
+        var minTotal = g.Where(v => v.Responded && v.TotalAmount > 0).Select(v => v.GrandTotal).DefaultIfEmpty(0).Min();
+        foreach (var v in g.OrderBy(v => v.Vendor?.Name))
+        {
+            <tr>
+                @if (v == g.OrderBy(x => x.Vendor?.Name).First())
+                {
+                    <td rowspan="@g.Count()"><a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.Id" class="fw-semibold">@r.Number</a><div class="small">@r.Title</div>
+                        <div class="small text-muted">hạn @r.Deadline.ToDate() · <partial name="_Badge" model="r.Status" /></div></td>
+                }
+                <td>@v.Vendor?.Name</td>
+                <td class="small">@if (v.Responded) { <span>@v.RespondedAt?.ToString("dd/MM HH:mm")</span> @if (online.Contains(v.Id)) { <span class="badge bg-success-subtle text-success">online</span> } } else { <span class="text-muted">Chưa báo giá</span> }</td>
+                <td class="money">@(sealedStage && v.Responded ? "🔒" : v.TotalAmount > 0 ? v.TotalAmount.ToMoney() : "")</td>
+                <td class="money @(!sealedStage && v.GrandTotal == minTotal && minTotal > 0 ? "fw-bold text-success" : "")">@(!sealedStage && v.TotalAmount > 0 ? v.GrandTotal.ToMoney() : "")</td>
+                <td class="small">@(sealedStage ? "" : $"{(v.LeadTimeDays.HasValue ? v.LeadTimeDays + " ngày" : "")} {v.Warranty}")</td>
+                <td class="small">@(v.TechnicalPass == true ? "Đạt" + (v.TechnicalScore.HasValue ? $" ({v.TechnicalScore})" : "") : v.TechnicalPass == false ? "Không đạt" : "")</td>
+                <td class="small">@if (r.AwardedVendorId == v.VendorId) { <span class="badge bg-success">Được chọn</span> } else if (r.ProposedVendorId == v.VendorId) { <span class="badge bg-warning text-dark">Đề xuất</span> }</td>
+            </tr>
+        }
+    }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">Không có báo giá.</td></tr> }
+    </tbody>
+</table></div></div></div>

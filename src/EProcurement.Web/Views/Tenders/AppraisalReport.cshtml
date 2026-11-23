@@ -1,0 +1,36 @@
+@model Tender
+@{
+    var a = (TenderAppraisal)ViewBag.Appraisal;
+    var results = (List<BidResult>)ViewBag.Results;
+    var neg = TenderEvaluation.SuccessfulNegotiation(Model.Negotiations) ?? Model.Negotiations.Where(n => n.Success).OrderByDescending(n => n.CreatedAt).FirstOrDefault();
+    ViewData["Title"] = $"Báo cáo thẩm định – {Model.Number}";
+}
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="card paper mb-4"><div class="card-body p-4">
+    <div class="text-center mb-3"><h4 class="mb-0">BÁO CÁO THẨM ĐỊNH KẾT QUẢ LỰA CHỌN NHÀ THẦU</h4>
+        <div>Gói thầu: @Model.Title (@Model.Number)</div>
+        <div class="text-muted">Ngày @a.CompletedAt?.ToDate()</div></div>
+    <p class="mb-1"><b>I. Thông tin gói thầu</b></p>
+    <ul class="small">
+        <li>Giá gói thầu: @Model.PackageBudget.ToMoney() đ (trước VAT) · @Model.EnvelopeMethod.GetDisplayName() · @Model.EvaluationMethod.GetDisplayName()</li>
+        <li>Phát hành HSMT @Model.PublishedAt.ToDateTime() · đóng thầu @Model.ClosingAt.ToDateTime() · mở thầu @Model.OpenedAt.ToDateTime()</li>
+        <li>Số nhà thầu nộp HSDT: @Model.Bidders.Count(b => b.Submitted) · tổ chuyên gia @Model.Committee.Count thành viên</li>
+    </ul>
+    <p class="mb-1"><b>II. Kết quả đánh giá và đề xuất của bên mời thầu</b></p>
+    <table class="table table-bordered table-sm small">
+        <thead><tr><th>Nhà thầu</th><th class="money">Điểm KT</th><th class="money">Giá đánh giá (gồm VAT)</th><th>Xếp hạng</th><th>Ghi chú</th></tr></thead>
+        <tbody>@foreach (var r in results) { <tr><td>@r.Bid.Vendor?.Name</td><td class="money">@r.TechnicalAverage?.ToString("0.##")</td><td class="money">@(r.TechnicalPass ? r.Bid.EvaluatedPrice.ToMoney() : "")</td><td>@r.Rank</td><td>@string.Join("; ", r.Issues)</td></tr> }</tbody>
+    </table>
+    <p class="small">Đề nghị trúng thầu: <b>@Model.AwardedVendor?.Name</b> – giá @Model.AwardPrice?.ToMoney() đ (trước VAT)@(neg != null ? $", theo đàm phán hợp đồng ngày {neg.NegotiatedOn:dd/MM/yyyy} (giá dự thầu {neg.BidPrice.ToMoney()} đ)" : "").
+        @Model.AwardReason</p>
+    <p class="mb-1"><b>III. Nội dung thẩm định</b></p>
+    <div class="pre mb-3">@a.Content</div>
+    <p class="mb-1"><b>IV. Kết luận</b></p>
+    <p>@(a.Agree == true ? "Thống nhất với đề xuất kết quả lựa chọn nhà thầu của bên mời thầu, đề nghị Giám đốc phê duyệt." : "Không thống nhất với đề xuất kết quả lựa chọn nhà thầu của bên mời thầu.")</p>
+    @if (!string.IsNullOrEmpty(a.Recommendation)) { <p class="mb-1"><b>Kiến nghị:</b></p><div class="pre mb-3">@a.Recommendation</div> }
+    @if (a.IsVoid) { <p class="text-danger small">(Báo cáo đã hết hiệu lực do kết quả bị trả lại / kiến nghị được chấp nhận.)</p> }
+    <div class="row text-center mt-4 small">
+        <div class="col"></div>
+        <div class="col">NGƯỜI THẨM ĐỊNH<br />(đã ký điện tử @a.CompletedAt.ToDateTime())<br /><br /><br />@a.Appraiser?.FullName</div>
+    </div>
+</div></div>

@@ -15,6 +15,7 @@ Hệ thống mua sắm điện tử cơ bản, số hóa quy trình từ đề n
 |---|---|
 | Dashboard | Chứng từ chờ tôi duyệt, PR chờ mua hàng, RFQ đang mở, PO trễ hạn giao; giá trị mua tháng / năm, tiết kiệm so với dự toán, chi tiêu 6 tháng, theo nhóm hàng, top NCC |
 | Đề nghị mua hàng (PR) | Tạo nhiều dòng (chọn từ danh mục hoặc hàng ngoài danh mục), dự toán tự tính; lưu nháp / gửi duyệt; duyệt 2 cấp theo ngưỡng; từ chối bắt buộc lý do; hủy; thanh tiến trình + nhật ký phê duyệt |
+| Gói mua sắm & KHLCNT | Gom 1 hoặc nhiều PR đã duyệt thành **gói mua sắm** (giá gói, nguồn vốn, hình thức + gợi ý theo hạn mức / PO tham chiếu, phương thức, loại HĐ, thời gian); **kế hoạch lựa chọn NCC** gồm nhiều gói, Giám đốc ký duyệt, in tờ trình / quyết định. Chỉ gói đã duyệt mới được lập hồ sơ chào giá chỉ định / chào giá cạnh tranh / HSMT / đơn mua sắm trực tiếp; dòng hàng lấy từ tất cả PR trong gói. Dữ liệu cũ tự sinh gói + KHLCNT "chuyển đổi" |
 | Chờ tôi duyệt | Hộp duyệt tập trung: Trưởng bộ phận duyệt PR phòng mình; Giám đốc duyệt PR & PO vượt ngưỡng ngay trên danh sách |
 | Danh mục hàng hóa | Mã, nhóm hàng, đơn vị, giá tham khảo, quy cách |
 | Nhà cung cấp | Hồ sơ NCC, MST không trùng, nhóm hàng cung cấp, trạng thái (chờ thẩm định / đã duyệt / tạm ngưng / danh sách đen), điểm đánh giá, lịch sử PO và tham gia báo giá, tỷ lệ trúng thầu |
@@ -24,7 +25,7 @@ Hệ thống mua sắm điện tử cơ bản, số hóa quy trình từ đề n
 | Nhận hàng (GRN) | Nhận nhiều đợt, số lượng đạt / không đạt, không cho nhận vượt số đặt; tự cập nhật trạng thái PO (nhận một phần / đủ) và hoàn tất PR; in phiếu nhận |
 | Đánh giá NCC | 4 tiêu chí (chất lượng, tiến độ, giá, dịch vụ) sau khi nhận đủ → cập nhật điểm trung bình NCC |
 | Người dùng | 6 vai trò: Người đề nghị, Trưởng bộ phận, Ban Giám đốc, Nhân viên mua hàng, Kế toán, Quản trị; gán phòng ban (theo danh mục) |
-| Chỉ định thầu / Đấu thầu rộng rãi / Hợp đồng | Tờ trình chỉ định (căn cứ, chứng minh, cảnh báo chia nhỏ gói); gói thầu 1 túi / 2 túi, tổ chuyên gia, làm rõ – sửa đổi HSMT, kiến nghị; hợp đồng, hợp đồng khung đặt hàng nhiều đợt; xuất dữ liệu đăng tải gói thầu |
+| Chỉ định thầu / Đấu thầu rộng rãi / Hợp đồng | Hồ sơ chào giá chỉ định (căn cứ, chứng minh, cảnh báo chia nhỏ gói), **gửi yêu cầu báo giá cho NCC qua cổng, báo giá niêm phong**; danh sách báo giá NCC / báo giá chào hàng cạnh tranh / đánh giá hồ sơ chào giá; gói thầu 1 túi / 2 túi, tổ chuyên gia, làm rõ – sửa đổi HSMT, kiến nghị; **đàm phán hợp đồng** theo thứ tự xếp hạng (giá trúng thầu = giá sau đàm phán, biên bản in được); **báo cáo thẩm định kết quả LCNT** bởi người thẩm định độc lập (ký xác nhận, bắt buộc thống nhất trước khi Giám đốc duyệt); danh sách theo bước: đánh giá HSDT/HSCG, đàm phán, báo cáo đánh giá, thẩm định; hợp đồng, hợp đồng khung đặt hàng nhiều đợt; xuất dữ liệu đăng tải gói thầu |
 | Báo cáo | 10 báo cáo chuẩn (chi tiêu, hình thức, tiến độ PR, giao hàng, NCC, cạnh tranh, hợp đồng, ngân sách, phân tích giá, cảnh báo rủi ro) – lọc, in, Excel; báo cáo động xuất SQL / thiết kế |
 
 ### Tính năng theo lộ trình mở rộng
@@ -56,6 +57,7 @@ Ngưỡng duyệt cấu hình trong `appsettings.json`:
   "TenderMinBiddingDays": 10,              // Đấu thầu: từ phát hành HSMT đến đóng thầu tối thiểu N ngày
   "TenderAmendmentMinDays": 3,             // Đấu thầu: sửa đổi HSMT sát hạn hơn N ngày thì bắt buộc gia hạn đóng thầu
   "TenderQuestionMinDays": 3,              // Đấu thầu: nhà thầu gửi đề nghị làm rõ HSMT qua cổng chậm nhất N ngày trước đóng thầu
+  "TenderAppraisalRequired": true,         // Đấu thầu: bắt buộc báo cáo thẩm định (thống nhất) trước khi Giám đốc phê duyệt kết quả LCNT
   "TenderMinCommittee": 3,                 // Đấu thầu: số thành viên tổ chuyên gia tối thiểu
   "TenderComplaintDays": 5,                // Đấu thầu: thời gian nhà thầu kiến nghị kết quả trước khi ký hợp đồng
   "BudgetControl": "Warn",                 // Off / Warn (duyệt vượt phải ghi lý do) / Block (chặn)

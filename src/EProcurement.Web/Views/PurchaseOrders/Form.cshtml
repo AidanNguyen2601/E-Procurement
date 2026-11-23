@@ -7,7 +7,8 @@
     var reference = ViewBag.Reference as ReferencePoCandidate;
 }
 <form asp-action="Save" method="post">
-    <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="PurchaseRequestId" /><input type="hidden" asp-for="RfqId" /><input type="hidden" asp-for="ReferencePoId" />
+    <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="PurchaseRequestId" /><input type="hidden" asp-for="PackageId" />
+    <partial name="_PackageBanner" model="ViewBag.Package as ProcurementPackage" /><input type="hidden" asp-for="RfqId" /><input type="hidden" asp-for="ReferencePoId" />
     <div asp-validation-summary="All" class="text-danger"></div>
     @if (pr != null) { <div class="alert alert-info py-2">Lập từ đề nghị <b>@pr.Number</b> – @pr.Title (dự toán @pr.EstimatedTotal.ToMoney() đ)</div> }
     @if (reference != null)

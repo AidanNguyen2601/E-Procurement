@@ -209,6 +209,7 @@ public class PortalController : PortalControllerBase
     public class Dashboard
     {
         public List<RfqVendor> Invitations { get; set; } = new();
+        public List<DirectAward> DirectQuotes { get; set; } = new();
         public List<TenderBidder> MyTenders { get; set; } = new();
         public List<Tender> OpenTenders { get; set; } = new();
         public List<PurchaseOrder> Orders { get; set; } = new();
@@ -223,6 +224,7 @@ public class PortalController : PortalControllerBase
         {
             Invitations = await Db.RfqVendors.Include(x => x.Rfq).Where(x => x.VendorId == v && x.Rfq!.Status != RfqStatus.Draft)
                 .OrderByDescending(x => x.Rfq!.IssueDate).Take(20).ToListAsync(),
+            DirectQuotes = await Db.DirectAwards.Where(d => d.VendorId == v && d.QuoteRequestedAt != null).OrderByDescending(d => d.QuoteRequestedAt).Take(10).ToListAsync(),
             MyTenders = await Db.TenderBidders.Include(x => x.Tender).Where(x => x.VendorId == v).OrderByDescending(x => x.RegisteredAt).Take(20).ToListAsync(),
             OpenTenders = await Db.Tenders.Where(t => t.Status == TenderStatus.Published && t.ClosingAt > DateTime.Now && !t.Bidders.Any(b => b.VendorId == v))
                 .OrderBy(t => t.ClosingAt).Take(10).ToListAsync(),

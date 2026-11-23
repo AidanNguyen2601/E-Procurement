@@ -5,9 +5,10 @@
     decimal maxPercent = ViewBag.MaxPercent;
     ViewData["Title"] = $"Mua sắm trực tiếp – {pr.Number}";
     var valid = Model.Where(c => c.CoversRequest).ToList();
+    var pkg = ViewBag.Package as ProcurementPackage;
 }
 <div class="alert alert-info py-2">
-    Chọn PO làm căn cứ mua sắm trực tiếp cho đề nghị <b>@pr.Number</b> – @pr.Title.
+    Chọn PO làm căn cứ mua sắm trực tiếp cho @(pkg != null ? "gói" : "đề nghị") <b>@pr.Number</b> – @pr.Title.
     Điều kiện: đã nhận đủ hàng, đặt trong <b>@months tháng</b>, NCC còn được phê duyệt, chứa toàn bộ mặt hàng của đề nghị
     và tổng khối lượng mua trực tiếp không vượt <b>@maxPercent.ToString("0")%</b> khối lượng của PO đó.
 </div>
@@ -15,8 +16,8 @@
 @if (valid.Count == 0)
 {
     <div class="alert alert-warning">
-        Không có PO nào đủ điều kiện. Quay lại đề nghị và chọn hình thức <b>Chào hàng cạnh tranh</b>.
-        <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@pr.Id" class="alert-link">Về đề nghị @pr.Number</a>
+        Không có PO nào đủ điều kiện. Hủy gói và lập lại theo hình thức <b>Chào hàng cạnh tranh</b>.
+        <a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg?.Id" class="alert-link">Về gói @pr.Number</a>
     </div>
 }
 
@@ -27,7 +28,7 @@
             <span><b>@c.Po.Number</b> · @c.Po.Vendor?.Name <span class="stars">@c.Po.Vendor?.Rating.Stars()</span> · đặt ngày @c.Po.OrderDate.ToDate()</span>
             @if (c.CoversRequest)
             {
-                <a class="btn btn-sm btn-success" asp-action="Create" asp-route-prId="@pr.Id" asp-route-refPoId="@c.Po.Id">Chọn làm căn cứ</a>
+                <a class="btn btn-sm btn-success" asp-action="Create" asp-route-packageId="@pkg?.Id" asp-route-refPoId="@c.Po.Id">Chọn làm căn cứ</a>
             }
             else { <span class="badge bg-secondary">Không đủ điều kiện</span> }
         </div>
@@ -56,4 +57,4 @@
         </div>
     </div>
 }
-<a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@pr.Id" class="btn btn-light">Quay lại</a>
+<a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg?.Id" class="btn btn-light">Quay lại</a>

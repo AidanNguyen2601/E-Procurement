@@ -36,6 +36,7 @@ public static class SampleDataSeeder
         await new Builder(db, hasher).RunAsync();
         await tx.CommitAsync();
         await Catalogs.EnsureAsync(db); // bổ sung phòng ban mới vào danh mục
+        await Packages.EnsureLegacyAsync(db); // gói mua sắm + KHLCNT cho các đề nghị mẫu đã chọn hình thức
     }
 
     /// <summary>Gỡ toàn bộ chứng từ mẫu (số "MAU-…") cùng lịch sử, file đính kèm; giữ lại danh mục.</summary>
@@ -51,7 +52,14 @@ public static class SampleDataSeeder
         var poIds = await db.PurchaseOrders.Where(x => x.Number.StartsWith(Prefix)
             || (x.ContractId != null && contractIds.Contains(x.ContractId.Value)) || (x.DirectAwardId != null && daIds.Contains(x.DirectAwardId.Value))).Select(x => x.Id).ToListAsync();
 
+        var pkgIds = await db.ProcurementPackages.Where(x => x.Number.StartsWith(Prefix) || x.PurchaseRequests.Any(p => prIds.Contains(p.Id))).Select(x => x.Id).ToListAsync();
+
         // Chứng từ thật tham chiếu tới chứng từ mẫu → bỏ liên kết
+        await db.PurchaseRequests.Where(x => !prIds.Contains(x.Id) && x.PackageId != null && pkgIds.Contains(x.PackageId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PackageId, (int?)null));
+        await db.Rfqs.Where(x => !rfqIds.Contains(x.Id) && x.PackageId != null && pkgIds.Contains(x.PackageId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PackageId, (int?)null));
+        await db.PurchaseOrders.Where(x => !poIds.Contains(x.Id) && x.PackageId != null && pkgIds.Contains(x.PackageId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PackageId, (int?)null));
+        await db.Tenders.Where(x => !tenderIds.Contains(x.Id) && x.PackageId != null && pkgIds.Contains(x.PackageId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PackageId, (int?)null));
+        await db.DirectAwards.Where(x => !daIds.Contains(x.Id) && x.PackageId != null && pkgIds.Contains(x.PackageId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PackageId, (int?)null));
         await db.PurchaseOrders.Where(x => !poIds.Contains(x.Id) && x.ReferencePoId != null && poIds.Contains(x.ReferencePoId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.ReferencePoId, (int?)null));
         await db.PurchaseOrders.Where(x => !poIds.Contains(x.Id) && x.RfqId != null && rfqIds.Contains(x.RfqId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.RfqId, (int?)null));
         await db.PurchaseOrders.Where(x => !poIds.Contains(x.Id) && x.PurchaseRequestId != null && prIds.Contains(x.PurchaseRequestId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PurchaseRequestId, (int?)null));
@@ -66,7 +74,11 @@ public static class SampleDataSeeder
         await db.InvoiceLines.Where(x => invIds.Contains(x.InvoiceId)).ExecuteDeleteAsync();
         await db.Invoices.Where(x => invIds.Contains(x.Id)).ExecuteDeleteAsync();
         await db.PoShipments.Where(x => poIds.Contains(x.PurchaseOrderId)).ExecuteDeleteAsync();
-        await db.VendorSubmissions.Where(x => (x.RfqVendorId != null && rfqIds.Contains(x.RfqVendor!.RfqId)) || (x.TenderBidderId != null && tenderIds.Contains(x.TenderBidder!.TenderId))).ExecuteDeleteAsync();
+        await db.VendorSubmissions.Where(x => (x.RfqVendorId != null && rfqIds.Contains(x.RfqVendor!.RfqId)) || (x.TenderBidderId != null && tenderIds.Contains(x.TenderBidder!.TenderId))
+            || (x.DirectAwardId != null && daIds.Contains(x.DirectAwardId.Value))).ExecuteDeleteAsync();
+        await db.TenderNegotiations.Where(x => tenderIds.Contains(x.TenderId)).ExecuteDeleteAsync();
+        await db.TenderAppraisals.Where(x => tenderIds.Contains(x.TenderId)).ExecuteDeleteAsync();
+        await db.TenderQuestions.Where(x => tenderIds.Contains(x.TenderId)).ExecuteDeleteAsync();
         await db.ContractAmendments.Where(x => contractIds.Contains(x.ContractId)).ExecuteDeleteAsync();
         await db.ContractMilestones.Where(x => contractIds.Contains(x.ContractId)).ExecuteDeleteAsync();
         await db.ContractGuarantees.Where(x => contractIds.Contains(x.ContractId)).ExecuteDeleteAsync();
@@ -95,6 +107,11 @@ public static class SampleDataSeeder
         await db.Rfqs.Where(x => rfqIds.Contains(x.Id)).ExecuteDeleteAsync();
         await db.PurchaseRequestLines.Where(x => prIds.Contains(x.PurchaseRequestId)).ExecuteDeleteAsync();
         await db.PurchaseRequests.Where(x => prIds.Contains(x.Id)).ExecuteDeleteAsync();
+        await db.ProcurementPackages.Where(x => pkgIds.Contains(x.Id)).ExecuteDeleteAsync();
+        var emptyPlans = await db.SelectionPlans.Where(x => (x.Number.StartsWith(Prefix) || x.Number.StartsWith("KH-CD-")) && !x.Packages.Any()).Select(x => x.Id).ToListAsync();
+        await db.SelectionPlans.Where(x => emptyPlans.Contains(x.Id)).ExecuteDeleteAsync();
+        foreach (var (type, ids) in new[] { (DocType.Package, pkgIds), (DocType.SelectionPlan, emptyPlans) })
+            await db.ApprovalHistories.Where(x => x.DocumentType == type && ids.Contains(x.DocumentId)).ExecuteDeleteAsync();
 
         foreach (var (type, ids) in new[] { (DocType.PR, prIds), (DocType.PO, poIds), (DocType.RFQ, rfqIds), (DocType.DirectAward, daIds), (DocType.Tender, tenderIds), (DocType.Contract, contractIds), (DocType.Invoice, invIds), (DocType.Payment, payIds) })
         {

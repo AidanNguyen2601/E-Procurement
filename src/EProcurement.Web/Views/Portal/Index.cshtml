@@ -7,6 +7,18 @@
 }
 <div class="row g-3">
     <div class="col-lg-7">
+        @if (Model.DirectQuotes.Any())
+        {
+            <div class="card mb-3 border-primary"><div class="card-header">Hồ sơ chào giá chỉ định gửi quý công ty</div><div class="card-body p-0"><table class="table mb-0 small">
+                <thead><tr><th>Số</th><th>Nội dung</th><th>Hạn nộp</th><th>Trạng thái</th></tr></thead><tbody>
+                @foreach (var d in Model.DirectQuotes)
+                {
+                    var st = d.Status != DirectAwardStatus.Draft ? d.Status.GetDisplayName() : d.QuoteOpenedAt.HasValue ? "Đã mở – đang thương thảo" : d.QuoteDeadline < DateTime.Now ? "Hết hạn" : "Chờ báo giá";
+                    <tr><td><a asp-controller="PortalDirectQuotes" asp-action="Details" asp-route-id="@d.Id">@d.Number</a></td><td>@d.Title</td><td>@d.QuoteDeadline.ToDateTime()</td>
+                        <td><span class="badge @(st == "Chờ báo giá" ? "bg-warning text-dark" : "bg-light text-dark border")">@st</span></td></tr>
+                }
+                </tbody></table></div></div>
+        }
         <div class="card mb-3"><div class="card-header">Yêu cầu báo giá được mời</div><div class="card-body p-0"><table class="table mb-0 small">
             <thead><tr><th>Số</th><th>Nội dung</th><th>Hạn nộp</th><th>Trạng thái</th></tr></thead><tbody>
             @foreach (var x in Model.Invitations)

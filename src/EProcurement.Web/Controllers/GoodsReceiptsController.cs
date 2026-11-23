@@ -89,8 +89,14 @@ public class GoodsReceiptsController : ProcControllerBase
         Log(DocType.PO, po.Id, $"Nhận hàng {g.Number}" + (po.Status == PoStatus.Received ? " – đã nhận đủ" : " – nhận một phần"),
             vm.Lines.Any(l => l.QuantityRejected > 0) ? "Có hàng không đạt, trả lại NCC." : null);
 
+        // Gói mua sắm (gồm nhiều PR) hoàn tất khi mọi PO của gói đã nhận đủ
+        if (po.Status == PoStatus.Received && po.PackageId.HasValue)
+        {
+            await Packages.CompleteIfDoneAsync(Db, po.PackageId.Value);
+            Log(DocType.Package, po.PackageId.Value, $"Nhận đủ hàng {po.Number}");
+        }
         // PR hoàn tất khi mọi PO của PR đã nhận đủ / hủy
-        if (po.Status == PoStatus.Received && po.PurchaseRequestId.HasValue)
+        else if (po.Status == PoStatus.Received && po.PurchaseRequestId.HasValue)
         {
             var allDone = await Db.PurchaseOrders.Where(p => p.PurchaseRequestId == po.PurchaseRequestId)
                 .AllAsync(p => p.Status == PoStatus.Received || p.Status == PoStatus.Cancelled);

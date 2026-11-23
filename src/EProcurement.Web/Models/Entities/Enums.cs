@@ -60,7 +60,9 @@ public enum DocType
     [Display(Name = "Hợp đồng")] Contract = 6,
     [Display(Name = "Hóa đơn")] Invoice = 7,
     [Display(Name = "Đề nghị thanh toán")] Payment = 8,
-    [Display(Name = "Kế hoạch mua sắm")] Plan = 9
+    [Display(Name = "Kế hoạch mua sắm")] Plan = 9,
+    [Display(Name = "Gói mua sắm")] Package = 10,
+    [Display(Name = "Kế hoạch lựa chọn NCC")] SelectionPlan = 11
 }
 
 /// <summary>Hình thức lựa chọn nhà cung cấp (xếp theo mức độ cạnh tranh tăng dần)</summary>
@@ -177,7 +179,8 @@ public enum VendorDocumentStatus
 public enum SubmissionKind
 {
     [Display(Name = "Báo giá")] Quote = 1,
-    [Display(Name = "Hồ sơ dự thầu")] Bid = 2
+    [Display(Name = "Hồ sơ dự thầu")] Bid = 2,
+    [Display(Name = "Báo giá chỉ định")] DirectQuote = 3
 }
 
 /// <summary>Thành phần file của HSDT nộp online</summary>
@@ -234,5 +237,23 @@ public enum PlanStatus
     [Display(Name = "Nháp")] Draft = 1,
     [Display(Name = "Chờ Giám đốc duyệt")] Submitted = 2,
     [Display(Name = "Đã duyệt")] Approved = 3,
+    [Display(Name = "Trả lại")] Returned = 4
+}
+
+public enum PackageStatus
+{
+    [Display(Name = "Nháp")] Draft = 1,
+    [Display(Name = "Trong KHLCNT chờ duyệt")] InPlan = 2,
+    [Display(Name = "Đã duyệt – chờ lựa chọn NCC")] Approved = 3,
+    [Display(Name = "Đang lựa chọn / thực hiện")] Executing = 4,
+    [Display(Name = "Hoàn tất")] Completed = 5,
+    [Display(Name = "Đã hủy")] Cancelled = 6
+}
+
+public enum SelectionPlanStatus
+{
+    [Display(Name = "Nháp")] Draft = 1,
+    [Display(Name = "Chờ Giám đốc duyệt")] Submitted = 2,
+    [Display(Name = "Đã phê duyệt")] Approved = 3,
     [Display(Name = "Trả lại")] Returned = 4
 }

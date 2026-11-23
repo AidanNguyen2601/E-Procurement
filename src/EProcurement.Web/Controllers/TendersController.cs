@@ -24,14 +24,14 @@ public class TendersController : ProcControllerBase
 
     private bool IsDirector => User.IsInRole(AppRoles.Director) || User.IsAdmin();
     private static bool IsMember(Tender t, int userId) => t.Committee.Any(m => m.UserId == userId);
-    private bool CanView(Tender t) => User.IsPurchasing() || IsDirector || IsMember(t, Me);
+    private bool CanView(Tender t) => User.IsPurchasing() || IsDirector || IsMember(t, Me) || t.Appraisals.Any(a => !a.IsVoid && a.AppraiserId == Me);
     private bool IsLeaderOrBuyer(Tender t) => User.IsPurchasing() || t.Committee.Any(m => m.UserId == Me && m.IsLeader);
 
     // ------------------------------------------------------------------ Danh sách & chi tiết
     public async Task<IActionResult> Index(TenderStatus? status)
     {
         var q = Db.Tenders.Include(t => t.PurchaseRequest).Include(t => t.AwardedVendor).Include(t => t.Bidders).Include(t => t.Committee).AsNoTracking();
-        if (!User.IsPurchasing() && !IsDirector) q = q.Where(t => t.Committee.Any(m => m.UserId == Me));
+        if (!User.IsPurchasing() && !IsDirector) q = q.Where(t => t.Committee.Any(m => m.UserId == Me) || t.Appraisals.Any(a => !a.IsVoid && a.AppraiserId == Me));
         if (status.HasValue) q = q.Where(t => t.Status == status);
         ViewBag.Status = status;
         return View(await q.OrderByDescending(t => t.CreatedAt).ToListAsync());
@@ -57,10 +57,49 @@ public class TendersController : ProcControllerBase
             ViewBag.Vendors = new SelectList(await Db.Vendors.Where(v => v.Status != VendorStatus.Blacklisted && v.Status != VendorStatus.Suspended
                     && !t.Bidders.Select(b => b.VendorId).Contains(v.Id)).OrderBy(v => v.Name)
                 .Select(v => new { v.Id, Name = v.Code + " - " + v.Name }).ToListAsync(), "Id", "Name");
+        if (User.IsPurchasing() && t.Status == TenderStatus.PendingResultApproval)
+        {
+            var excluded = t.Committee.Select(m => m.UserId).Append(t.BuyerId).ToList();
+            ViewBag.Appraisers = new SelectList(await Db.Users.Where(u => u.IsActive && !excluded.Contains(u.Id)).OrderBy(u => u.FullName)
+                .Select(u => new { u.Id, Name = u.FullName + " – " + u.Department }).ToListAsync(), "Id", "Name");
+        }
         if (User.IsPurchasing() && t.Status == TenderStatus.Awarded)
             ViewBag.ComplaintVendors = new SelectList(t.Bidders.Where(b => b.Submitted).Select(b => new { b.VendorId, Name = b.Vendor!.Name }), "VendorId", "Name");
         return View(t);
     }
+
+    // ------------------------------------------------------------------ Danh sách theo bước (menu Đấu thầu / Lựa chọn nhà thầu)
+    /// <summary>Gói thầu người dùng được xem, kèm dữ liệu đánh giá</summary>
+    private IQueryable<Tender> VisibleWithEvaluation()
+    {
+        IQueryable<Tender> q = Db.Tenders.AsNoTracking().AsSplitQuery().Include(t => t.Package).Include(t => t.AwardedVendor)
+            .Include(t => t.Bidders).ThenInclude(b => b.Vendor).Include(t => t.Bidders).ThenInclude(b => b.Scores)
+            .Include(t => t.Committee).ThenInclude(m => m.User).Include(t => t.Negotiations).Include(t => t.Appraisals).ThenInclude(a => a.Appraiser);
+        if (!User.IsPurchasing() && !IsDirector) q = q.Where(t => t.Committee.Any(m => m.UserId == Me) || t.Appraisals.Any(a => !a.IsVoid && a.AppraiserId == Me));
+        return q;
+    }
+
+    /// <summary>Đánh giá HSDT/HSCG: gói đã mở thầu, đang đánh giá</summary>
+    public async Task<IActionResult> Evaluations() =>
+        View(await VisibleWithEvaluation().Where(t => t.Status == TenderStatus.Opened || (t.Status == TenderStatus.Published && t.ClosingAt <= DateTime.Now))
+            .OrderBy(t => t.ClosingAt).ToListAsync());
+
+    /// <summary>Đàm phán hợp đồng: gói chờ đàm phán + các biên bản đàm phán</summary>
+    public async Task<IActionResult> Negotiations() =>
+        View(await VisibleWithEvaluation().Where(t => t.Negotiations.Any() || t.Status == TenderStatus.Opened).OrderByDescending(t => t.OpenedAt).ToListAsync());
+
+    /// <summary>Báo cáo đánh giá lựa chọn nhà thầu: gói thầu và hồ sơ chào giá cạnh tranh đã mở</summary>
+    public async Task<IActionResult> EvaluationReports()
+    {
+        ViewBag.Rfqs = User.IsPurchasing() || IsDirector
+            ? await Db.Rfqs.AsNoTracking().Include(r => r.AwardedVendor).Include(r => r.Vendors).Where(r => r.OpenedAt != null).OrderByDescending(r => r.OpenedAt).Take(100).ToListAsync()
+            : new List<Rfq>();
+        return View(await VisibleWithEvaluation().Where(t => t.OpenedAt != null).OrderByDescending(t => t.OpenedAt).Take(100).ToListAsync());
+    }
+
+    /// <summary>Báo cáo thẩm định kết quả LCNT</summary>
+    public async Task<IActionResult> Appraisals() =>
+        View(await VisibleWithEvaluation().Where(t => t.Status == TenderStatus.PendingResultApproval || t.Appraisals.Any()).OrderByDescending(t => t.Status == TenderStatus.PendingResultApproval).ThenByDescending(t => t.OpenedAt).ToListAsync());
 
     // ------------------------------------------------------------------ Thông báo mời thầu công khai
     /// <summary>Danh sách gói thầu đang mời thầu – công khai, không cần đăng nhập</summary>
@@ -80,20 +119,18 @@ public class TendersController : ProcControllerBase
 
     // ------------------------------------------------------------------ Lập kế hoạch & HSMT
     [Authorize(Roles = AppRoles.Purchasing)]
-    public async Task<IActionResult> Create(int prId)
+    public async Task<IActionResult> Create(int? prId, int? packageId)
     {
-        var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == prId);
-        if (pr == null) return NotFound();
-        IActionResult BackToPr(string msg) { TempData["Error"] = msg; return RedirectToAction("Details", "PurchaseRequests", new { id = prId }); }
-        if (pr.Status is not (PrStatus.Approved or PrStatus.Processing)) return BackToPr("Chỉ lập gói thầu cho đề nghị đã được duyệt.");
-        if (pr.Method != ProcurementMethod.OpenTender) return BackToPr("Chọn hình thức \"Đấu thầu rộng rãi\" cho đề nghị trước khi lập gói thầu.");
-        if (await Db.Tenders.AnyAsync(t => t.PurchaseRequestId == prId && t.Status != TenderStatus.Cancelled)) return BackToPr("Đề nghị đã có gói thầu đang xử lý.");
+        var (pkg, err) = await PackageForAsync(packageId, prId, ProcurementMethod.OpenTender);
+        if (err != null || pkg == null) return BackToPackage(pkg, prId, err ?? "Chọn gói mua sắm đã được duyệt trong KHLCNT.");
+        var pr = Packages.Lead(pkg);
         var vm = new TenderFormViewModel
         {
-            Number = "(tự sinh khi lưu)", PurchaseRequestId = prId, PurchaseRequest = pr, Title = pr.Title, PackageBudget = pr.EstimatedTotal,
-            BidSecurityAmount = Math.Round(pr.EstimatedTotal * 0.01m / 1000) * 1000, // gợi ý 1% giá gói thầu
+            Number = "(tự sinh khi lưu)", PurchaseRequestId = pr.Id, PackageId = pkg.Id, PurchaseRequest = pr, Title = pkg.Title, PackageBudget = pkg.Budget,
+            EnvelopeMethod = pkg.EnvelopeMethod, ContractType = pkg.ContractType, ContractDurationDays = pkg.ContractDurationDays,
+            BidSecurityAmount = Math.Round(pkg.Budget * 0.01m / 1000) * 1000, // gợi ý 1% giá gói thầu
             ClosingAt = DateTime.Today.AddDays(Settings.TenderMinBiddingDays + 1).AddHours(9),
-            TechnicalRequirements = pr.Purpose ?? string.Empty
+            TechnicalRequirements = string.Join("\n", pkg.PurchaseRequests.Select(r => r.Purpose).Where(x => !string.IsNullOrWhiteSpace(x)))
         };
         ViewBag.Settings = Settings;
         return View("Form", vm);
@@ -106,9 +143,10 @@ public class TendersController : ProcControllerBase
         if (t == null) return NotFound();
         if (t.Status != TenderStatus.Draft) { TempData["Error"] = "Chỉ sửa KH & HSMT khi gói thầu ở trạng thái Nháp."; return RedirectToAction(nameof(Details), new { id }); }
         ViewBag.Settings = Settings;
+        if (t.PackageId.HasValue) ViewBag.Package = await Packages.LoadAsync(Db, t.PackageId.Value);
         return View("Form", new TenderFormViewModel
         {
-            Id = t.Id, Number = t.Number, PurchaseRequestId = t.PurchaseRequestId, PurchaseRequest = t.PurchaseRequest, Title = t.Title,
+            Id = t.Id, Number = t.Number, PurchaseRequestId = t.PurchaseRequestId, PackageId = t.PackageId, PurchaseRequest = t.PurchaseRequest, Title = t.Title,
             PackageBudget = t.PackageBudget, EnvelopeMethod = t.EnvelopeMethod, ContractType = t.ContractType, ContractDurationDays = t.ContractDurationDays,
             IsFramework = t.IsFramework, TechnicalRequirements = t.TechnicalRequirements, QualificationCriteria = t.QualificationCriteria,
             ContractTerms = t.ContractTerms, EvaluationMethod = t.EvaluationMethod, MinTechnicalScore = t.MinTechnicalScore,
@@ -121,22 +159,26 @@ public class TendersController : ProcControllerBase
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(TenderFormViewModel vm)
     {
-        var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == vm.PurchaseRequestId);
-        if (pr == null) return NotFound();
         Tender? t = null;
+        ProcurementPackage? pkg = null;
+        PurchaseRequest? pr;
         if (vm.Id != 0)
         {
             t = await Db.Tenders.FirstOrDefaultAsync(x => x.Id == vm.Id);
             if (t == null) return NotFound();
-            if (t.Status != TenderStatus.Draft || t.PurchaseRequestId != pr.Id) return BadRequest();
+            if (t.Status != TenderStatus.Draft) return BadRequest();
+            pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == t.PurchaseRequestId);
+            vm.PurchaseRequestId = t.PurchaseRequestId; vm.PackageId = t.PackageId;
+            if (t.PackageId.HasValue) ViewBag.Package = await Packages.LoadAsync(Db, t.PackageId.Value);
         }
         else
         {
-            if (pr.Method != ProcurementMethod.OpenTender || pr.Status is not (PrStatus.Approved or PrStatus.Processing))
-                ModelState.AddModelError(string.Empty, "Đề nghị chưa được duyệt hoặc không theo hình thức Đấu thầu rộng rãi.");
-            if (await Db.Tenders.AnyAsync(x => x.PurchaseRequestId == pr.Id && x.Status != TenderStatus.Cancelled))
-                ModelState.AddModelError(string.Empty, "Đề nghị đã có gói thầu đang xử lý.");
+            (pkg, var perr) = await PackageForAsync(vm.PackageId, vm.PurchaseRequestId, ProcurementMethod.OpenTender);
+            if (perr != null || pkg == null) return BackToPackage(pkg, vm.PurchaseRequestId, perr ?? "Chọn gói mua sắm đã được duyệt trong KHLCNT.");
+            pr = Packages.Lead(pkg);
+            vm.PurchaseRequestId = pr.Id; vm.PackageId = pkg.Id;
         }
+        if (pr == null) return NotFound();
         if (vm.EvaluationMethod == TenderEvaluationMethod.Combined && vm.TechnicalWeight + vm.PriceWeight != 100)
             ModelState.AddModelError(nameof(vm.TechnicalWeight), "Trọng số kỹ thuật + giá phải bằng 100%.");
         if (vm.ClosingAt <= DateTime.Now) ModelState.AddModelError(nameof(vm.ClosingAt), "Thời điểm đóng thầu phải ở tương lai.");
@@ -144,9 +186,9 @@ public class TendersController : ProcControllerBase
 
         if (t == null)
         {
-            t = new Tender { Number = await DocNumbers.NextAsync(Db.Tenders.Select(x => x.Number), "TD"), PurchaseRequestId = pr.Id, BuyerId = Me, CreatedAt = DateTime.Now };
+            t = new Tender { Number = await DocNumbers.NextAsync(Db.Tenders.Select(x => x.Number), "TD"), PurchaseRequestId = pr.Id, PackageId = pkg!.Id, BuyerId = Me, CreatedAt = DateTime.Now };
             var s = 1;
-            foreach (var l in pr.Lines.OrderBy(l => l.SortOrder))
+            foreach (var l in Packages.Lines(pkg))
                 t.Lines.Add(new TenderLine { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, EstimatedPrice = l.EstimatedPrice, SortOrder = s++ });
             Db.Tenders.Add(t);
         }
@@ -159,8 +201,10 @@ public class TendersController : ProcControllerBase
         await Db.SaveChangesAsync();
         if (vm.Id == 0)
         {
-            Log(DocType.Tender, t.Id, "Lập kế hoạch lựa chọn NCC & HSMT", $"Giá gói thầu {t.PackageBudget.ToMoney()} đ");
-            if (pr.Status == PrStatus.Approved) { pr.Status = PrStatus.Processing; Log(DocType.PR, pr.Id, $"Mua hàng lập gói thầu {t.Number}"); }
+            Log(DocType.Tender, t.Id, "Lập HSMT theo gói " + pkg!.Number, $"Giá gói thầu {t.PackageBudget.ToMoney()} đ");
+            foreach (var r in pkg.PurchaseRequests.Where(r => r.Status == PrStatus.Approved)) Log(DocType.PR, r.Id, $"Mua hàng lập gói thầu {t.Number} (gói {pkg.Number})");
+            Log(DocType.Package, pkg.Id, $"Lập HSMT {t.Number}");
+            await Packages.StartAsync(Db, pkg.Id);
             await Db.SaveChangesAsync();
         }
         TempData["Success"] = $"Đã lưu {t.Number}. Thành lập tổ chuyên gia rồi trình duyệt KH & HSMT.";
@@ -549,13 +593,19 @@ public class TendersController : ProcControllerBase
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
         if (!TenderEvaluation.ScoringComplete(t)) return Fail("Tổ chuyên gia chưa hoàn thành đánh giá.");
         if (!TenderEvaluation.PricesVisible(t)) return Fail("Mở hồ sơ tài chính trước khi xếp hạng.");
-        var first = TenderEvaluation.Evaluate(t).FirstOrDefault(r => r.Rank == 1);
-        if (first == null) return Fail("Không có HSDT nào đạt kỹ thuật – cân nhắc hủy gói thầu và tổ chức lại.");
+        var results = TenderEvaluation.Evaluate(t);
+        if (!results.Any(r => r.Rank.HasValue)) return Fail("Không có HSDT nào đạt kỹ thuật – cân nhắc hủy gói thầu và tổ chức lại.");
+        // Đề xuất trúng thầu theo kết quả đàm phán hợp đồng thành công (nhà thầu xếp hạng cao nhất chưa đàm phán không thành công)
+        var neg = TenderEvaluation.SuccessfulNegotiation(t.Negotiations);
+        if (neg == null) return Fail("Chưa đàm phán hợp đồng thành công với nhà thầu xếp hạng cao nhất.");
+        var first = results.First(r => r.Bid.Id == neg.TenderBidderId);
         t.AwardedVendorId = first.Bid.VendorId;
-        t.AwardPrice = first.Bid.NetPrice;
-        t.AwardReason = string.IsNullOrWhiteSpace(reason) ? "Xếp hạng thứ nhất theo phương pháp đánh giá của HSMT" : reason.Trim();
+        t.AwardPrice = neg.NegotiatedPrice;
+        t.AwardReason = string.IsNullOrWhiteSpace(reason)
+            ? $"Xếp hạng thứ {first.Rank} theo phương pháp đánh giá của HSMT; đàm phán hợp đồng thành công ngày {neg.NegotiatedOn.ToDate()}"
+            : reason.Trim();
         t.Status = TenderStatus.PendingResultApproval;
-        Log(DocType.Tender, id, $"Trình duyệt kết quả: {first.Bid.Vendor?.Name} – {first.Bid.NetPrice.ToMoney()} đ (trước VAT)", t.AwardReason);
+        Log(DocType.Tender, id, $"Trình duyệt kết quả: {first.Bid.Vendor?.Name} – {neg.NegotiatedPrice.ToMoney()} đ", $"Giá trước VAT, sau đàm phán. {t.AwardReason}");
         await Db.SaveChangesAsync();
         TempData["Success"] = "Đã trình Giám đốc phê duyệt kết quả lựa chọn nhà thầu.";
         return RedirectToAction(nameof(Details), new { id });
@@ -566,14 +616,19 @@ public class TendersController : ProcControllerBase
     [RequireSignature(DocType.Tender)]
     public async Task<IActionResult> DecideResult(int id, bool approve, string? comment, string? returnUrl)
     {
-        var t = await Db.Tenders.FirstOrDefaultAsync(x => x.Id == id);
+        var t = await Db.Tenders.Include(x => x.Appraisals).ThenInclude(a => a.Appraiser).Include(x => x.Negotiations).FirstOrDefaultAsync(x => x.Id == id);
         if (t == null) return NotFound();
         if (t.Status != TenderStatus.PendingResultApproval) return BadRequest();
         IActionResult Back() => !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
+        if (approve && TenderEvaluation.ApprovalBlocker(t, Settings.TenderAppraisalRequired) is string blocker)
+        { TempData["Error"] = blocker; return RedirectToAction(nameof(Details), new { id }); }
         if (!approve)
         {
             if (string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do trả lại."; return RedirectToAction(nameof(Details), new { id }); }
             t.Status = TenderStatus.Opened; t.AwardedVendorId = null; t.AwardPrice = null;
+            // Kết quả bị trả lại: thẩm định và đàm phán thành công hết hiệu lực – đàm phán / đề xuất lại
+            foreach (var a in t.Appraisals.Where(a => !a.IsVoid)) a.IsVoid = true;
+            foreach (var n in t.Negotiations.Where(n => !n.IsVoid && n.Success)) n.IsVoid = true;
             Log(DocType.Tender, id, "Giám đốc trả lại kết quả", comment);
         }
         else
@@ -585,6 +640,109 @@ public class TendersController : ProcControllerBase
         await Db.SaveChangesAsync();
         TempData["Success"] = approve ? $"Đã phê duyệt kết quả {t.Number}. Gửi thông báo kết quả cho các nhà thầu; hạn kiến nghị {t.ComplaintDeadline.ToDateTime()}." : "Đã trả lại kết quả.";
         return Back();
+    }
+
+    // ------------------------------------------------------------------ Đàm phán hợp đồng
+    /// <summary>
+    /// Ghi biên bản đàm phán hợp đồng với nhà thầu xếp hạng cao nhất (chưa đàm phán không thành công).
+    /// Thành công → căn cứ đề xuất trúng thầu; không thành công → mời nhà thầu xếp hạng kế tiếp.
+    /// </summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Negotiate(int id, int bidderId, DateTime? negotiatedOn, string? participants, string? content, decimal negotiatedPrice, bool success, string? note)
+    {
+        var t = await LoadAsync(id, track: true);
+        if (t == null) return NotFound();
+        if (!IsLeaderOrBuyer(t)) return Forbid();
+        IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
+        if (t.Status != TenderStatus.Opened) return Fail("Chỉ đàm phán khi gói thầu đang đánh giá.");
+        if (!TenderEvaluation.ScoringComplete(t) || !TenderEvaluation.PricesVisible(t)) return Fail("Hoàn thành đánh giá kỹ thuật và mở giá trước khi đàm phán hợp đồng.");
+        var candidate = TenderEvaluation.NegotiationCandidate(TenderEvaluation.Evaluate(t), t.Negotiations);
+        if (candidate == null) return Fail("Đã đàm phán thành công hoặc không còn nhà thầu đạt kỹ thuật để mời đàm phán.");
+        if (candidate.Bid.Id != bidderId) return Fail($"Mời đàm phán theo thứ tự xếp hạng: nhà thầu tiếp theo là {candidate.Bid.Vendor?.Name}.");
+        if (negotiatedOn == null || negotiatedOn > DateTime.Today) return Fail("Nhập ngày đàm phán (không sau hôm nay).");
+        if (string.IsNullOrWhiteSpace(participants) || string.IsNullOrWhiteSpace(content)) return Fail("Nhập thành phần tham dự và nội dung đàm phán.");
+        var bidPrice = candidate.Bid.NetPrice;
+        if (success && (negotiatedPrice <= 0 || negotiatedPrice > bidPrice))
+            return Fail($"Giá sau đàm phán phải > 0 và không cao hơn giá dự thầu sau giảm giá ({bidPrice.ToMoney()} đ).");
+        if (!success && string.IsNullOrWhiteSpace(note)) return Fail("Nêu lý do đàm phán không thành công.");
+        t.Negotiations.Add(new TenderNegotiation
+        {
+            TenderId = id, TenderBidderId = bidderId, Rank = candidate.Rank!.Value, NegotiatedOn = negotiatedOn.Value, Participants = participants.Trim(),
+            Content = content.Trim(), BidPrice = bidPrice, NegotiatedPrice = success ? negotiatedPrice : bidPrice, Success = success,
+            Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(), CreatedById = Me, CreatedAt = DateTime.Now
+        });
+        Log(DocType.Tender, id, success ? $"Đàm phán hợp đồng thành công với {candidate.Bid.Vendor?.Name} (hạng {candidate.Rank})" : $"Đàm phán không thành công với {candidate.Bid.Vendor?.Name} (hạng {candidate.Rank})",
+            success ? $"Giá dự thầu {bidPrice.ToMoney()} đ → sau đàm phán {negotiatedPrice.ToMoney()} đ" : note!.Trim());
+        await Db.SaveChangesAsync();
+        TempData["Success"] = success ? "Đã ghi biên bản đàm phán. Trình duyệt kết quả lựa chọn nhà thầu theo giá sau đàm phán." : "Đã ghi nhận đàm phán không thành công – mời nhà thầu xếp hạng kế tiếp.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Biên bản đàm phán hợp đồng (in)</summary>
+    public async Task<IActionResult> NegotiationMinutes(int id, int negotiationId)
+    {
+        var t = await LoadAsync(id);
+        if (t == null) return NotFound();
+        if (!CanView(t)) return Forbid();
+        var n = t.Negotiations.FirstOrDefault(x => x.Id == negotiationId);
+        if (n == null) return NotFound();
+        ViewBag.Negotiation = n;
+        return View(t);
+    }
+
+    // ------------------------------------------------------------------ Thẩm định kết quả lựa chọn nhà thầu
+    /// <summary>Bên mời thầu giao người thẩm định độc lập (không phải bên mời thầu / tổ chuyên gia)</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignAppraiser(int id, int appraiserId)
+    {
+        var t = await LoadAsync(id, track: true);
+        if (t == null) return NotFound();
+        IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
+        if (t.Status != TenderStatus.PendingResultApproval) return Fail("Chỉ giao thẩm định khi kết quả đang chờ duyệt.");
+        if (appraiserId == t.BuyerId || t.Committee.Any(m => m.UserId == appraiserId)) return Fail("Người thẩm định phải độc lập với bên mời thầu và tổ chuyên gia.");
+        var user = await Db.Users.FirstOrDefaultAsync(u => u.Id == appraiserId && u.IsActive);
+        if (user == null) return Fail("Người thẩm định không hợp lệ.");
+        if (TenderEvaluation.CurrentAppraisal(t.Appraisals) is { CompletedAt: not null }) return Fail("Đã có báo cáo thẩm định cho đề xuất này.");
+        foreach (var a in t.Appraisals.Where(a => !a.IsVoid)) a.IsVoid = true;
+        t.Appraisals.Add(new TenderAppraisal { TenderId = id, AppraiserId = appraiserId, AssignedById = Me, AssignedAt = DateTime.Now });
+        Log(DocType.Tender, id, $"Giao thẩm định kết quả LCNT cho {user.FullName}");
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã giao {user.FullName} thẩm định kết quả lựa chọn nhà thầu.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Người thẩm định lập báo cáo thẩm định (ký xác nhận)</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.Tender)]
+    public async Task<IActionResult> Appraise(int id, bool agree, string? content, string? recommendation)
+    {
+        var t = await LoadAsync(id, track: true);
+        if (t == null) return NotFound();
+        IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
+        var a = TenderEvaluation.CurrentAppraisal(t.Appraisals);
+        if (t.Status != TenderStatus.PendingResultApproval || a == null || a.CompletedAt != null) return Fail("Không có yêu cầu thẩm định đang chờ.");
+        if (a.AppraiserId != Me) return Forbid();
+        if (string.IsNullOrWhiteSpace(content)) return Fail("Nhập nội dung thẩm định (căn cứ, quá trình tổ chức, kết quả đánh giá, giá đề nghị trúng thầu).");
+        if (!agree && string.IsNullOrWhiteSpace(recommendation)) return Fail("Nêu kiến nghị khi không thống nhất với đề xuất.");
+        a.Agree = agree; a.Content = content.Trim(); a.Recommendation = string.IsNullOrWhiteSpace(recommendation) ? null : recommendation.Trim(); a.CompletedAt = DateTime.Now;
+        Log(DocType.Tender, id, agree ? "Báo cáo thẩm định: thống nhất với đề xuất kết quả LCNT" : "Báo cáo thẩm định: không thống nhất với đề xuất", a.Recommendation);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = "Đã lập báo cáo thẩm định kết quả lựa chọn nhà thầu.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Báo cáo thẩm định kết quả lựa chọn nhà thầu (in)</summary>
+    public async Task<IActionResult> AppraisalReport(int id)
+    {
+        var t = await LoadAsync(id);
+        if (t == null) return NotFound();
+        if (!CanView(t)) return Forbid();
+        var a = t.Appraisals.Where(x => x.CompletedAt != null).OrderByDescending(x => x.CompletedAt).FirstOrDefault();
+        if (a == null) return NotFound();
+        ViewBag.Appraisal = a;
+        ViewBag.Results = TenderEvaluation.Evaluate(t);
+        return View(t);
     }
 
     // ------------------------------------------------------------------ Kiến nghị
@@ -624,6 +782,9 @@ public class TendersController : ProcControllerBase
             t.Status = TenderStatus.Opened; t.AwardedVendorId = null; t.AwardPrice = null; t.ComplaintDeadline = null;
             // Mở lại phiếu chấm để tổ chuyên gia xem xét lại
             foreach (var m in await Db.TenderCommitteeMembers.Where(m => m.TenderId == id).ToListAsync()) m.ScoringCompletedAt = null;
+            // Xếp hạng có thể thay đổi: đàm phán và thẩm định trước đó hết hiệu lực
+            foreach (var n in await Db.TenderNegotiations.Where(n => n.TenderId == id && !n.IsVoid).ToListAsync()) n.IsVoid = true;
+            foreach (var a in await Db.TenderAppraisals.Where(a => a.TenderId == id && !a.IsVoid).ToListAsync()) a.IsVoid = true;
         }
         await Db.SaveChangesAsync();
         TempData["Success"] = upheld ? "Đã chấp nhận kiến nghị. Gói thầu quay lại bước đánh giá." : "Đã trả lời kiến nghị.";
@@ -753,6 +914,8 @@ public class TendersController : ProcControllerBase
             .Include(t => t.Clarifications)
             .Include(t => t.Complaints).ThenInclude(c => c.Vendor)
             .Include(t => t.Questions).ThenInclude(q => q.Vendor)
+            .Include(t => t.Negotiations)
+            .Include(t => t.Appraisals).ThenInclude(a => a.Appraiser)
             .AsSplitQuery();
         var t = track ? await q.FirstOrDefaultAsync(x => x.Id == id) : await q.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (t != null) t.Lines = t.Lines.OrderBy(l => l.SortOrder).ToList();

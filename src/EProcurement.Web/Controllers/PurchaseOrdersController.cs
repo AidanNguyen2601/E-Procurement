@@ -51,17 +51,18 @@ public class PurchaseOrdersController : ProcControllerBase
     [Authorize(Roles = AppRoles.Purchasing)]
     /// <param name="prId">Lập từ đề nghị (bắt buộc PR đã chọn hình thức Mua sắm trực tiếp)</param>
     /// <param name="refPoId">PO tham chiếu cho mua sắm trực tiếp; để trống → hiện danh sách để chọn</param>
-    public async Task<IActionResult> Create(int? prId, int? refPoId)
+    public async Task<IActionResult> Create(int? prId, int? packageId, int? refPoId)
     {
-        var vm = new PoFormViewModel { Number = "(tự sinh khi lưu)", DeliveryAddress = Settings.DefaultDeliveryAddress, PurchaseRequestId = prId };
-        if (prId.HasValue)
+        var vm = new PoFormViewModel { Number = "(tự sinh khi lưu)", DeliveryAddress = Settings.DefaultDeliveryAddress };
+        if (prId.HasValue || packageId.HasValue)
         {
-            var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == prId);
-            if (pr == null) return NotFound();
-            IActionResult BackToPr(string msg) { TempData["Error"] = msg; return RedirectToAction("Details", "PurchaseRequests", new { id = prId }); }
-            if (pr.Status is not (PrStatus.Approved or PrStatus.Processing)) return BackToPr("Chỉ lập PO cho đề nghị đã được duyệt.");
-            if (pr.Method == ProcurementMethod.CompetitiveQuotation) return BackToPr("Đề nghị theo hình thức Chào hàng cạnh tranh: PO được sinh từ RFQ sau khi chọn NCC.");
-            if (pr.Method != ProcurementMethod.DirectPurchase) return BackToPr("Chọn hình thức lựa chọn NCC cho đề nghị trước khi lập PO.");
+            // Mua sắm trực tiếp theo gói đã duyệt trong KHLCNT (các hình thức khác: PO sinh từ hồ sơ lựa chọn NCC)
+            var (pkg, err) = await PackageForAsync(packageId, prId, ProcurementMethod.DirectPurchase);
+            if (err != null || pkg == null) return BackToPackage(pkg, prId, err ?? "Không tìm thấy gói mua sắm.");
+            var pr = Packages.Synthetic(pkg);
+            var lead = Packages.Lead(pkg);
+            vm.PurchaseRequestId = lead.Id; vm.PackageId = pkg.Id;
+            pr.Id = lead.Id; pr.Number = pkg.Number; pr.NeededDate = pkg.PurchaseRequests.Min(r => r.NeededDate);
 
             var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
             var chosen = refs.FirstOrDefault(r => r.Po.Id == refPoId);
@@ -99,7 +100,7 @@ public class PurchaseOrdersController : ProcControllerBase
         }
         var vm = new PoFormViewModel
         {
-            Id = po.Id, Number = po.Number, VendorId = po.VendorId, PurchaseRequestId = po.PurchaseRequestId, RfqId = po.RfqId,
+            Id = po.Id, Number = po.Number, VendorId = po.VendorId, PurchaseRequestId = po.PurchaseRequestId, PackageId = po.PackageId, RfqId = po.RfqId,
             OrderDate = po.OrderDate, DeliveryDate = po.DeliveryDate, DeliveryAddress = po.DeliveryAddress, PaymentTerms = po.PaymentTerms,
             VatPercent = Math.Round(po.VatPercent, 0), Notes = po.Notes, ReferencePoId = po.ReferencePoId, PriceDeviationReason = po.PriceDeviationReason,
             Lines = po.Lines.OrderBy(l => l.SortOrder).Select(l => new LineInput { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, Price = l.UnitPrice }).ToList()
@@ -121,12 +122,15 @@ public class PurchaseOrdersController : ProcControllerBase
         // Hình thức + PO tham chiếu: khi sửa lấy theo PO đã lưu, khi tạo mới lấy theo PR (không tin dữ liệu form)
         var existing = vm.Id == 0 ? null : await Db.PurchaseOrders.AsNoTracking().FirstOrDefaultAsync(p => p.Id == vm.Id);
         ProcurementMethod? method;
-        if (existing != null) { method = existing.Method; vm.ReferencePoId = existing.ReferencePoId; }
-        else if (vm.PurchaseRequestId.HasValue)
+        ProcurementPackage? pkg = null;
+        if (existing != null) { method = existing.Method; vm.ReferencePoId = existing.ReferencePoId; vm.PurchaseRequestId = existing.PurchaseRequestId; vm.PackageId = existing.PackageId; }
+        else if (vm.PurchaseRequestId.HasValue || vm.PackageId.HasValue)
         {
-            method = await Db.PurchaseRequests.Where(p => p.Id == vm.PurchaseRequestId).Select(p => p.Method).FirstOrDefaultAsync();
-            if (method != ProcurementMethod.DirectPurchase)
-                ModelState.AddModelError(string.Empty, "Đề nghị không theo hình thức Mua sắm trực tiếp, không lập PO trực tiếp từ đề nghị được.");
+            // Lập từ đề nghị = mua sắm trực tiếp theo gói đã duyệt
+            method = ProcurementMethod.DirectPurchase;
+            (pkg, var perr) = await PackageForAsync(vm.PackageId, vm.PurchaseRequestId, ProcurementMethod.DirectPurchase);
+            if (perr != null) ModelState.AddModelError(string.Empty, perr);
+            if (pkg != null) { vm.PackageId = pkg.Id; vm.PurchaseRequestId = Packages.Lead(pkg).Id; }
         }
         else { method = null; vm.ReferencePoId = null; }
 
@@ -147,7 +151,7 @@ public class PurchaseOrdersController : ProcControllerBase
             po = new PurchaseOrder
             {
                 Number = await DocNumbers.NextAsync(Db.PurchaseOrders.Select(p => p.Number), "PO"),
-                BuyerId = Me, PurchaseRequestId = vm.PurchaseRequestId, CreatedAt = DateTime.Now,
+                BuyerId = Me, PurchaseRequestId = vm.PurchaseRequestId, PackageId = vm.PackageId, CreatedAt = DateTime.Now,
                 Method = method, ReferencePoId = method == ProcurementMethod.DirectPurchase ? vm.ReferencePoId : null
             };
             Db.PurchaseOrders.Add(po);
@@ -172,10 +176,11 @@ public class PurchaseOrdersController : ProcControllerBase
         {
             Log(DocType.PO, po.Id, po.Method == ProcurementMethod.DirectPurchase ? "Tạo đơn mua sắm trực tiếp" : "Tạo đơn mua hàng",
                 po.ReferencePoId.HasValue ? "Căn cứ: " + await Db.PurchaseOrders.Where(p => p.Id == po.ReferencePoId).Select(p => p.Number).FirstAsync() : null);
-            if (po.PurchaseRequestId.HasValue)
+            if (pkg != null)
             {
-                var pr = await Db.PurchaseRequests.FindAsync(po.PurchaseRequestId);
-                if (pr is { Status: PrStatus.Approved }) { pr.Status = PrStatus.Processing; Log(DocType.PR, pr.Id, $"Mua hàng lập {po.Number}"); }
+                foreach (var r in pkg.PurchaseRequests.Where(r => r.Status == PrStatus.Approved)) Log(DocType.PR, r.Id, $"Mua hàng lập {po.Number} (gói {pkg.Number})");
+                Log(DocType.Package, pkg.Id, $"Lập đơn mua sắm trực tiếp {po.Number}");
+                await Packages.StartAsync(Db, pkg.Id);
             }
             await Db.SaveChangesAsync();
         }

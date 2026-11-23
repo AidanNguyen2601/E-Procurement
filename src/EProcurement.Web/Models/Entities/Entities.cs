@@ -258,6 +258,10 @@ public class PurchaseRequest
     [Display(Name = "Hợp đồng khung")] public int? ContractId { get; set; }
     public Contract? Contract { get; set; }
 
+    /// <summary>Gói mua sắm chứa đề nghị này (hình thức lựa chọn NCC xác định ở gói)</summary>
+    [Display(Name = "Gói mua sắm")] public int? PackageId { get; set; }
+    public ProcurementPackage? Package { get; set; }
+
     public ICollection<PurchaseRequestLine> Lines { get; set; } = new List<PurchaseRequestLine>();
 
     public void Recalculate()
@@ -300,6 +304,8 @@ public class Rfq
     [Display(Name = "Từ đề nghị")]
     public int? PurchaseRequestId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
+    [Display(Name = "Gói mua sắm")] public int? PackageId { get; set; }
+    public ProcurementPackage? Package { get; set; }
 
     [Display(Name = "Người phụ trách")]
     public int BuyerId { get; set; }
@@ -424,6 +430,8 @@ public class PurchaseOrder
     public Rfq? Rfq { get; set; }
     [Display(Name = "Từ đề nghị")] public int? PurchaseRequestId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
+    [Display(Name = "Gói mua sắm")] public int? PackageId { get; set; }
+    public ProcurementPackage? Package { get; set; }
 
     [Display(Name = "Người lập")] public int BuyerId { get; set; }
     public AppUser? Buyer { get; set; }
@@ -506,6 +514,8 @@ public class DirectAward
 
     [Display(Name = "Từ đề nghị")] public int PurchaseRequestId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
+    [Display(Name = "Gói mua sắm")] public int? PackageId { get; set; }
+    public ProcurementPackage? Package { get; set; }
     [Display(Name = "Nhà cung cấp được chỉ định")] public int VendorId { get; set; }
     public Vendor? Vendor { get; set; }
     [Display(Name = "Người lập")] public int BuyerId { get; set; }
@@ -527,6 +537,12 @@ public class DirectAward
 
     /// <summary>Cảnh báo nghi chia nhỏ gói để né hạn mức (ghi lại lúc trình duyệt)</summary>
     [StringLength(1000)][Display(Name = "Cảnh báo chia nhỏ gói")] public string? SplitWarning { get; set; }
+
+    // ----- Yêu cầu báo giá gửi NCC được chỉ định qua cổng NCC -----
+    [Display(Name = "Gửi yêu cầu báo giá lúc")] public DateTime? QuoteRequestedAt { get; set; }
+    [Display(Name = "Hạn nộp báo giá")] public DateTime? QuoteDeadline { get; set; }
+    [StringLength(2000)][Display(Name = "Yêu cầu đối với báo giá")] public string? QuoteRequirements { get; set; }
+    [Display(Name = "Mở báo giá lúc")] public DateTime? QuoteOpenedAt { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime? SubmittedAt { get; set; }
@@ -803,6 +819,9 @@ public class VendorSubmission
     public RfqVendor? RfqVendor { get; set; }
     public int? TenderBidderId { get; set; }
     public TenderBidder? TenderBidder { get; set; }
+    /// <summary>Báo giá cho tờ trình chỉ định thầu</summary>
+    public int? DirectAwardId { get; set; }
+    public DirectAward? DirectAward { get; set; }
     public int VendorUserId { get; set; }
     public VendorUser? VendorUser { get; set; }
     public int Revision { get; set; } = 1;

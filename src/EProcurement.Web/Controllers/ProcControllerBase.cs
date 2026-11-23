@@ -29,6 +29,13 @@ public abstract class ProcControllerBase : Controller
     protected void Log(DocType type, int id, string action, string? comment = null)
     {
         if (User.DelegationNote(action) is string note) comment = string.IsNullOrWhiteSpace(comment) ? note : comment + " " + note;
+        // Cột Action tối đa 100 ký tự, Comment 1000: phần thừa của Action chuyển sang Comment thay vì làm lỗi lưu
+        if (action.Length > 100)
+        {
+            comment = string.IsNullOrWhiteSpace(comment) ? "…" + action[99..] : "…" + action[99..] + " | " + comment;
+            action = action[..99] + "…";
+        }
+        if (comment?.Length > 1000) comment = comment[..999] + "…";
         var h = new ApprovalHistory { DocumentType = type, DocumentId = id, UserId = Me, Action = action, Comment = comment, CreatedAt = DateTime.Now };
         Db.ApprovalHistories.Add(h);
         _logged.Add(h);
@@ -53,6 +60,33 @@ public abstract class ProcControllerBase : Controller
             // Thông báo lỗi không được làm hỏng nghiệp vụ đã lưu
             HttpContext.RequestServices.GetRequiredService<ILogger<ProcControllerBase>>().LogWarning(ex, "Không tạo được thông báo");
         }
+    }
+
+    /// <summary>
+    /// Gói mua sắm dùng để lập hồ sơ theo hình thức <paramref name="method"/>. Nhận packageId, hoặc prId (lấy gói của PR).
+    /// Trả về gói + lỗi (PR chưa thuộc gói, gói chưa được duyệt trong KHLCNT, sai hình thức, đã có hồ sơ đang xử lý).
+    /// </summary>
+    protected async Task<(ProcurementPackage? Package, string? Error)> PackageForAsync(int? packageId, int? prId, ProcurementMethod method)
+    {
+        if (packageId == null && prId.HasValue)
+        {
+            packageId = await Db.PurchaseRequests.Where(p => p.Id == prId).Select(p => p.PackageId).FirstOrDefaultAsync();
+            if (packageId == null) return (null, "Đề nghị chưa thuộc gói mua sắm. Lập gói mua sắm và trình KHLCNT trước khi lập hồ sơ lựa chọn NCC.");
+        }
+        if (packageId == null) return (null, null);
+        var p = await Packages.LoadAsync(Db, packageId.Value);
+        if (p == null) return (null, "Không tìm thấy gói mua sắm.");
+        if (Packages.ExecuteProblem(p, method) is string err) return (p, err);
+        if (await Packages.HasActiveDocumentAsync(Db, p.Id)) return (p, $"Gói {p.Number} đã có hồ sơ lựa chọn NCC / đơn hàng đang xử lý.");
+        ViewBag.Package = p;
+        return (p, null);
+    }
+
+    protected IActionResult BackToPackage(ProcurementPackage? p, int? prId, string msg)
+    {
+        TempData["Error"] = msg;
+        return p != null ? RedirectToAction("Details", "Packages", new { id = p.Id })
+            : prId.HasValue ? RedirectToAction("Details", "PurchaseRequests", new { id = prId }) : RedirectToAction("Index", "Packages");
     }
 
     protected Task<List<ApprovalHistory>> HistoryAsync(DocType type, int id) =>

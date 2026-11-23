@@ -4,15 +4,20 @@
     var pr = Model.PurchaseRequest;
 }
 <form asp-action="Save" method="post">
-    <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="PurchaseRequestId" />
+    <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="PurchaseRequestId" /><input type="hidden" asp-for="PackageId" />
+    <partial name="_PackageBanner" model="ViewBag.Package as ProcurementPackage" />
     <div asp-validation-summary="All" class="text-danger"></div>
-    @if (pr != null)
+    @if (ViewBag.Package is ProcurementPackage pk)
+    {
+        <div class="alert alert-light border py-2 small">Hạng mục mời thầu lấy theo gói: @string.Join("; ", EProcurement.Web.Infrastructure.Packages.Lines(pk).Select(l => $"{l.Description} × {l.Quantity.ToQty()} {l.Unit}")).</div>
+    }
+    else if (pr != null)
     {
         <div class="alert alert-info py-2">Từ đề nghị <b>@pr.Number</b> – @pr.Title (dự toán @pr.EstimatedTotal.ToMoney() đ).
             Hạng mục mời thầu lấy theo đề nghị: @string.Join("; ", pr.Lines.OrderBy(l => l.SortOrder).Select(l => $"{l.Description} × {l.Quantity.ToQty()} {l.Unit}")).</div>
     }
 
-    <div class="card mb-3"><div class="card-header">1. Kế hoạch lựa chọn nhà thầu</div><div class="card-body row g-3">
+    <div class="card mb-3"><div class="card-header">1. Kế hoạch lựa chọn nhà thầu (theo KHLCNT đã duyệt) & HSMT</div><div class="card-body row g-3">
         <div class="col-md-2"><label asp-for="Number" class="form-label"></label><input asp-for="Number" class="form-control" readonly /></div>
         <div class="col-md-6"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
         <div class="col-md-4"><label asp-for="PackageBudget" class="form-label"></label><input asp-for="PackageBudget" type="number" step="1000" class="form-control" /></div>

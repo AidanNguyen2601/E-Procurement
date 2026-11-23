@@ -56,6 +56,10 @@ public class DirectAwardsController : ProcControllerBase
         ViewBag.Max = Settings.DirectAwardMax;
         ViewBag.Problems = d.Status == DirectAwardStatus.Draft ? await SubmitProblemsAsync(d) : new List<string>();
         ViewBag.SplitWarning = d.Status == DirectAwardStatus.Draft ? await ProcurementRules.SplitWarningAsync(Db, d, Settings) : d.SplitWarning;
+        ViewBag.QuoteSubmissions = await Db.VendorSubmissions.AsNoTracking().Where(s => s.DirectAwardId == id).OrderByDescending(s => s.SubmittedAt)
+            .Select(s => new VendorSubmission { Id = s.Id, Revision = s.Revision, SubmittedAt = s.SubmittedAt, Sha256 = s.Sha256, IsLatest = s.IsLatest, IsWithdrawn = s.IsWithdrawn, FileName = s.FileName, UnsealedAt = s.UnsealedAt }).ToListAsync();
+        ViewBag.VendorHasPortal = await Db.VendorUsers.AnyAsync(u => u.VendorId == d.VendorId && u.IsActive && u.IsApproved);
+        if (d.PackageId.HasValue) ViewBag.Package = await Db.ProcurementPackages.AsNoTracking().FirstOrDefaultAsync(p => p.Id == d.PackageId);
         return View(d);
     }
 
@@ -70,20 +74,16 @@ public class DirectAwardsController : ProcControllerBase
     }
 
     [Authorize(Roles = AppRoles.Purchasing)]
-    public async Task<IActionResult> Create(int prId)
+    public async Task<IActionResult> Create(int? prId, int? packageId)
     {
-        var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == prId);
-        if (pr == null) return NotFound();
-        IActionResult BackToPr(string msg) { TempData["Error"] = msg; return RedirectToAction("Details", "PurchaseRequests", new { id = prId }); }
-        if (pr.Status is not (PrStatus.Approved or PrStatus.Processing)) return BackToPr("Chỉ lập tờ trình cho đề nghị đã được duyệt.");
-        if (pr.Method != ProcurementMethod.DirectAward) return BackToPr("Chọn hình thức \"Chỉ định thầu\" cho đề nghị trước khi lập tờ trình.");
-        if (await Db.DirectAwards.AnyAsync(d => d.PurchaseRequestId == prId && d.Status != DirectAwardStatus.Cancelled))
-            return BackToPr("Đề nghị đã có tờ trình chỉ định đang xử lý.");
+        var (pkg, err) = await PackageForAsync(packageId, prId, ProcurementMethod.DirectAward);
+        if (err != null || pkg == null) return BackToPackage(pkg, prId, err ?? "Chọn gói mua sắm đã được duyệt trong KHLCNT.");
+        var pr = Packages.Lead(pkg);
         var vm = new DirectAwardFormViewModel
         {
-            Number = "(tự sinh khi lưu)", PurchaseRequestId = prId, PurchaseRequest = pr, Title = pr.Title,
-            Justification = pr.MethodReason ?? string.Empty, NegotiationDate = DateTime.Today,
-            Lines = pr.Lines.OrderBy(l => l.SortOrder).Select(l => new DirectAwardLineInput
+            Number = "(tự sinh khi lưu)", PurchaseRequestId = pr.Id, PackageId = pkg.Id, PurchaseRequest = pr, Title = pkg.Title,
+            Justification = pkg.MethodReason ?? string.Empty, NegotiationDate = DateTime.Today,
+            Lines = Packages.Lines(pkg).Select(l => new DirectAwardLineInput
                 { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, EstimatedPrice = l.EstimatedPrice }).ToList()
         };
         await LoadFormAsync(vm);
@@ -96,9 +96,10 @@ public class DirectAwardsController : ProcControllerBase
         var d = await Db.DirectAwards.Include(x => x.Lines).Include(x => x.PurchaseRequest).FirstOrDefaultAsync(x => x.Id == id);
         if (d == null) return NotFound();
         if (d.Status != DirectAwardStatus.Draft) { TempData["Error"] = "Chỉ sửa tờ trình ở trạng thái Nháp."; return RedirectToAction(nameof(Details), new { id }); }
+        if (d.PackageId.HasValue) ViewBag.Package = await Packages.LoadAsync(Db, d.PackageId.Value);
         var vm = new DirectAwardFormViewModel
         {
-            Id = d.Id, Number = d.Number, PurchaseRequestId = d.PurchaseRequestId, PurchaseRequest = d.PurchaseRequest, Title = d.Title,
+            Id = d.Id, Number = d.Number, PurchaseRequestId = d.PurchaseRequestId, PackageId = d.PackageId, PurchaseRequest = d.PurchaseRequest, Title = d.Title,
             VendorId = d.VendorId, Reason = d.Reason, Justification = d.Justification, NegotiationDate = d.NegotiationDate,
             NegotiationNote = d.NegotiationNote, LeadTimeDays = d.LeadTimeDays, PaymentTerms = d.PaymentTerms, Warranty = d.Warranty,
             VatPercent = Math.Round(d.VatPercent, 0),
@@ -116,27 +117,31 @@ public class DirectAwardsController : ProcControllerBase
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(DirectAwardFormViewModel vm, bool submit = false)
     {
-        var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == vm.PurchaseRequestId);
-        if (pr == null) return NotFound();
         DirectAward? d = null;
+        ProcurementPackage? pkg = null;
+        PurchaseRequest? pr;
         if (vm.Id != 0)
         {
             d = await Db.DirectAwards.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == vm.Id);
             if (d == null) return NotFound();
-            if (d.Status != DirectAwardStatus.Draft || d.PurchaseRequestId != pr.Id) return BadRequest();
+            if (d.Status != DirectAwardStatus.Draft) return BadRequest();
+            vm.PurchaseRequestId = d.PurchaseRequestId; vm.PackageId = d.PackageId;
+            if (d.PackageId.HasValue) ViewBag.Package = pkg = await Packages.LoadAsync(Db, d.PackageId.Value);
+            pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == d.PurchaseRequestId);
         }
         else
         {
-            if (pr.Method != ProcurementMethod.DirectAward || pr.Status is not (PrStatus.Approved or PrStatus.Processing))
-                ModelState.AddModelError(string.Empty, "Đề nghị chưa được duyệt hoặc không theo hình thức Chỉ định thầu.");
-            if (await Db.DirectAwards.AnyAsync(x => x.PurchaseRequestId == pr.Id && x.Status != DirectAwardStatus.Cancelled))
-                ModelState.AddModelError(string.Empty, "Đề nghị đã có tờ trình chỉ định đang xử lý.");
+            (pkg, var perr) = await PackageForAsync(vm.PackageId, vm.PurchaseRequestId, ProcurementMethod.DirectAward);
+            if (perr != null || pkg == null) return BackToPackage(pkg, vm.PurchaseRequestId, perr ?? "Chọn gói mua sắm đã được duyệt trong KHLCNT.");
+            pr = Packages.Lead(pkg);
+            vm.PurchaseRequestId = pr.Id; vm.PackageId = pkg.Id;
         }
+        if (pr == null) return NotFound();
         var vendor = vm.VendorId.HasValue ? await Db.Vendors.FindAsync(vm.VendorId) : null;
         if (vendor != null && vendor.Status != VendorStatus.Approved)
             ModelState.AddModelError(nameof(vm.VendorId), $"NCC đang ở trạng thái \"{vendor.Status.GetDisplayName()}\", không được chỉ định.");
-        // Dòng hàng lấy theo PR (không thêm / bớt); chỉ nhận đơn giá chào & thương thảo từ form
-        var prLines = pr.Lines.OrderBy(l => l.SortOrder).ToList();
+        // Dòng hàng lấy theo gói (hoặc PR với tờ trình cũ) – không thêm / bớt; chỉ nhận đơn giá chào & thương thảo từ form
+        var prLines = pkg != null ? Packages.Lines(pkg) : pr.Lines.OrderBy(l => l.SortOrder).ToList();
         if (vm.Lines.Count != prLines.Count) ModelState.AddModelError(string.Empty, "Dòng hàng không khớp với đề nghị.");
         for (var i = 0; i < Math.Min(vm.Lines.Count, prLines.Count); i++)
         {
@@ -158,7 +163,7 @@ public class DirectAwardsController : ProcControllerBase
             d = new DirectAward
             {
                 Number = await DocNumbers.NextAsync(Db.DirectAwards.Select(x => x.Number), "DA"),
-                PurchaseRequestId = pr.Id, BuyerId = Me, CreatedAt = DateTime.Now
+                PurchaseRequestId = pr.Id, PackageId = pkg?.Id, BuyerId = Me, CreatedAt = DateTime.Now
             };
             Db.DirectAwards.Add(d);
         }
@@ -184,8 +189,13 @@ public class DirectAwardsController : ProcControllerBase
 
         if (vm.Id == 0)
         {
-            Log(DocType.DirectAward, d.Id, "Lập tờ trình chỉ định thầu", $"{vendor?.Name} – {d.Reason.GetDisplayName()}");
-            if (pr.Status == PrStatus.Approved) { pr.Status = PrStatus.Processing; Log(DocType.PR, pr.Id, $"Mua hàng lập {d.Number}"); }
+            Log(DocType.DirectAward, d.Id, "Lập hồ sơ chào giá chỉ định", $"{vendor?.Name} – {d.Reason.GetDisplayName()}");
+            if (pkg != null)
+            {
+                foreach (var r in pkg.PurchaseRequests.Where(r => r.Status == PrStatus.Approved)) Log(DocType.PR, r.Id, $"Mua hàng lập {d.Number} (gói {pkg.Number})");
+                Log(DocType.Package, pkg.Id, $"Lập hồ sơ chào giá chỉ định {d.Number}");
+                await Packages.StartAsync(Db, pkg.Id);
+            }
             await Db.SaveChangesAsync();
         }
         if (submit) return await Submit(d.Id);
@@ -242,7 +252,7 @@ public class DirectAwardsController : ProcControllerBase
         var po = new PurchaseOrder
         {
             Number = await DocNumbers.NextAsync(Db.PurchaseOrders.Select(p => p.Number), "PO"),
-            VendorId = d.VendorId, PurchaseRequestId = d.PurchaseRequestId, DirectAwardId = d.Id, BuyerId = d.BuyerId,
+            VendorId = d.VendorId, PurchaseRequestId = d.PurchaseRequestId, PackageId = d.PackageId, DirectAwardId = d.Id, BuyerId = d.BuyerId,
             Method = ProcurementMethod.DirectAward, DeliveryDate = DateTime.Today.AddDays(d.LeadTimeDays ?? 7),
             PaymentTerms = d.PaymentTerms ?? d.Vendor?.PaymentTerms, DeliveryAddress = Settings.DefaultDeliveryAddress, VatPercent = d.VatPercent,
             Notes = string.IsNullOrEmpty(d.Warranty) ? null : "Bảo hành: " + d.Warranty, CreatedAt = DateTime.Now
@@ -274,6 +284,45 @@ public class DirectAwardsController : ProcControllerBase
     }
 
     /// <summary>Điều kiện trình duyệt: đã thương thảo đủ giá, có tài liệu chứng minh (nếu căn cứ yêu cầu), trong hạn mức (trừ khẩn cấp)</summary>
+    // ------------------------------------------------------------------ Báo giá NCC qua cổng
+    /// <summary>Gửi hồ sơ chào giá chỉ định tới NCC trên cổng NCC (NCC nộp báo giá niêm phong). Gửi lại = vòng báo giá mới.</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestQuote(int id, DateTime? deadline, string? requirements)
+    {
+        var d = await Db.DirectAwards.Include(x => x.Vendor).FirstOrDefaultAsync(x => x.Id == id);
+        if (d == null) return NotFound();
+        IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
+        if (d.Status != DirectAwardStatus.Draft) return Fail("Chỉ gửi yêu cầu báo giá khi hồ sơ đang soạn.");
+        if (deadline == null || deadline <= DateTime.Now) return Fail("Hạn nộp báo giá phải ở tương lai.");
+        if (!await Db.VendorUsers.AnyAsync(u => u.VendorId == d.VendorId && u.IsActive && u.IsApproved))
+            return Fail($"{d.Vendor?.Name} chưa có tài khoản cổng NCC được xác nhận – nhập giá NCC chào thủ công trên hồ sơ.");
+        var round = d.QuoteRequestedAt.HasValue;
+        foreach (var s in await Db.VendorSubmissions.Where(s => s.DirectAwardId == id && s.IsLatest).ToListAsync()) s.IsLatest = false;
+        d.QuoteRequestedAt = DateTime.Now; d.QuoteDeadline = deadline; d.QuoteOpenedAt = null;
+        d.QuoteRequirements = string.IsNullOrWhiteSpace(requirements) ? null : requirements.Trim();
+        Log(DocType.DirectAward, id, round ? "Gửi lại yêu cầu báo giá cho NCC (vòng mới)" : "Gửi hồ sơ chào giá chỉ định cho NCC qua cổng", $"Hạn nộp {deadline.ToDateTime()}");
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã gửi yêu cầu báo giá tới {d.Vendor?.Name}. NCC nộp báo giá niêm phong trên cổng NCC trước {deadline.ToDateTime()}.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Mở báo giá NCC đã nộp: đưa đơn giá chào vào hồ sơ để thương thảo</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> OpenQuote(int id)
+    {
+        var d = await Db.DirectAwards.Include(x => x.Vendor).Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id);
+        if (d == null) return NotFound();
+        if (d.Status != DirectAwardStatus.Draft) return BadRequest();
+        var note = await HttpContext.RequestServices.GetRequiredService<SealingService>().UnsealDirectQuoteAsync(d, Me);
+        if (note == null) { TempData["Error"] = "NCC chưa nộp báo giá online."; return RedirectToAction(nameof(Details), new { id }); }
+        Log(DocType.DirectAward, id, "Mở báo giá NCC", note);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã mở báo giá: giá NCC chào {d.ProposedTotal.ToMoney()} đ (trước VAT). Thương thảo và cập nhật giá sau thương thảo.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
     private async Task<List<string>> SubmitProblemsAsync(DirectAward d)
     {
         var p = new List<string>();
@@ -281,6 +330,9 @@ public class DirectAwardsController : ProcControllerBase
         if (d.NegotiationDate == null) p.Add("Nhập ngày thương thảo.");
         if (ProcurementRules.RequiresEvidence(d.Reason) && !await Db.Attachments.AnyAsync(a => a.DocumentType == DocType.DirectAward && a.DocumentId == d.Id))
             p.Add($"Căn cứ \"{d.Reason.GetDisplayName()}\" cần đính kèm tài liệu chứng minh.");
+        if (d.QuoteRequestedAt.HasValue && d.QuoteOpenedAt == null
+            && await Db.VendorSubmissions.AnyAsync(s => s.DirectAwardId == d.Id && s.IsLatest && !s.IsWithdrawn && s.UnsealedAt == null))
+            p.Add("NCC đã nộp báo giá online (đang niêm phong) – mở báo giá trước khi trình.");
         if (d.NegotiatedTotal > Settings.DirectAwardMax && d.Reason != DirectAwardReason.Emergency)
             p.Add($"Giá trị {d.NegotiatedTotal.ToMoney()} đ vượt hạn mức chỉ định {Settings.DirectAwardMax.ToMoney()} đ (chỉ được vượt khi khẩn cấp) – chuyển sang chào hàng cạnh tranh.");
         return p;

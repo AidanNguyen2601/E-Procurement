@@ -71,7 +71,7 @@ document.addEventListener('submit', function (e) {
     if (document.body.dataset.sign !== '1') return;
     document.querySelectorAll('form').forEach(f => {
         const action = (f.getAttribute('action') || '').split('?')[0];
-        if (!/\/(Decide|DecidePlan|DecideResult|DecideAmendment)(\/\d+)?$/.test(action) || f.querySelector('[name=signPassword]')) return;
+        if (!/\/(Decide|DecidePlan|DecideResult|DecideAmendment|Appraise)(\/\d+)?$/.test(action) || f.querySelector('[name=signPassword]')) return;
         const input = document.createElement('input');
         input.type = 'password'; input.name = 'signPassword'; input.required = true; input.autocomplete = 'current-password';
         input.className = 'form-control form-control-sm sign-password'; input.placeholder = 'Mật khẩu ký'; input.title = 'Nhập mật khẩu để ký xác nhận quyết định';

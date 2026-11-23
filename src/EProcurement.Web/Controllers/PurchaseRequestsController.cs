@@ -62,61 +62,17 @@ public class PurchaseRequestsController : ProcControllerBase
         if (plan != null && !plan.Lines.Any(l => l.PurchaseRequestId == pr.Id))
             ViewBag.OutOfPlan = pr.Lines.Where(l => !plan.Lines.Any(p => (l.ItemId.HasValue && p.ItemId == l.ItemId) || string.Equals(p.Description.Trim(), l.Description.Trim(), StringComparison.OrdinalIgnoreCase)))
                 .Select(l => l.Description).ToList();
-        ViewBag.Rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
-        ViewBag.Orders = await Db.PurchaseOrders.Include(p => p.Vendor).Where(p => p.PurchaseRequestId == id).ToListAsync();
-        ViewBag.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Where(d => d.PurchaseRequestId == id).ToListAsync();
-        ViewBag.Tenders = await Db.Tenders.Include(t => t.AwardedVendor).Where(t => t.PurchaseRequestId == id).ToListAsync();
+        // Hồ sơ của PR, hoặc của gói chứa PR (gói nhiều PR: hồ sơ gắn PR đầu tiên)
+        var pkgId = pr.PackageId;
+        ViewBag.Rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id || (pkgId != null && r.PackageId == pkgId)).ToListAsync();
+        ViewBag.Orders = await Db.PurchaseOrders.Include(p => p.Vendor).Where(p => p.PurchaseRequestId == id || (pkgId != null && p.PackageId == pkgId)).ToListAsync();
+        ViewBag.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Where(d => d.PurchaseRequestId == id || (pkgId != null && d.PackageId == pkgId)).ToListAsync();
+        ViewBag.Tenders = await Db.Tenders.Include(t => t.AwardedVendor).Where(t => t.PurchaseRequestId == id || (pkgId != null && t.PackageId == pkgId)).ToListAsync();
+        ViewBag.Package = pkgId == null ? null : await Db.ProcurementPackages.AsNoTracking().Include(p => p.SelectionPlan).Include(p => p.PurchaseRequests).FirstOrDefaultAsync(p => p.Id == pkgId);
         ViewBag.CanApprove = CanApprove(pr);
         ViewBag.Threshold = await Matrix.PrDirectorAsync(pr.Department);
-        if (User.IsPurchasing() && pr.Status is PrStatus.Approved or PrStatus.Processing)
-        {
-            var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
-            ViewBag.References = refs;
-            ViewBag.SuggestedMethod = ProcurementRules.Suggest(pr, refs.Any(r => r.CoversRequest), Settings);
-            ViewBag.MethodLocked = HasActiveDocuments((List<Rfq>)ViewBag.Rfqs, (List<PurchaseOrder>)ViewBag.Orders, (List<DirectAward>)ViewBag.DirectAwards, (List<Tender>)ViewBag.Tenders);
-            ViewBag.CqMax = Settings.CompetitiveQuotationMax;
-            ViewBag.DaMax = Settings.DirectAwardMax;
-        }
         return View(pr);
     }
-
-    /// <summary>Mua hàng chọn hình thức lựa chọn NCC cho PR đã duyệt</summary>
-    [Authorize(Roles = AppRoles.Purchasing)]
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetMethod(int id, ProcurementMethod method, string? reason)
-    {
-        var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == id);
-        if (pr == null) return NotFound();
-        if (pr.Status is not (PrStatus.Approved or PrStatus.Processing)) return BadRequest();
-        IActionResult Fail(string msg) { TempData["Error"] = msg; return RedirectToAction(nameof(Details), new { id }); }
-
-        if (!ProcurementRules.Supported.Contains(method))
-            return Fail($"Hình thức \"{method.GetDisplayName()}\" chưa được hỗ trợ trên hệ thống.");
-        var rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
-        var orders = await Db.PurchaseOrders.Where(p => p.PurchaseRequestId == id).ToListAsync();
-        var awards = await Db.DirectAwards.Where(d => d.PurchaseRequestId == id).ToListAsync();
-        var tenders = await Db.Tenders.Where(t => t.PurchaseRequestId == id).ToListAsync();
-        if (pr.Method != method && HasActiveDocuments(rfqs, orders, awards, tenders))
-            return Fail("Đề nghị đã có RFQ / tờ trình / gói thầu / PO đang xử lý. Hủy các chứng từ đó trước khi đổi hình thức.");
-
-        var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
-        var suggested = ProcurementRules.Suggest(pr, refs.Any(r => r.CoversRequest), Settings);
-        if (method == ProcurementMethod.DirectPurchase && !refs.Any(r => r.CoversRequest))
-            return Fail($"Không có PO tham chiếu hợp lệ (đã nhận đủ trong {Settings.DirectPurchaseMonths} tháng, cùng mặt hàng, còn đủ khối lượng) để mua sắm trực tiếp.");
-        if (ProcurementRules.NeedsReason(method, suggested) && string.IsNullOrWhiteSpace(reason))
-            return Fail($"Hệ thống gợi ý \"{suggested.GetDisplayName()}\". Nhập lý do khi chọn \"{method.GetDisplayName()}\".");
-
-        pr.Method = method;
-        pr.MethodReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
-        Log(DocType.PR, id, $"Chọn hình thức: {method.GetDisplayName()}" + (method != suggested ? $" (gợi ý: {suggested.GetDisplayName()})" : ""), pr.MethodReason);
-        await Db.SaveChangesAsync();
-        TempData["Success"] = $"{pr.Number}: hình thức lựa chọn NCC là {method.GetDisplayName()}.";
-        return RedirectToAction(nameof(Details), new { id });
-    }
-
-    private static bool HasActiveDocuments(List<Rfq> rfqs, List<PurchaseOrder> orders, List<DirectAward> awards, List<Tender> tenders) =>
-        rfqs.Any(r => r.Status != RfqStatus.Cancelled) || orders.Any(o => o.Status != PoStatus.Cancelled)
-        || awards.Any(a => a.Status != DirectAwardStatus.Cancelled) || tenders.Any(t => t.Status != TenderStatus.Cancelled);
 
     public async Task<IActionResult> Create()
     {
@@ -290,6 +246,14 @@ public class PurchaseRequestsController : ProcControllerBase
         var allowed = (pr.RequesterId == Me && pr.Status is PrStatus.Draft or PrStatus.Submitted or PrStatus.Rejected)
                       || (User.IsPurchasing() && pr.Status is PrStatus.Approved);
         if (!allowed) return Forbid();
+        if (pr.PackageId.HasValue)
+        {
+            // Chỉ rút khỏi gói khi gói còn nháp; gói đã trình / duyệt thì hủy gói (hoặc trả lại KHLCNT) trước
+            var pkg = await Db.ProcurementPackages.FirstAsync(p => p.Id == pr.PackageId);
+            if (pkg.Status != PackageStatus.Draft) { TempData["Error"] = $"Đề nghị thuộc gói {pkg.Number} ({pkg.Status.GetDisplayName()}) – hủy gói trước khi hủy đề nghị."; return RedirectToAction(nameof(Details), new { id }); }
+            Log(DocType.Package, pkg.Id, $"Rút {pr.Number} khỏi gói – đề nghị bị hủy", comment);
+            pr.PackageId = null; pr.Method = null; pr.MethodReason = null;
+        }
         pr.Status = PrStatus.Cancelled;
         Log(DocType.PR, id, "Hủy đề nghị", comment);
         await Db.SaveChangesAsync();

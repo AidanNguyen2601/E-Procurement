@@ -3,11 +3,25 @@
     var ctrl = ViewContext.RouteData.Values["controller"]?.ToString();
     var act = ViewContext.RouteData.Values["action"]?.ToString();
     string Active(string c) => ctrl == c ? "active" : "";
+    // Mục menu đang chọn: theo controller, riêng Đấu thầu / Báo giá theo action
+    var navKey = (ctrl, act) switch
+    {
+        ("Tenders", "Evaluations" or "Screen" or "Score") => "td-eval",
+        ("Tenders", "Negotiations" or "NegotiationMinutes") => "td-neg",
+        ("Tenders", "EvaluationReports" or "Report") => "td-report",
+        ("Tenders", "Appraisals" or "AppraisalReport") => "td-appraisal",
+        ("Tenders", _) => "td",
+        ("Quotes", "Direct") => "q-direct",
+        ("Quotes", "Competitive") => "q-comp",
+        ("Quotes", "Evaluations") or ("Rfqs", "Evaluate" or "Compare") => "q-eval",
+        _ => ctrl ?? ""
+    };
+    string On(string k) => navKey == k ? "active" : "";
     var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     var purchasing = User.IsPurchasing();
     var director = User.IsInRole(AppRoles.Director);
     var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
-    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", _ => null };
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", _ => null };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -31,38 +45,71 @@
             <a class="@Active("Home")" asp-controller="Home" asp-action="Index">@Icon.Svg("dashboard")<span>Dashboard</span></a>
             @if (approver) { <a class="@Active("Approvals")" asp-controller="Approvals" asp-action="Index">@Icon.Svg("inbox")<span>Chờ tôi duyệt</span></a> }
 
-            <div class="nav-group">Đề nghị</div>
-            <a class="@Active("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">@Icon.Svg("file-text")<span>Đề nghị mua hàng (PR)</span></a>
+            @* ===== Cây menu nghiệp vụ mua sắm ===== *@
+            <details class="nav-tree" open>
+                <summary>@Icon.Svg("file-text")<span>Quản lý yêu cầu mua sắm</span></summary>
+                <a class="lvl1 @On("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">@Icon.Svg("cart", 15)<span>Yêu cầu mua sắm</span></a>
+                @if (purchasing || director)
+                {
+                    <a class="lvl1 @On("Packages")" asp-controller="Packages" asp-action="Index">@Icon.Svg("package", 15)<span>Quản lý gói mua sắm</span></a>
+                    <a class="lvl1 @On("SelectionPlans")" asp-controller="SelectionPlans" asp-action="Index">@Icon.Svg("clipboard", 15)<span>Kế hoạch lựa chọn nhà cung cấp</span></a>
+                }
+            </details>
+
+            <details class="nav-tree" open>
+                <summary>@Icon.Svg("building")<span>Quản lý mua hàng</span></summary>
+                @if (purchasing || director)
+                {
+                    <details open>
+                        <summary class="lvl1">@Icon.Svg("award", 15)<span>Mua sắm trực tiếp</span></summary>
+                        <a class="lvl2 @On("DirectAwards")" asp-controller="DirectAwards" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ chào giá chỉ định</span></a>
+                        <a class="lvl2 @On("q-direct")" asp-controller="Quotes" asp-action="Direct">@Icon.Svg("receipt", 14)<span>Báo giá nhà cung cấp</span></a>
+                    </details>
+                    <details open>
+                        <summary class="lvl1">@Icon.Svg("send", 15)<span>Chào giá cạnh tranh</span></summary>
+                        <a class="lvl2 @On("Rfqs")" asp-controller="Rfqs" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ chào giá cạnh tranh</span></a>
+                        <a class="lvl2 @On("q-comp")" asp-controller="Quotes" asp-action="Competitive">@Icon.Svg("receipt", 14)<span>Báo giá chào hàng cạnh tranh</span></a>
+                        <a class="lvl2 @On("q-eval")" asp-controller="Quotes" asp-action="Evaluations">@Icon.Svg("scale", 14)<span>Đánh giá hồ sơ chào giá</span></a>
+                    </details>
+                }
+                <details open>
+                    <summary class="lvl1">@Icon.Svg("gavel", 15)<span>Đấu thầu@(purchasing || director ? "" : " (tổ chuyên gia)")</span></summary>
+                    <a class="lvl2 @On("td")" asp-controller="Tenders" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ mời thầu / Hồ sơ yêu cầu</span></a>
+                    <a class="lvl2 @On("td-eval")" asp-controller="Tenders" asp-action="Evaluations">@Icon.Svg("scale", 14)<span>Đánh giá HSDT/HSCG</span></a>
+                    <details open>
+                        <summary class="lvl2">@Icon.Svg("trophy", 14)<span>Lựa chọn nhà thầu</span></summary>
+                        <a class="lvl3 @On("td-neg")" asp-controller="Tenders" asp-action="Negotiations">@Icon.Svg("users", 13)<span>Đàm phán hợp đồng</span></a>
+                        <a class="lvl3 @On("td-report")" asp-controller="Tenders" asp-action="EvaluationReports">@Icon.Svg("bar-chart", 13)<span>Báo cáo đánh giá LCNT</span></a>
+                        <a class="lvl3 @On("td-appraisal")" asp-controller="Tenders" asp-action="Appraisals">@Icon.Svg("shield-check", 13)<span>Báo cáo thẩm định kết quả LCNT</span></a>
+                    </details>
+                </details>
+                @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
+                {
+                    <a class="lvl1 @On("Contracts")" asp-controller="Contracts" asp-action="Index">@Icon.Svg("file-check", 15)<span>Quản lý hợp đồng mua sắm</span></a>
+                    <a class="lvl1 @On("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">@Icon.Svg("cart", 15)<span>Khởi tạo đơn mua hàng</span></a>
+                }
+                @if (purchasing || director)
+                {
+                    <a class="lvl1 @On("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">@Icon.Svg("truck", 15)<span>Quản lý giao nhận</span></a>
+                }
+                @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
+                {
+                    <a class="lvl1 @On("Invoices")" asp-controller="Invoices" asp-action="Index">@Icon.Svg("receipt", 15)<span>Hoá đơn</span></a>
+                    <a class="lvl1 @On("Payments")" asp-controller="Payments" asp-action="Index">@Icon.Svg("coins", 15)<span>Đề nghị thanh toán</span></a>
+                }
+            </details>
+
+            <div class="nav-group">Kế hoạch & ngân sách</div>
             <a class="@Active("Plans")" asp-controller="Plans" asp-action="Index">@Icon.Svg("clipboard")<span>Kế hoạch mua sắm năm</span></a>
             <a class="@Active("Ordering")" asp-controller="Ordering" asp-action="Index">@Icon.Svg("cart")<span>Mua theo hợp đồng khung</span></a>
-            <a class="@Active("Tenders")" asp-controller="Tenders" asp-action="Index">@Icon.Svg("gavel")<span>Đấu thầu@(purchasing || director ? "" : " (tổ chuyên gia)")</span></a>
-            <a asp-controller="Tenders" asp-action="Public" target="_blank">@Icon.Svg("megaphone")<span>Thông báo mời thầu</span>@Icon.Svg("external", 12, "ms-auto")</a>
             @if (purchasing || approver)
             {
                 <a class="@Active("Budgets")" asp-controller="Budgets" asp-action="Index">@Icon.Svg("wallet")<span>Ngân sách</span></a>
             }
+            <a asp-controller="Tenders" asp-action="Public" target="_blank">@Icon.Svg("megaphone")<span>Thông báo mời thầu</span>@Icon.Svg("external", 12, "ms-auto")</a>
 
-            @if (purchasing || director)
-            {
-                <div class="nav-group">Mua hàng</div>
-                <a class="@Active("Rfqs")" asp-controller="Rfqs" asp-action="Index">@Icon.Svg("send")<span>Yêu cầu báo giá (RFQ)</span></a>
-                <a class="@Active("DirectAwards")" asp-controller="DirectAwards" asp-action="Index">@Icon.Svg("award")<span>Chỉ định thầu</span></a>
-                <a class="@Active("Contracts")" asp-controller="Contracts" asp-action="Index">@Icon.Svg("file-check")<span>Hợp đồng</span></a>
-                <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">@Icon.Svg("cart")<span>Đơn mua hàng (PO)</span></a>
-                <a class="@Active("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">@Icon.Svg("truck")<span>Nhận hàng (GRN)</span></a>
-
-            }
             @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
             {
-                <div class="nav-group">Tài chính</div>
-                <a class="@Active("Invoices")" asp-controller="Invoices" asp-action="Index">@Icon.Svg("receipt")<span>Hóa đơn NCC</span></a>
-                <a class="@Active("Payments")" asp-controller="Payments" asp-action="Index">@Icon.Svg("coins")<span>Thanh toán</span></a>
-                @if (User.IsInRole(AppRoles.Accountant) && !purchasing && !director)
-                {
-                    <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">@Icon.Svg("cart")<span>Đơn mua hàng (PO)</span></a>
-                    <a class="@Active("Contracts")" asp-controller="Contracts" asp-action="Index">@Icon.Svg("file-check")<span>Hợp đồng</span></a>
-                }
-
                 <div class="nav-group">Báo cáo</div>
                 <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index">@Icon.Svg("bar-chart")<span>Báo cáo mua sắm</span></a>
                 <a class="@Active("ReportBuilder")" asp-controller="ReportBuilder" asp-action="Index">@Icon.Svg("sliders")<span>Báo cáo động</span></a>

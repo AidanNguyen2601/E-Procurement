@@ -55,6 +55,12 @@ public class ApprovalsController : ProcControllerBase
                 .Where(c => c.ResolvedAt == null && c.Tender!.Status == TenderStatus.Awarded).OrderBy(c => c.ReceivedAt).ToListAsync();
         }
 
+        if (User.IsAdmin() || User.IsInRole(AppRoles.Director))
+            vm.SelectionPlans = await Db.SelectionPlans.Include(p => p.CreatedBy).Include(p => p.Packages)
+                .Where(p => p.Status == SelectionPlanStatus.Submitted).OrderBy(p => p.SubmittedAt).ToListAsync();
+        vm.Appraisals = await Db.TenderAppraisals.Include(a => a.Tender)
+            .Where(a => a.AppraiserId == Me && !a.IsVoid && a.CompletedAt == null && a.Tender!.Status == TenderStatus.PendingResultApproval).ToListAsync();
+
         ViewBag.PrThreshold = await Matrix.PrDirectorAsync(User.GetDepartment());
         return View(vm);
     }

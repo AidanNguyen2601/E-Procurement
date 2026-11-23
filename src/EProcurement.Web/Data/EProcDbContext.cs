@@ -36,6 +36,10 @@ public class EProcDbContext : DbContext
     public DbSet<TenderClarification> TenderClarifications => Set<TenderClarification>();
     public DbSet<TenderComplaint> TenderComplaints => Set<TenderComplaint>();
     public DbSet<TenderQuestion> TenderQuestions => Set<TenderQuestion>();
+    public DbSet<TenderNegotiation> TenderNegotiations => Set<TenderNegotiation>();
+    public DbSet<TenderAppraisal> TenderAppraisals => Set<TenderAppraisal>();
+    public DbSet<ProcurementPackage> ProcurementPackages => Set<ProcurementPackage>();
+    public DbSet<SelectionPlan> SelectionPlans => Set<SelectionPlan>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ContractLine> ContractLines => Set<ContractLine>();
     public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
@@ -81,6 +85,14 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<TenderCommitteeMember>().HasIndex(x => new { x.TenderId, x.UserId }).IsUnique();
         modelBuilder.Entity<TenderScore>().HasIndex(x => new { x.TenderBidderId, x.MemberUserId }).IsUnique();
         modelBuilder.Entity<TenderQuestion>().HasIndex(x => new { x.TenderId, x.ClarificationId });
+        modelBuilder.Entity<ProcurementPackage>().HasIndex(x => x.Number).IsUnique();
+        modelBuilder.Entity<ProcurementPackage>().HasMany(x => x.PurchaseRequests).WithOne(p => p.Package).HasForeignKey(p => p.PackageId);
+        modelBuilder.Entity<SelectionPlan>().HasIndex(x => x.Number).IsUnique();
+        modelBuilder.Entity<SelectionPlan>().HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById);
+        modelBuilder.Entity<SelectionPlan>().HasOne(x => x.DecidedBy).WithMany().HasForeignKey(x => x.DecidedById);
+        modelBuilder.Entity<TenderAppraisal>().HasOne(x => x.Appraiser).WithMany().HasForeignKey(x => x.AppraiserId);
+        modelBuilder.Entity<TenderAppraisal>().HasOne(x => x.AssignedBy).WithMany().HasForeignKey(x => x.AssignedById);
+        modelBuilder.Entity<VendorSubmission>().HasIndex(x => new { x.DirectAwardId, x.IsLatest });
         modelBuilder.Entity<Contract>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<CatalogEntry>().HasIndex(x => new { x.Type, x.Name }).IsUnique();
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.ReadAt });

@@ -51,6 +51,43 @@
 {
     <div class="alert alert-danger py-2"><b>Cảnh báo chia nhỏ gói:</b> @split</div>
 }
+@if (ViewBag.Package is ProcurementPackage pkg)
+{
+    <div class="small text-muted mb-2">Theo gói mua sắm <a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg.Id">@pkg.Number</a> – @pkg.Title</div>
+}
+
+@{
+    var quoteSubs = (List<VendorSubmission>)ViewBag.QuoteSubmissions; bool hasPortal = ViewBag.VendorHasPortal;
+    var pendingQuote = quoteSubs.FirstOrDefault(s => s.IsLatest && !s.IsWithdrawn && s.UnsealedAt == null);
+}
+@if (Model.Status == DirectAwardStatus.Draft || Model.QuoteRequestedAt.HasValue)
+{
+    <div class="card mb-3"><div class="card-header d-flex justify-content-between">Báo giá nhà cung cấp qua cổng NCC
+        @if (Model.QuoteRequestedAt.HasValue) { <span class="small fw-normal">gửi @Model.QuoteRequestedAt.ToDateTime() · hạn @Model.QuoteDeadline.ToDateTime()</span> }</div>
+    <div class="card-body small">
+        @if (Model.QuoteRequestedAt == null) { <div class="text-muted mb-2">Chưa gửi yêu cầu báo giá cho NCC. Có thể gửi qua cổng NCC hoặc nhập giá NCC chào thủ công (Sửa / thương thảo).</div> }
+        else if (Model.QuoteOpenedAt.HasValue) { <div class="mb-2"><span class="badge bg-success">Đã mở báo giá @Model.QuoteOpenedAt.ToDateTime()</span> Giá NCC chào: <b>@Model.ProposedTotal.ToMoney() đ</b> (trước VAT)</div> }
+        else if (pendingQuote != null) { <div class="mb-2"><span class="badge bg-primary">NCC đã nộp – niêm phong</span> lần @pendingQuote.Revision lúc @pendingQuote.SubmittedAt.ToString("dd/MM/yyyy HH:mm") · mã <code>@pendingQuote.Sha256[..12]…</code></div> }
+        else { <div class="mb-2"><span class="badge bg-secondary">Chờ NCC nộp báo giá</span>@if (Model.QuoteDeadline < DateTime.Now) { <span class="text-danger ms-1">đã quá hạn</span> }</div> }
+        @if (!string.IsNullOrEmpty(Model.QuoteRequirements)) { <div class="pre mb-2"><b>Yêu cầu:</b> @Model.QuoteRequirements</div> }
+        @if (buyer && Model.Status == DirectAwardStatus.Draft)
+        {
+            @if (pendingQuote != null)
+            {
+                <form asp-action="OpenQuote" asp-route-id="@Model.Id" method="post" class="mb-2" data-confirm="Mở báo giá của NCC? Đơn giá chào sẽ được đưa vào hồ sơ."><button class="btn btn-sm btn-primary">Mở báo giá</button></form>
+            }
+            @if (hasPortal)
+            {
+                <form asp-action="RequestQuote" asp-route-id="@Model.Id" method="post" class="row g-2">
+                    <div class="col-md-4"><label class="form-label mb-0">Hạn nộp báo giá</label><input type="datetime-local" name="deadline" value="@DateTime.Today.AddDays(3).AddHours(17).ToString("yyyy-MM-ddTHH:mm")" class="form-control form-control-sm" required /></div>
+                    <div class="col-md-8"><label class="form-label mb-0">Yêu cầu đối với báo giá</label><input name="requirements" value="@Model.QuoteRequirements" maxlength="2000" class="form-control form-control-sm" placeholder="Thời gian giao, bảo hành, chứng từ CO/CQ…" /></div>
+                    <div class="col-12"><button class="btn btn-sm btn-outline-primary" data-confirm="@(Model.QuoteRequestedAt.HasValue ? "Gửi lại yêu cầu – báo giá trước (nếu có) không còn hiệu lực?" : null)">@(Model.QuoteRequestedAt.HasValue ? "Gửi lại yêu cầu báo giá (vòng mới)" : "Gửi yêu cầu báo giá cho NCC")</button></div>
+                </form>
+            }
+            else { <div class="text-muted">@Model.Vendor?.Name chưa có tài khoản cổng NCC được xác nhận – nhập giá NCC chào thủ công.</div> }
+        }
+    </div></div>
+}
 
 @if (canDecide)
 {

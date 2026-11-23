@@ -29,6 +29,32 @@
     </tbody>
 </table></div></div>
 
+@if (Model.SelectionPlans.Any())
+{
+    <div class="card mb-4"><div class="card-header">Kế hoạch lựa chọn nhà cung cấp chờ phê duyệt (@Model.SelectionPlans.Count)</div>
+    <div class="card-body p-0"><table class="table mb-0">
+        <thead><tr><th>KHLCNT</th><th>Người lập</th><th class="money">Số gói</th><th class="money">Tổng giá gói</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var p in Model.SelectionPlans)
+        {
+            <tr><td><a asp-controller="SelectionPlans" asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a><div class="small">@p.Title</div></td>
+                <td class="small">@p.CreatedBy?.FullName · trình @p.SubmittedAt.ToDateTime()</td><td class="money">@p.Packages.Count</td><td class="money fw-bold">@p.Packages.Sum(x => x.Budget).ToMoney()</td>
+                <td class="text-end"><a asp-controller="SelectionPlans" asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-primary">Xem & phê duyệt</a></td></tr>
+        }
+        </tbody>
+    </table></div></div>
+}
+@if (Model.Appraisals.Any())
+{
+    <div class="card mb-4 border-warning"><div class="card-header">Thẩm định kết quả lựa chọn nhà thầu được giao cho tôi (@Model.Appraisals.Count)</div>
+    <ul class="list-group list-group-flush">
+        @foreach (var a in Model.Appraisals)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center"><span><a asp-controller="Tenders" asp-action="Details" asp-route-id="@a.TenderId" asp-fragment="appraisal" class="fw-semibold">@a.Tender?.Number</a> – @a.Tender?.Title
+                <span class="small text-muted">· giao @a.AssignedAt.ToDateTime()</span></span><a asp-controller="Tenders" asp-action="Details" asp-route-id="@a.TenderId" asp-fragment="appraisal" class="btn btn-sm btn-primary">Lập báo cáo thẩm định</a></li>
+        }
+    </ul></div>
+}
 @if (User.IsInRole(AppRoles.Director) || User.IsAdmin())
 {
     <div class="card mb-4"><div class="card-header">Đấu thầu – kế hoạch & HSMT / kết quả / kiến nghị (@(Model.TenderPlans.Count + Model.TenderResults.Count + Model.Complaints.Count))</div>

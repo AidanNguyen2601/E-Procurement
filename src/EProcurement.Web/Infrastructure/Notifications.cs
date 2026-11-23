@@ -59,6 +59,8 @@ public class NotificationService
         DocType.Invoice => $"/Invoices/Details/{id}",
         DocType.Payment => $"/Payments/Details/{id}",
         DocType.Plan => $"/Plans/Details/{id}",
+        DocType.Package => $"/Packages/Details/{id}",
+        DocType.SelectionPlan => $"/SelectionPlans/Details/{id}",
         _ => "/"
     };
 
@@ -123,12 +125,17 @@ public class NotificationService
             }
             case DocType.Tender:
             {
-                var t = await _db.Tenders.AsNoTracking().Include(x => x.Committee).FirstOrDefaultAsync(x => x.Id == e.Id);
+                var t = await _db.Tenders.AsNoTracking().Include(x => x.Committee).Include(x => x.Appraisals).ThenInclude(a => a.Appraiser).FirstOrDefaultAsync(x => x.Id == e.Id);
                 if (t == null) return;
                 var members = t.Committee.Select(m => m.UserId).ToList();
-                if (t.Status is TenderStatus.PendingPlanApproval or TenderStatus.PendingResultApproval)
+                var appraisal = TenderEvaluation.CurrentAppraisal(t.Appraisals);
+                if (t.Status == TenderStatus.PendingResultApproval && appraisal is { CompletedAt: null })
+                    Add(new[] { appraisal.AppraiserId }, NotificationKind.Action, $"Bạn được giao thẩm định kết quả LCNT gói {t.Number}", t.Title, e, $"act:TD:{t.Id}:appraise:{appraisal.Id}");
+                var waitingAppraisal = t.Status == TenderStatus.PendingResultApproval && TenderEvaluation.ApprovalBlocker(t, _p.TenderAppraisalRequired) != null;
+                if (t.Status is TenderStatus.PendingPlanApproval or TenderStatus.PendingResultApproval && !waitingAppraisal)
                     Add(await DirectorsAsync(), NotificationKind.Action,
-                        (t.Status == TenderStatus.PendingPlanApproval ? "Kế hoạch & HSMT chờ duyệt: " : "Kết quả lựa chọn nhà thầu chờ duyệt: ") + t.Number, t.Title, e, $"act:TD:{t.Id}:{t.Status}");
+                        (t.Status == TenderStatus.PendingPlanApproval ? "HSMT chờ duyệt: " : "Kết quả lựa chọn nhà thầu chờ duyệt: ") + t.Number, t.Title, e,
+                        $"act:TD:{t.Id}:{t.Status}" + (appraisal?.CompletedAt != null ? $":{appraisal.Id}" : ""));
                 if (t.Status == TenderStatus.Published)
                     Add(members, NotificationKind.Info, $"Bạn trong tổ chuyên gia gói thầu {t.Number}", $"{t.Title} · đóng thầu {t.ClosingAt.ToDateTime()}", e, $"info:TD:{t.Id}:member");
                 if (t.Status == TenderStatus.Opened)
@@ -145,6 +152,17 @@ public class NotificationService
                     Add(await DirectorsAsync(), NotificationKind.Action, $"Phụ lục hợp đồng {c.Number} chờ duyệt", c.Title, e,
                         $"act:HD:{c.Id}:amend:{await _db.ContractAmendments.Where(a => a.ContractId == c.Id).CountAsync()}");
                 Owner(c.CreatedById, e, $"{c.Number}: {e.Action}");
+                break;
+            }
+            case DocType.SelectionPlan:
+            {
+                var sp = await _db.SelectionPlans.AsNoTracking().FirstOrDefaultAsync(x => x.Id == e.Id);
+                if (sp == null) return;
+                if (sp.Status == SelectionPlanStatus.Submitted)
+                    Add(await DirectorsAsync(), NotificationKind.Action, $"Kế hoạch lựa chọn NCC chờ duyệt: {sp.Number}", sp.Title, e, $"act:KH:{sp.Id}:{sp.SubmittedAt:yyyyMMddHHmm}");
+                if (sp.Status == SelectionPlanStatus.Approved)
+                    Add(await UsersAsync(u => u.Role == AppRoles.Buyer), NotificationKind.Action, $"KHLCNT {sp.Number} đã duyệt – lập hồ sơ lựa chọn NCC cho các gói", sp.Title, e, $"act:KH:{sp.Id}:approved");
+                Owner(sp.CreatedById, e, $"{sp.Number}: {e.Action}", sp.Status == SelectionPlanStatus.Returned ? NotificationKind.Warning : NotificationKind.Info);
                 break;
             }
             case DocType.Plan:

@@ -2,13 +2,13 @@
 @{
     var css = Model switch
     {
-        PrStatus.Draft or RfqStatus.Draft or PoStatus.Draft or DirectAwardStatus.Draft or TenderStatus.Draft => "bg-secondary",
-        PrStatus.Submitted or PrStatus.PendingDirector or PoStatus.PendingApproval or RfqStatus.PendingApproval or DirectAwardStatus.PendingApproval or TenderStatus.PendingPlanApproval or TenderStatus.PendingResultApproval or VendorStatus.Pending => "bg-warning text-dark",
-        PrStatus.Approved or PoStatus.Approved or RfqStatus.Open or TenderStatus.Published or TenderStatus.Awarded => "bg-info text-dark",
-        PrStatus.Processing or PoStatus.Issued or PoStatus.PartiallyReceived or RfqStatus.Opened or TenderStatus.Opened or ContractStatus.Active => "bg-primary",
-        PrStatus.Completed or PoStatus.Received or RfqStatus.Awarded or DirectAwardStatus.Approved or TenderStatus.Contracted or ContractStatus.Completed or VendorStatus.Approved => "bg-success",
-        PrStatus.Rejected or VendorStatus.Blacklisted => "bg-danger",
-        PrStatus.Cancelled or RfqStatus.Cancelled or PoStatus.Cancelled or DirectAwardStatus.Cancelled or TenderStatus.Cancelled or ContractStatus.Terminated or VendorStatus.Suspended => "bg-dark",
+        PrStatus.Draft or RfqStatus.Draft or PoStatus.Draft or DirectAwardStatus.Draft or TenderStatus.Draft or PackageStatus.Draft or SelectionPlanStatus.Draft => "bg-secondary",
+        PrStatus.Submitted or PrStatus.PendingDirector or PoStatus.PendingApproval or RfqStatus.PendingApproval or DirectAwardStatus.PendingApproval or TenderStatus.PendingPlanApproval or TenderStatus.PendingResultApproval or VendorStatus.Pending or PackageStatus.InPlan or SelectionPlanStatus.Submitted => "bg-warning text-dark",
+        PrStatus.Approved or PoStatus.Approved or RfqStatus.Open or TenderStatus.Published or TenderStatus.Awarded or PackageStatus.Approved => "bg-info text-dark",
+        PrStatus.Processing or PoStatus.Issued or PoStatus.PartiallyReceived or RfqStatus.Opened or TenderStatus.Opened or ContractStatus.Active or PackageStatus.Executing => "bg-primary",
+        PrStatus.Completed or PoStatus.Received or RfqStatus.Awarded or DirectAwardStatus.Approved or TenderStatus.Contracted or ContractStatus.Completed or VendorStatus.Approved or PackageStatus.Completed or SelectionPlanStatus.Approved => "bg-success",
+        PrStatus.Rejected or VendorStatus.Blacklisted or SelectionPlanStatus.Returned => "bg-danger",
+        PrStatus.Cancelled or RfqStatus.Cancelled or PoStatus.Cancelled or DirectAwardStatus.Cancelled or TenderStatus.Cancelled or ContractStatus.Terminated or VendorStatus.Suspended or PackageStatus.Cancelled => "bg-dark",
         PrPriority.Urgent => "bg-warning text-dark", PrPriority.Critical => "bg-danger",
         _ => "bg-light text-dark border"
     };

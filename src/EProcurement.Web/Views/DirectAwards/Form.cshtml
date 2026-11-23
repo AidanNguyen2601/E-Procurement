@@ -6,7 +6,8 @@
     var pr = Model.PurchaseRequest;
 }
 <form asp-action="Save" method="post">
-    <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="PurchaseRequestId" />
+    <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="PurchaseRequestId" /><input type="hidden" asp-for="PackageId" />
+    <partial name="_PackageBanner" model="ViewBag.Package as ProcurementPackage" />
     <div asp-validation-summary="All" class="text-danger"></div>
     @if (pr != null) { <div class="alert alert-info py-2">Từ đề nghị <b>@pr.Number</b> – @pr.Title (dự toán @pr.EstimatedTotal.ToMoney() đ). Hạn mức chỉ định: <b>@max.ToMoney() đ</b> trước VAT (vượt chỉ khi khẩn cấp).</div> }
 

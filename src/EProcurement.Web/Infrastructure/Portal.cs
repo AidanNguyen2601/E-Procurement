@@ -42,6 +42,11 @@ public record QuotePayload(int RfqVendorId, int? LeadTimeDays, string? PaymentTe
     List<QuoteLinePayload> Lines, string? FileName, string? ContentType, string? FileBase64);
 public record QuoteLinePayload(int RfqLineId, decimal UnitPrice, string? Note);
 
+/// <summary>Báo giá của NCC được chỉ định (dòng theo thứ tự dòng của hồ sơ chào giá chỉ định)</summary>
+public record DirectQuotePayload(int DirectAwardId, int? LeadTimeDays, string? PaymentTerms, string? Warranty, decimal VatPercent, string? Note,
+    List<DirectQuoteLinePayload> Lines, string? FileName, string? ContentType, string? FileBase64);
+public record DirectQuoteLinePayload(int SortOrder, decimal UnitPrice, string? Note);
+
 /// <summary>
 /// HSDT niêm phong. FileName/ContentType/FileBase64: bản cũ một file (vẫn đọc được). Files: các thành phần HSDT –
 /// file tài chính của gói hai túi chỉ được mở cùng hồ sơ tài chính.
@@ -110,6 +115,32 @@ public class SealingService
             notes.Add($"{rv.Vendor?.Name}: báo giá online lần {s.Revision} nộp {s.SubmittedAt:dd/MM/yyyy HH:mm:ss}, mã băm {s.Sha256[..12]}… {(ok ? "khớp" : "KHÔNG KHỚP")}");
         }
         return notes;
+    }
+
+    /// <summary>
+    /// Mở báo giá NCC được chỉ định (bản cuối, chưa rút): đưa đơn giá chào vào từng dòng (theo thứ tự dòng), giá thương thảo
+    /// mặc định = giá chào nếu chưa nhập. Trả về ghi chú kiểm tra toàn vẹn, null nếu không có báo giá.
+    /// </summary>
+    public async Task<string?> UnsealDirectQuoteAsync(DirectAward d, int actorId)
+    {
+        var s = await _db.VendorSubmissions.Where(x => x.DirectAwardId == d.Id && x.IsLatest && !x.IsWithdrawn && x.UnsealedAt == null).FirstOrDefaultAsync();
+        if (s == null) return null;
+        var (p, ok) = Open<DirectQuotePayload>(s);
+        foreach (var l in d.Lines)
+        {
+            var q = p.Lines.FirstOrDefault(x => x.SortOrder == l.SortOrder);
+            if (q == null) continue;
+            l.ProposedPrice = q.UnitPrice;
+            if (l.NegotiatedPrice <= 0 || l.NegotiatedPrice > q.UnitPrice) l.NegotiatedPrice = q.UnitPrice;
+        }
+        d.LeadTimeDays = p.LeadTimeDays ?? d.LeadTimeDays; d.PaymentTerms = p.PaymentTerms ?? d.PaymentTerms; d.Warranty = p.Warranty ?? d.Warranty;
+        d.VatPercent = p.VatPercent;
+        if (!string.IsNullOrWhiteSpace(p.Note)) d.NegotiationNote = string.IsNullOrWhiteSpace(d.NegotiationNote) ? $"Ghi chú báo giá NCC: {p.Note}" : d.NegotiationNote + $"\nGhi chú báo giá NCC: {p.Note}";
+        d.Recalculate();
+        d.QuoteOpenedAt = DateTime.Now;
+        s.UnsealedAt = DateTime.Now;
+        if (p.FileBase64 != null) AddFile(DocType.DirectAward, d.Id, p.FileName, p.ContentType, p.FileBase64, actorId, $"Báo giá online của {d.Vendor?.Name}");
+        return $"Báo giá online lần {s.Revision} nộp {s.SubmittedAt:dd/MM/yyyy HH:mm:ss}, mã băm {s.Sha256[..12]}… {(ok ? "khớp" : "KHÔNG KHỚP")}";
     }
 
     /// <summary>Mở thầu (includePrices = true với một túi hồ sơ) / mở hồ sơ tài chính (chỉ giá)</summary>

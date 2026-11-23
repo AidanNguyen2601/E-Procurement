@@ -1,0 +1,28 @@
+@model List<Rfq>
+@{ ViewData["Title"] = "Đánh giá hồ sơ chào giá"; }
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>Hồ sơ chào giá</th><th>Gói</th><th>Phương pháp</th><th class="money">Báo giá</th><th>Bước tiếp theo</th><th>Kết quả</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        var responded = r.Vendors.Count(v => v.Responded);
+        var (next, action) = r.Status switch
+        {
+            RfqStatus.Open => ("Hết hạn nộp – mở báo giá", "Details"),
+            RfqStatus.Opened when r.Vendors.Any(v => v.Responded && v.TechnicalPass == null) => ("Đánh giá kỹ thuật", "Evaluate"),
+            RfqStatus.Opened => ("So sánh giá, đề xuất NCC", "Compare"),
+            RfqStatus.PendingApproval => ("Chờ Giám đốc duyệt kết quả", "Details"),
+            _ => ("Đã chọn NCC", "Report")
+        };
+        <tr><td><a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.Id" class="fw-semibold">@r.Number</a><div class="small">@r.Title</div><div class="small text-muted">hạn @r.Deadline.ToDate()@(r.OpenedAt.HasValue ? $" · mở {r.OpenedAt:dd/MM HH:mm}" : "")</div></td>
+            <td class="small">@if (r.Package != null) { <a asp-controller="Packages" asp-action="Details" asp-route-id="@r.PackageId">@r.Package.Number</a> }</td>
+            <td class="small">@r.EvaluationMethod.GetDisplayName()</td>
+            <td class="money">@responded/@r.Vendors.Count</td>
+            <td class="small">@next</td>
+            <td class="small">@(r.AwardedVendor?.Name ?? (r.ProposedVendor != null ? "Đề xuất: " + r.ProposedVendor.Name : ""))</td>
+            <td class="text-end"><a asp-controller="Rfqs" asp-action="@action" asp-route-id="@r.Id" class="btn btn-sm btn-outline-primary">Mở</a>
+                @if (r.OpenedAt.HasValue) { <a asp-controller="Rfqs" asp-action="Report" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary" target="_blank">Báo cáo</a> }</td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Không có hồ sơ chào giá cần đánh giá.</td></tr> }
+    </tbody>
+</table></div></div></div>

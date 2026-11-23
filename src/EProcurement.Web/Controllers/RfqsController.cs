@@ -39,26 +39,18 @@ public class RfqsController : ProcControllerBase
     }
 
     [Authorize(Roles = AppRoles.Purchasing)]
-    public async Task<IActionResult> Create(int? prId)
+    public async Task<IActionResult> Create(int? prId, int? packageId)
     {
-        var vm = new RfqCreateViewModel { PurchaseRequestId = prId };
-        if (prId.HasValue)
+        var vm = new RfqCreateViewModel();
+        // Lập theo gói mua sắm đã duyệt trong KHLCNT (RFQ không gắn đề nghị = hỏi giá tham khảo, vẫn cho phép)
+        var (pkg, err) = await PackageForAsync(packageId, prId, ProcurementMethod.CompetitiveQuotation);
+        if (err != null) return BackToPackage(pkg, prId, err);
+        if (pkg != null)
         {
-            var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == prId);
-            if (pr == null) return NotFound();
-            if (pr.Status is not (PrStatus.Approved or PrStatus.Processing))
-            {
-                TempData["Error"] = "Chỉ lập RFQ cho đề nghị đã được duyệt.";
-                return RedirectToAction("Details", "PurchaseRequests", new { id = prId });
-            }
-            if (pr.Method != ProcurementMethod.CompetitiveQuotation)
-            {
-                TempData["Error"] = "Chọn hình thức \"Chào hàng cạnh tranh\" cho đề nghị trước khi lập RFQ.";
-                return RedirectToAction("Details", "PurchaseRequests", new { id = prId });
-            }
-            vm.PurchaseRequest = pr;
-            vm.Title = pr.Title;
-            vm.Lines = pr.Lines.OrderBy(l => l.SortOrder)
+            var lead = Packages.Lead(pkg);
+            vm.PackageId = pkg.Id; vm.PurchaseRequestId = lead.Id; vm.PurchaseRequest = lead;
+            vm.Title = pkg.Title;
+            vm.Lines = Packages.Lines(pkg)
                 .Select(l => new LineInput { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, Price = l.EstimatedPrice }).ToList();
         }
         if (vm.Lines.Count == 0) vm.Lines.Add(new LineInput());
@@ -79,8 +71,14 @@ public class RfqsController : ProcControllerBase
         if (vm.Deadline < DateTime.Today) ModelState.AddModelError(nameof(vm.Deadline), "Hạn nộp báo giá không được ở quá khứ");
         if (vm.EvaluationMethod == EvaluationMethod.WeightedScore && vm.PriceWeight + vm.TechnicalWeight + vm.DeliveryWeight != 100)
             ModelState.AddModelError(nameof(vm.PriceWeight), "Tổng trọng số giá + kỹ thuật + tiến độ phải bằng 100%.");
-        if (vm.PurchaseRequestId.HasValue && !await Db.PurchaseRequests.AnyAsync(p => p.Id == vm.PurchaseRequestId && p.Method == ProcurementMethod.CompetitiveQuotation))
-            ModelState.AddModelError(string.Empty, "Đề nghị chưa chọn hình thức \"Chào hàng cạnh tranh\".");
+        // Có đề nghị → bắt buộc theo gói đã duyệt; đề nghị / gói lấy lại từ gói, không tin form
+        ProcurementPackage? pkg = null;
+        if (vm.PackageId.HasValue || vm.PurchaseRequestId.HasValue)
+        {
+            (pkg, var perr) = await PackageForAsync(vm.PackageId, vm.PurchaseRequestId, ProcurementMethod.CompetitiveQuotation);
+            if (perr != null) ModelState.AddModelError(string.Empty, perr);
+            if (pkg != null) { vm.PackageId = pkg.Id; vm.PurchaseRequestId = Packages.Lead(pkg).Id; }
+        }
         var invalid = await Db.Vendors.Where(v => vm.VendorIds.Contains(v.Id) && v.Status != VendorStatus.Approved).Select(v => v.Name).ToListAsync();
         if (invalid.Count > 0) ModelState.AddModelError(nameof(vm.VendorIds), "NCC chưa được phê duyệt: " + string.Join(", ", invalid));
         if (!ModelState.IsValid)
@@ -94,7 +92,7 @@ public class RfqsController : ProcControllerBase
 
         var rfq = new Rfq
         {
-            Number = await DocNumbers.NextAsync(Db.Rfqs.Select(r => r.Number), "RFQ"), Title = vm.Title, PurchaseRequestId = vm.PurchaseRequestId,
+            Number = await DocNumbers.NextAsync(Db.Rfqs.Select(r => r.Number), "RFQ"), Title = vm.Title, PurchaseRequestId = vm.PurchaseRequestId, PackageId = vm.PackageId,
             BuyerId = Me, Deadline = vm.Deadline, Requirements = vm.Requirements, IssueDate = DateTime.Today,
             Status = publish ? RfqStatus.Open : RfqStatus.Draft, CreatedAt = DateTime.Now,
             EvaluationMethod = vm.EvaluationMethod, PriceWeight = vm.PriceWeight, TechnicalWeight = vm.TechnicalWeight, DeliveryWeight = vm.DeliveryWeight
@@ -107,14 +105,11 @@ public class RfqsController : ProcControllerBase
         await Db.SaveChangesAsync();
 
         Log(DocType.RFQ, rfq.Id, publish ? "Phát hành RFQ" : "Tạo RFQ nháp");
-        if (vm.PurchaseRequestId.HasValue)
+        if (pkg != null)
         {
-            var pr = await Db.PurchaseRequests.FindAsync(vm.PurchaseRequestId);
-            if (pr is { Status: PrStatus.Approved })
-            {
-                pr.Status = PrStatus.Processing;
-                Log(DocType.PR, pr.Id, $"Mua hàng lập {rfq.Number}");
-            }
+            foreach (var pr in pkg.PurchaseRequests.Where(r => r.Status == PrStatus.Approved)) Log(DocType.PR, pr.Id, $"Mua hàng lập {rfq.Number} (gói {pkg.Number})");
+            Log(DocType.Package, pkg.Id, $"Lập hồ sơ chào giá cạnh tranh {rfq.Number}");
+            await Packages.StartAsync(Db, pkg.Id);
         }
         await Db.SaveChangesAsync();
         TempData["Success"] = $"Đã tạo {rfq.Number}, mời {vm.VendorIds.Count} nhà cung cấp.";
@@ -456,7 +451,7 @@ public class RfqsController : ProcControllerBase
         var po = new PurchaseOrder
         {
             Number = await DocNumbers.NextAsync(Db.PurchaseOrders.Select(p => p.Number), "PO"),
-            VendorId = rv.VendorId, RfqId = r.Id, PurchaseRequestId = r.PurchaseRequestId, BuyerId = r.BuyerId, Method = ProcurementMethod.CompetitiveQuotation,
+            VendorId = rv.VendorId, RfqId = r.Id, PurchaseRequestId = r.PurchaseRequestId, PackageId = r.PackageId, BuyerId = r.BuyerId, Method = ProcurementMethod.CompetitiveQuotation,
             DeliveryDate = DateTime.Today.AddDays(rv.LeadTimeDays ?? 7), PaymentTerms = rv.PaymentTerms ?? rv.Vendor?.PaymentTerms,
             DeliveryAddress = Settings.DefaultDeliveryAddress, VatPercent = rv.VatPercent,
             Notes = string.IsNullOrEmpty(rv.Warranty) ? null : "Bảo hành: " + rv.Warranty, CreatedAt = DateTime.Now
