@@ -39,6 +39,14 @@ public static class Catalogs
             new[] { "Mua hàng hóa", "Mua dịch vụ", "Mua tài sản cố định", "Thuê tài sản / dịch vụ", "Sửa chữa, bảo trì", "Đặt hàng theo hợp đồng khung" }),
         new(CatalogType.ImplementationTeam, "Tổ triển khai", "users", "Tổ / nhóm chịu trách nhiệm triển khai gói mua sắm (thành viên ghi ở Ghi chú).", 200, false, false,
             new[] { "Tổ mua sắm thiết bị CNTT", "Tổ mua sắm hành chính – văn phòng", "Tổ mua sắm dịch vụ", "Tổ chuyên gia đấu thầu" }),
+        new(CatalogType.BusinessSector, "Lĩnh vực kinh doanh", "building", "Lĩnh vực kinh doanh chính của nhà cung cấp (lọc, thống kê NCC).", 200, false, false,
+            new[] { "Thương mại", "Sản xuất", "Dịch vụ", "Công nghệ thông tin", "Xây lắp", "Tư vấn", "Vận tải – logistics", "Phân phối / đại lý ủy quyền" }),
+        new(CatalogType.SupplierGrade, "Xếp loại nhà cung cấp", "trophy", "Thang xếp loại NCC trong Đánh giá nhà cung cấp: Mã = ký hiệu loại, Tên = khuyến nghị, Ghi chú = điểm tối thiểu (thang 1–5).", 100, true, false,
+            new[] { "A|Tốt – ưu tiên mời|4.5", "B|Khá – duy trì|3.5", "C|Trung bình – cần cải thiện|2.5", "D|Yếu – xem xét tạm ngưng|0" }),
+        new(CatalogType.Origin, "Xuất xứ", "map-pin", "Nước / vùng xuất xứ của hàng hóa.", 100, false, false,
+            new[] { "Việt Nam", "Trung Quốc", "Nhật Bản", "Hàn Quốc", "Đài Loan", "Thái Lan", "Malaysia", "Singapore", "Mỹ", "Đức", "EU / G7" }),
+        new(CatalogType.Brand, "Thương hiệu", "tag", "Thương hiệu / hãng sản xuất của hàng hóa.", 100, false, false,
+            new[] { "Dell", "HP", "Lenovo", "Asus", "Apple", "Cisco", "Samsung", "LG", "Canon", "Epson", "Thiên Long", "Double A", "Hòa Phát" }),
         new(CatalogType.Decision, "Quyết định", "file-check", "Quyết định, văn bản làm căn cứ (số hiệu ở cột Mã, ngày ban hành / người ký ở Ghi chú) – chèn nhanh vào căn cứ của KHLCNT, bảng giá tiêu chuẩn.", 300, false, false,
             Array.Empty<string>()),
     };
@@ -62,11 +70,13 @@ public static class Catalogs
             var order = have.Count;
             foreach (var raw in candidates)
             {
-                var parts = raw?.Split('|', 2);
-                var code = parts?.Length == 2 ? parts[0].Trim() : null;
-                var name = (parts?.Length == 2 ? parts[1] : raw)?.Trim();
+                // "Tên" hoặc "MÃ|Tên" hoặc "MÃ|Tên|Ghi chú"
+                var parts = raw?.Split('|', 3);
+                var code = parts?.Length >= 2 ? parts[0].Trim() : null;
+                var name = (parts?.Length >= 2 ? parts[1] : raw)?.Trim();
+                var note = parts?.Length == 3 ? parts[2].Trim() : null;
                 if (string.IsNullOrEmpty(name) || name.Length > info.MaxLength || !have.Add(name)) continue;
-                db.CatalogEntries.Add(new CatalogEntry { Type = info.Type, Code = code, Name = name, SortOrder = ++order * 10 });
+                db.CatalogEntries.Add(new CatalogEntry { Type = info.Type, Code = code, Name = name, Note = note, SortOrder = ++order * 10 });
             }
         }
         await db.SaveChangesAsync();
@@ -87,6 +97,9 @@ public static class Catalogs
         CatalogType.FundingSource => await db.ProcurementPackages.Where(p => p.FundingSource != null).Select(p => p.FundingSource!).Distinct().ToListAsync(),
         CatalogType.OrderType => await db.PurchaseOrders.Where(p => p.OrderType != null).Select(p => p.OrderType!).Distinct().ToListAsync(),
         CatalogType.ImplementationTeam => await db.ProcurementPackages.Where(p => p.Team != null).Select(p => p.Team!).Distinct().ToListAsync(),
+        CatalogType.BusinessSector => await db.Vendors.Where(v => v.BusinessSector != null).Select(v => v.BusinessSector!).Distinct().ToListAsync(),
+        CatalogType.Origin => await db.Items.Where(i => i.Origin != null).Select(i => i.Origin!).Distinct().ToListAsync(),
+        CatalogType.Brand => await db.Items.Where(i => i.Brand != null).Select(i => i.Brand!).Distinct().ToListAsync(),
         _ => new()
     };
 }

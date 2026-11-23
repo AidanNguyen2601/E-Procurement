@@ -19,15 +19,17 @@ public partial class StandardReports
             var ids = await _db.VendorCategories.Where(c => c.CategoryId == f.CategoryId).Select(c => c.VendorId).ToListAsync();
             rows = rows.Where(x => ids.Contains(x.Vendor.Id)).ToList();
         }
-        foreach (var g in new[] { "A", "B", "C", "D" })
-            r.Kpis.Add(new($"Loại {g}", rows.Count(x => x.Grade == g).ToString(), SupplierScorecard.GradeText(g), g == "D" && rows.Any(x => x.Grade == "D")));
+        var levels = await SupplierScorecard.LevelsAsync(_db);
+        var lowest = levels.OrderBy(l => l.Min).First().Code;
+        foreach (var g in levels.Select(l => l.Code))
+            r.Kpis.Add(new($"Loại {g}", rows.Count(x => x.Grade == g).ToString(), SupplierScorecard.GradeText(g, levels), g == lowest && rows.Any(x => x.Grade == lowest)));
         r.Tables.Add(new ReportTable
         {
             Title = "Xếp loại nhà cung cấp", Chart = ChartKind.Bar, ChartValue = 8,
             Columns = { new("Nhà cung cấp"), new("Số PO", ColumnKind.Number), new("Giá trị mua", ColumnKind.Money), new("% đúng hạn", ColumnKind.Percent),
                         new("% không đạt", ColumnKind.Percent), new("Số phiếu", ColumnKind.Number), new("Chất lượng", ColumnKind.Number), new("Tiến độ", ColumnKind.Number),
                         new("Điểm (5)", ColumnKind.Number), new("Xếp loại"), new("Khuyến nghị") },
-            Rows = rows.Select(x => new object?[] { x.Vendor.Name, x.Orders, x.Value, x.OnTimePercent, x.RejectPercent, x.Evaluations, x.Quality, x.Delivery, x.Score, x.Grade, SupplierScorecard.GradeText(x.Grade) }).ToList()
+            Rows = rows.Select(x => new object?[] { x.Vendor.Name, x.Orders, x.Value, x.OnTimePercent, x.RejectPercent, x.Evaluations, x.Quality, x.Delivery, x.Score, x.Grade, x.GradeLabel }).ToList()
         });
         return r;
     }

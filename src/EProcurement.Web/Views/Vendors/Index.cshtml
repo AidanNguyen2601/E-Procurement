@@ -22,7 +22,7 @@
     {
         <tr>
             <td>@v.Code</td>
-            <td><a asp-action="Details" asp-route-id="@v.Id" class="fw-semibold">@v.Name</a></td>
+            <td><a asp-action="Details" asp-route-id="@v.Id" class="fw-semibold">@v.Name</a>@if (!string.IsNullOrEmpty(v.BusinessSector)) { <div class="small text-muted">@v.BusinessSector</div> }</td>
             <td>@v.TaxCode</td>
             <td class="small">@string.Join(", ", v.Categories.Select(c => c.Category?.Name))</td>
             <td class="small">@v.ContactPerson<br />@v.ContactPhone</td>

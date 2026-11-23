@@ -132,6 +132,9 @@ public class CatalogsController : Controller
             CatalogType.FundingSource => await _db.ProcurementPackages.Where(p => p.FundingSource != null).GroupBy(p => p.FundingSource!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
             CatalogType.ImplementationTeam => await _db.ProcurementPackages.Where(p => p.Team != null).GroupBy(p => p.Team!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
             CatalogType.OrderType => await _db.PurchaseOrders.Where(p => p.OrderType != null).GroupBy(p => p.OrderType!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
+            CatalogType.BusinessSector => await _db.Vendors.Where(v => v.BusinessSector != null).GroupBy(v => v.BusinessSector!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
+            CatalogType.Origin => await _db.Items.Where(i => i.Origin != null).GroupBy(i => i.Origin!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
+            CatalogType.Brand => await _db.Items.Where(i => i.Brand != null).GroupBy(i => i.Brand!).Select(g => new { g.Key, N = g.Count() }).ToListAsync(),
             _ => new()
         };
         return rows.GroupBy(r => r.Key, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Sum(x => x.N), StringComparer.OrdinalIgnoreCase);
@@ -145,6 +148,9 @@ public class CatalogsController : Controller
         CatalogType.Unit => await _db.Items.Where(i => i.Unit == from).ExecuteUpdateAsync(s => s.SetProperty(i => i.Unit, to)),
         CatalogType.PaymentTerm => await _db.Vendors.Where(v => v.PaymentTerms == from).ExecuteUpdateAsync(s => s.SetProperty(v => v.PaymentTerms, to)),
         CatalogType.Bank => await _db.Vendors.Where(v => v.BankName == from).ExecuteUpdateAsync(s => s.SetProperty(v => v.BankName, to)),
+        CatalogType.BusinessSector => await _db.Vendors.Where(v => v.BusinessSector == from).ExecuteUpdateAsync(s => s.SetProperty(v => v.BusinessSector, to)),
+        CatalogType.Origin => await _db.Items.Where(i => i.Origin == from).ExecuteUpdateAsync(s => s.SetProperty(i => i.Origin, to)),
+        CatalogType.Brand => await _db.Items.Where(i => i.Brand == from).ExecuteUpdateAsync(s => s.SetProperty(i => i.Brand, to)),
         _ => 0
     };
 }

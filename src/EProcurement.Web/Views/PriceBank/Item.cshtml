@@ -16,7 +16,7 @@
 <div class="col-lg-8">
     <form method="get" class="toolbar"><input type="hidden" name="id" value="@Model.Id" />
         <select name="months" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">@foreach (var m in new[] { 6, 12, 24, 36, 60 }) { <option value="@m" selected="@(m == months)">@m tháng gần nhất</option> }</select>
-        <span class="small text-muted">@Model.Category?.Name · ĐVT @Model.Unit @(string.IsNullOrEmpty(Model.Specification) ? "" : "· " + Model.Specification)</span></form>
+        <span class="small text-muted">@Model.Category?.Name · ĐVT @Model.Unit@(string.Join("", new[] { Model.Brand, Model.Origin, Model.Specification }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => " · " + x)))</span></form>
     <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
         <thead><tr><th>Ngày</th><th>Nguồn</th><th>Chứng từ</th><th>Nhà cung cấp</th><th class="money">SL</th><th class="money">Đơn giá</th><th class="money">So với chuẩn</th></tr></thead><tbody>
         @foreach (var o in obs)

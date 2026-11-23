@@ -38,6 +38,7 @@
                 <dt class="col-5">Người liên hệ</dt><dd class="col-7">@Model.ContactPerson – @Model.ContactPhone</dd>
                 <dt class="col-5">Tài khoản</dt><dd class="col-7">@Model.BankAccount – @Model.BankName</dd>
                 <dt class="col-5">Thanh toán</dt><dd class="col-7">@Model.PaymentTerms</dd>
+                @if (!string.IsNullOrEmpty(Model.BusinessSector)) { <dt class="col-5">Lĩnh vực kinh doanh</dt><dd class="col-7">@Model.BusinessSector</dd> }
             </dl>
             @if (!string.IsNullOrEmpty(Model.Note)) { <hr /><div class="small pre">@Model.Note</div> }
         </div></div>

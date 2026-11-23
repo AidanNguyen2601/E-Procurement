@@ -18,7 +18,7 @@
             @foreach (var i in Model)
             {
                 <tr class="@(i.IsActive ? "" : "text-muted")">
-                    <td><b>@i.Code</b></td><td>@i.Name<div class="small text-muted">@i.Specification</div></td><td>@i.Category?.Name</td><td>@i.Unit</td>
+                    <td><b>@i.Code</b></td><td>@i.Name<div class="small text-muted">@(string.Join(" · ", new[] { i.Brand, i.Origin, i.Specification }.Where(x => !string.IsNullOrWhiteSpace(x))))</div></td><td>@i.Category?.Name</td><td>@i.Unit</td>
                     <td class="money">@i.ReferencePrice.ToMoney()</td>
                     <td>@(i.IsActive ? "Đang dùng" : "Ngừng")</td>
                     @if (canEdit) { <td class="text-end"><a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@i.Id">Sửa</a></td> }

@@ -62,6 +62,7 @@ public class ItemsController : ProcControllerBase
             if (i == null) return NotFound();
             i.Code = model.Code; i.Name = model.Name; i.CategoryId = model.CategoryId; i.Unit = model.Unit;
             i.ReferencePrice = model.ReferencePrice; i.Specification = model.Specification; i.IsActive = model.IsActive;
+            i.Origin = string.IsNullOrWhiteSpace(model.Origin) ? null : model.Origin.Trim(); i.Brand = string.IsNullOrWhiteSpace(model.Brand) ? null : model.Brand.Trim();
         }
         await Db.SaveChangesAsync();
         TempData["Success"] = "Đã lưu hàng hóa.";

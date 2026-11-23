@@ -139,6 +139,7 @@ public class VendorsController : ProcControllerBase
             v.Code = model.Code; v.Name = model.Name; v.TaxCode = model.TaxCode; v.Address = model.Address; v.Phone = model.Phone;
             v.Email = model.Email; v.ContactPerson = model.ContactPerson; v.ContactPhone = model.ContactPhone; v.BankAccount = model.BankAccount;
             v.BankName = model.BankName; v.PaymentTerms = model.PaymentTerms; v.Status = model.Status; v.Note = model.Note;
+            v.BusinessSector = string.IsNullOrWhiteSpace(model.BusinessSector) ? null : model.BusinessSector.Trim();
         }
 
         // Đồng bộ nhóm hàng

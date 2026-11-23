@@ -147,7 +147,11 @@ public enum CatalogType
     [Display(Name = "Nguồn vốn")] FundingSource = 9,
     [Display(Name = "Loại đơn hàng")] OrderType = 10,
     [Display(Name = "Tổ triển khai")] ImplementationTeam = 11,
-    [Display(Name = "Quyết định")] Decision = 12
+    [Display(Name = "Quyết định")] Decision = 12,
+    [Display(Name = "Lĩnh vực kinh doanh")] BusinessSector = 13,
+    [Display(Name = "Xếp loại nhà cung cấp")] SupplierGrade = 14,
+    [Display(Name = "Xuất xứ")] Origin = 15,
+    [Display(Name = "Thương hiệu")] Brand = 16
 }
 
 public enum NotificationKind

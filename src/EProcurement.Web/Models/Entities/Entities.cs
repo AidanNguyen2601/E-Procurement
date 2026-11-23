@@ -120,6 +120,9 @@ public class Item
     [Display(Name = "Quy cách / thông số")]
     public string? Specification { get; set; }
 
+    [StringLength(100)][Display(Name = "Xuất xứ")] public string? Origin { get; set; }
+    [StringLength(100)][Display(Name = "Thương hiệu")] public string? Brand { get; set; }
+
     [Display(Name = "Đang sử dụng")]
     public bool IsActive { get; set; } = true;
 }
@@ -172,6 +175,8 @@ public class Vendor
     [StringLength(200)]
     [Display(Name = "Điều khoản thanh toán")]
     public string? PaymentTerms { get; set; }
+
+    [StringLength(200)][Display(Name = "Lĩnh vực kinh doanh")] public string? BusinessSector { get; set; }
 
     [Display(Name = "Trạng thái")]
     public VendorStatus Status { get; set; } = VendorStatus.Pending;

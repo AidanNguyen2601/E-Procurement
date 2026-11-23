@@ -31,6 +31,7 @@ public class SupplierEvaluationsController : ProcControllerBase
         ViewBag.Counts = rows.GroupBy(r => r.Grade).ToDictionary(g => g.Key, g => g.Count());
         if (!string.IsNullOrEmpty(grade)) rows = rows.Where(r => r.Grade == grade).ToList();
         ViewBag.From = f; ViewBag.To = t; ViewBag.Grade = grade; ViewBag.CategoryId = categoryId;
+        ViewBag.Levels = await SupplierScorecard.LevelsAsync(Db);
         ViewBag.Categories = await Db.Categories.OrderBy(c => c.Name).ToListAsync();
         var period = CurrentPeriod(DateTime.Today);
         ViewBag.Period = period;
@@ -76,8 +77,9 @@ public class SupplierEvaluationsController : ProcControllerBase
         var evals = await Db.VendorEvaluations.Where(x => x.VendorId == v.Id).ToListAsync();
         v.Rating = Math.Round(evals.Average(x => x.Average), 2);
         await Db.SaveChangesAsync();
-        var grade = SupplierScorecard.Grade(e.Average);
-        TempData["Success"] = $"Đã đánh giá định kỳ {period} cho {v.Name}: {e.Average:0.00}/5 – loại {grade} ({SupplierScorecard.GradeText(grade)}). Điểm chung mới: {v.Rating:0.00}.";
+        var levels = await SupplierScorecard.LevelsAsync(Db);
+        var grade = SupplierScorecard.Grade(e.Average, levels);
+        TempData["Success"] = $"Đã đánh giá định kỳ {period} cho {v.Name}: {e.Average:0.00}/5 – loại {grade} ({SupplierScorecard.GradeText(grade, levels)}). Điểm chung mới: {v.Rating:0.00}.";
         return RedirectToAction(nameof(Index));
     }
 }

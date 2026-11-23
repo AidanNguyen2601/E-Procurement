@@ -68,9 +68,9 @@
                         <div class="col-12"><div class="form-check">
                             <input type="checkbox" name="IsActive" value="true" class="form-check-input" id="act" @(e.IsActive ? "checked" : "") /><input type="hidden" name="IsActive" value="false" />
                             <label for="act" class="form-check-label small">Đang sử dụng</label></div></div>
-                        @if (info.Type is CatalogType.Department or CatalogType.Unit or CatalogType.PaymentTerm or CatalogType.Bank)
+                        @if (info.Type is CatalogType.Department or CatalogType.Unit or CatalogType.PaymentTerm or CatalogType.Bank or CatalogType.BusinessSector or CatalogType.Origin or CatalogType.Brand)
                         {
-                            <div class="col-12 small text-muted">Đổi tên sẽ cập nhật theo cho @(info.Type switch { CatalogType.Department => "người dùng và đề nghị mua hàng", CatalogType.Unit => "hàng hóa", _ => "nhà cung cấp" }) đang dùng tên cũ.</div>
+                            <div class="col-12 small text-muted">Đổi tên sẽ cập nhật theo cho @(info.Type switch { CatalogType.Department => "người dùng và đề nghị mua hàng", CatalogType.Unit or CatalogType.Origin or CatalogType.Brand => "hàng hóa", _ => "nhà cung cấp" }) đang dùng tên cũ.</div>
                         }
                     }
                     <div class="col-12">

@@ -137,19 +137,52 @@ public class SupplierScore
     public decimal? Service { get; set; }
     /// <summary>Điểm tổng hợp 1–5: trung bình phiếu đánh giá; chưa có phiếu thì suy từ số liệu giao hàng</summary>
     public decimal? Score { get; set; }
-    public string Grade => SupplierScorecard.Grade(Score);
+    /// <summary>Ký hiệu loại theo thang của danh mục "Xếp loại nhà cung cấp" ("—" = chưa đủ dữ liệu)</summary>
+    public string Grade { get; set; } = "—";
+    public string GradeLabel { get; set; } = "Chưa đủ dữ liệu";
     public DateTime? LastPeriodic { get; set; }
 }
 
+/// <summary>Một bậc xếp loại: đạt khi điểm ≥ Min</summary>
+public record GradeLevel(string Code, string Label, decimal Min);
+
 public static class SupplierScorecard
 {
-    /// <summary>Xếp loại: A ≥ 4,5 · B ≥ 3,5 · C ≥ 2,5 · D &lt; 2,5 · "—" chưa đủ dữ liệu</summary>
-    public static string Grade(decimal? score) => score switch { null => "—", >= 4.5m => "A", >= 3.5m => "B", >= 2.5m => "C", _ => "D" };
-
-    public static string GradeText(string grade) => grade switch
+    /// <summary>Thang mặc định: A ≥ 4,5 · B ≥ 3,5 · C ≥ 2,5 · D còn lại</summary>
+    public static readonly GradeLevel[] DefaultLevels =
     {
-        "A" => "Tốt – ưu tiên mời", "B" => "Khá – duy trì", "C" => "Trung bình – cần cải thiện", "D" => "Yếu – xem xét tạm ngưng", _ => "Chưa đủ dữ liệu"
+        new("A", "Tốt – ưu tiên mời", 4.5m), new("B", "Khá – duy trì", 3.5m), new("C", "Trung bình – cần cải thiện", 2.5m), new("D", "Yếu – xem xét tạm ngưng", 0m)
     };
+
+    public static string Grade(decimal? score) => Grade(score, DefaultLevels);
+
+    /// <summary>Bậc cao nhất có điểm tối thiểu ≤ điểm; thấp hơn mọi bậc → bậc thấp nhất; null → "—"</summary>
+    public static string Grade(decimal? score, IReadOnlyCollection<GradeLevel> levels)
+    {
+        if (score == null || levels.Count == 0) return "—";
+        return (levels.OrderByDescending(l => l.Min).FirstOrDefault(l => score >= l.Min) ?? levels.OrderBy(l => l.Min).First()).Code;
+    }
+
+    public static string GradeText(string grade) => GradeText(grade, DefaultLevels);
+    public static string GradeText(string grade, IReadOnlyCollection<GradeLevel> levels) =>
+        levels.FirstOrDefault(l => string.Equals(l.Code, grade, StringComparison.OrdinalIgnoreCase))?.Label ?? "Chưa đủ dữ liệu";
+
+    /// <summary>
+    /// Thang xếp loại từ danh mục "Xếp loại nhà cung cấp" (Mã = ký hiệu, Tên = khuyến nghị, Ghi chú = điểm tối thiểu).
+    /// Danh mục trống / thiếu mã / điểm không đọc được → thang mặc định.
+    /// </summary>
+    public static async Task<List<GradeLevel>> LevelsAsync(EProcDbContext db)
+    {
+        var entries = await db.CatalogEntries.AsNoTracking().Where(e => e.Type == CatalogType.SupplierGrade && e.IsActive).ToListAsync();
+        var levels = new List<GradeLevel>();
+        foreach (var e in entries)
+        {
+            var note = e.Note?.Trim().Replace(',', '.');
+            if (string.IsNullOrWhiteSpace(e.Code) || !decimal.TryParse(note, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var min)) continue;
+            levels.Add(new GradeLevel(e.Code.Trim(), e.Name, min));
+        }
+        return levels.Count > 0 ? levels.OrderByDescending(l => l.Min).ToList() : DefaultLevels.ToList();
+    }
 
     /// <summary>Điểm tiến độ gợi ý (1–5) theo % giao đúng hạn</summary>
     public static int DeliveryScore(decimal onTimePercent) => onTimePercent switch { >= 95 => 5, >= 85 => 4, >= 70 => 3, >= 50 => 2, _ => 1 };
@@ -195,6 +228,12 @@ public static class SupplierScorecard
             else if (s.OnTimePercent.HasValue)
                 s.Score = Math.Round((DeliveryScore(s.OnTimePercent.Value) + QualityScore(s.RejectPercent ?? 0)) / 2m, 2);
             result.Add(s);
+        }
+        var levels = await LevelsAsync(db);
+        foreach (var s in result)
+        {
+            s.Grade = Grade(s.Score, levels);
+            s.GradeLabel = GradeText(s.Grade, levels);
         }
         return result.OrderByDescending(x => x.Score ?? -1).ThenByDescending(x => x.Value).ToList();
     }
