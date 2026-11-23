@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using EProcurement.Web.Models.Entities;
 using EProcurement.Web.Infrastructure;
+using EProcurement.Web.Infrastructure.Reporting;
 
 namespace EProcurement.Web.ViewModels;
 
@@ -343,4 +344,19 @@ public class ContractPoLine
 {
     public int ContractLineId { get; set; }
     [Range(0, 10_000_000)] public decimal Quantity { get; set; }
+}
+
+/// <summary>Trình thiết kế báo cáo động</summary>
+public class DesignerViewModel
+{
+    public int? Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsShared { get; set; }
+    /// <summary>Người xem là chủ sở hữu (hoặc quản trị) – được ghi đè thiết kế đã lưu</summary>
+    public bool CanEdit { get; set; } = true;
+    public ReportDesign Design { get; set; } = new();
+    public DynamicResult? Result { get; set; }
+    public List<string> Errors { get; set; } = new();
+    public string? Sql { get; set; }
 }

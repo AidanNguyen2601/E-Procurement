@@ -1,0 +1,59 @@
+@model ReportTable
+@*  Bảng báo cáo + biểu đồ một chuỗi (thanh ngang để xếp hạng, cột đứng theo thời gian). Màu nhấn duy nhất; giá trị hiển thị khi rê chuột. *@
+@{
+    var t = Model;
+    var points = t.Chart == ChartKind.None ? new List<(string Label, decimal Value)>()
+        : t.Rows.Select(r => (Label: ReportFormat.Cell(r.ElementAtOrDefault(t.ChartLabel), t.Columns[t.ChartLabel].Kind), Value: ReportFormat.ToDecimal(r.ElementAtOrDefault(t.ChartValue)) ?? 0m))
+            .Take(t.Chart == ChartKind.Column ? 36 : 15).ToList();
+    var max = points.Count == 0 ? 0 : points.Max(p => p.Value);
+    var valueKind = t.Chart == ChartKind.None ? ColumnKind.Number : t.Columns[t.ChartValue].Kind;
+    string Short(decimal v) => valueKind == ColumnKind.Money ? v.ToShortMoney() : ReportFormat.Cell(v, valueKind);
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<div class="card h-100">
+    <div class="card-header d-flex justify-content-between"><span>@t.Title</span>
+        @if (t.Chart != ChartKind.None && points.Any()) { <span class="small fw-normal text-muted">Biểu đồ: @t.Columns[t.ChartValue].Title</span> }</div>
+    @if (t.Chart != ChartKind.None && points.Any(p => p.Value > 0))
+    {
+        <div class="card-body pb-0">
+            @if (t.Chart == ChartKind.Column)
+            {
+                <div class="cols" role="img" aria-label="Biểu đồ cột @t.Columns[t.ChartValue].Title theo @t.Columns[t.ChartLabel].Title">
+                    @foreach (var p in points)
+                    {
+                        var h = max <= 0 || p.Value <= 0 ? 0 : (int)Math.Round(p.Value * 140 / max);
+                        <div class="col-item" title="@p.Label: @ReportFormat.Cell(p.Value, valueKind)">
+                            <div class="v">@(points.Count <= 13 && p.Value > 0 ? Short(p.Value) : "")</div>
+                            <div class="colbar" style="height:@(h)px"></div><div class="mt-1 text-muted small">@p.Label</div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                @foreach (var p in points)
+                {
+                    var w = max <= 0 || p.Value <= 0 ? 0m : Math.Round(p.Value * 100 / max, 1);
+                    <div class="bar-row" title="@p.Label: @ReportFormat.Cell(p.Value, valueKind)">
+                        <div class="lbl">@p.Label</div><div class="bar"><div style="width:@w.ToString(inv)%"></div></div><div class="val">@Short(p.Value)</div>
+                    </div>
+                }
+            }
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(t.Note)) { <div class="px-3 pt-2 small text-muted">@t.Note</div> }
+    <div class="card-body p-0 table-responsive"><table class="table table-sm table-hover mb-0">
+        <thead><tr>@foreach (var c in t.Columns) { <th class="@(ReportFormat.IsNumeric(c.Kind) ? "money" : "")">@c.Title</th> }</tr></thead>
+        <tbody>
+        @foreach (var r in t.Rows)
+        {
+            <tr>@for (var i = 0; i < t.Columns.Count; i++) { <td class="@(ReportFormat.IsNumeric(t.Columns[i].Kind) ? "money" : "")">@ReportFormat.Cell(r.ElementAtOrDefault(i), t.Columns[i].Kind)</td> }</tr>
+        }
+        @if (!t.Rows.Any()) { <tr><td colspan="@t.Columns.Count" class="text-muted p-3">Không có dữ liệu trong phạm vi lọc.</td></tr> }
+        </tbody>
+        @if (t.Totals != null && t.Rows.Any())
+        {
+            <tfoot><tr class="fw-bold">@for (var i = 0; i < t.Columns.Count; i++) { <td class="@(ReportFormat.IsNumeric(t.Columns[i].Kind) ? "money" : "")">@ReportFormat.Cell(t.Totals.ElementAtOrDefault(i), t.Columns[i].Kind)</td> }</tr></tfoot>
+        }
+    </table></div>
+</div>

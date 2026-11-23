@@ -1,0 +1,57 @@
+@model List<ReportDefinition>
+@{
+    ViewData["Title"] = "Báo cáo động";
+    var me = User.GetUserId();
+}
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card h-100"><div class="card-header">Tạo báo cáo mới từ nguồn dữ liệu</div>
+            <div class="list-group list-group-flush">
+                @foreach (var d in DynamicReports.Datasets)
+                {
+                    <a asp-action="Designer" asp-route-dataset="@d.Key" class="list-group-item list-group-item-action">
+                        <div class="fw-semibold">@d.Label <span class="small text-muted fw-normal">· @d.Fields.Count trường</span></div>
+                        <div class="small text-muted">@d.Description</div>
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card mb-3"><div class="card-header">Nhập thiết kế (JSON)</div><div class="card-body">
+            <form asp-action="Import" method="post" enctype="multipart/form-data" class="d-flex flex-column gap-2">
+                <input type="file" name="file" accept=".json,application/json" class="form-control form-control-sm" required />
+                <button class="btn btn-sm btn-outline-primary">Mở thiết kế</button>
+                <div class="small text-muted">File được xuất từ nút "Xuất thiết kế (JSON)" trong trình thiết kế.</div>
+            </form>
+        </div></div>
+        <div class="card"><div class="card-body small text-muted">
+            Báo cáo chỉ đọc dữ liệu từ các nguồn được định nghĩa sẵn; giá trị lọc truyền bằng tham số nên an toàn. Mỗi lần chạy tối đa 5.000 dòng, 30 giây.
+            <div class="mt-2"><a asp-controller="Reports" asp-action="Index">← Báo cáo chuẩn</a></div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card"><div class="card-header">Báo cáo đã lưu (@Model.Count)</div><div class="card-body p-0"><table class="table mb-0">
+    <thead><tr><th>Tên báo cáo</th><th>Nguồn dữ liệu</th><th>Người tạo</th><th>Cập nhật</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr>
+            <td><a asp-action="Designer" asp-route-id="@r.Id" asp-route-run="true" class="fw-semibold">@r.Name</a>
+                @if (r.IsShared) { <span class="badge bg-light text-dark border">chia sẻ</span> }
+                @if (!string.IsNullOrEmpty(r.Description)) { <div class="small text-muted">@r.Description</div> }</td>
+            <td class="small">@(DynamicReports.Dataset(r.Dataset)?.Label ?? r.Dataset)</td>
+            <td class="small">@r.Owner?.FullName</td>
+            <td class="small">@r.UpdatedAt.ToDateTime()</td>
+            <td class="text-end">
+                @if (r.OwnerId == me || User.IsAdmin())
+                {
+                    <form asp-action="Delete" asp-route-id="@r.Id" method="post" data-confirm="Xóa báo cáo &quot;@r.Name&quot;?"><button class="btn btn-sm btn-link text-danger">Xóa</button></form>
+                }
+            </td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">Chưa có báo cáo nào được lưu.</td></tr> }
+    </tbody>
+</table></div></div>

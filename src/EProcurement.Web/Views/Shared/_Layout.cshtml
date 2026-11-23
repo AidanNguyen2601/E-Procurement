@@ -40,6 +40,10 @@
                 <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">Đơn mua hàng (PO)</a>
                 <a class="@Active("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">Nhận hàng (GRN)</a>
                 <a class="@Active("Vendors")" asp-controller="Vendors" asp-action="Index">Nhà cung cấp</a>
+
+                <div class="nav-group">Báo cáo</div>
+                <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index">Báo cáo mua sắm</a>
+                <a class="@Active("ReportBuilder")" asp-controller="ReportBuilder" asp-action="Index">Báo cáo động</a>
             }
             @if (User.IsAdmin())
             {

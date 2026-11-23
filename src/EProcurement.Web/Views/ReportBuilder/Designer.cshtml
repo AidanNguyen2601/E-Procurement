@@ -1,0 +1,202 @@
+@model DesignerViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = Model.Id.HasValue ? $"Báo cáo: {Model.Name}" : "Thiết kế báo cáo động";
+    var catalog = DynamicReports.Datasets.Select(d => new
+    {
+        key = d.Key, label = d.Label, description = d.Description,
+        fields = d.Fields.Select(f => new { key = f.Key, label = f.Label, type = f.Type.ToString().ToLower(), options = f.Options?.Select(o => new { value = o.Key, label = o.Value }) })
+    });
+    var json = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    ReportTable? table = null;
+    if (Model.Result != null)
+    {
+        var d = Model.Design;
+        table = new ReportTable
+        {
+            Title = $"Kết quả: {Model.Result.Rows.Count:N0} dòng{(Model.Result.Truncated ? $" (đã giới hạn {d.Top:N0} dòng đầu)" : "")} · {Model.Result.ElapsedMs} ms",
+            Columns = Model.Result.Columns, Rows = Model.Result.Rows,
+            Chart = d.Chart == "bar" ? ChartKind.Bar : d.Chart == "column" ? ChartKind.Column : ChartKind.None, ChartLabel = d.ChartLabel, ChartValue = d.ChartValue
+        };
+    }
+}
+<form method="post" id="designer">
+    <input type="hidden" name="Id" value="@Model.Id" />
+    <input type="hidden" name="DesignJson" id="designJson" />
+    @if (Model.Errors.Any()) { <div class="alert alert-danger py-2"><ul class="mb-0">@foreach (var e in Model.Errors) { <li>@e</li> }</ul></div> }
+    @if (Model.Id.HasValue && !Model.CanEdit) { <div class="alert alert-info py-2 small">Báo cáo được chia sẻ – bạn có thể chạy, chỉnh và lưu thành bản sao của mình.</div> }
+
+    <div class="row g-3">
+        <div class="col-xl-4">
+            <div class="card mb-3"><div class="card-header">1. Nguồn dữ liệu</div><div class="card-body">
+                <select id="dataset" class="form-select form-select-sm"></select>
+                <div id="datasetDesc" class="small text-muted mt-1"></div>
+            </div></div>
+            <div class="card mb-3"><div class="card-header d-flex justify-content-between">2. Cột hiển thị <button type="button" class="btn btn-sm btn-link p-0" id="addCol">+ Thêm cột</button></div>
+                <div class="card-body" id="cols"></div>
+                <div class="card-footer small text-muted">Có cột tổng hợp (tổng / đếm / TB…) → các cột còn lại tự động làm cột nhóm (GROUP BY).</div></div>
+            <div class="card mb-3"><div class="card-header d-flex justify-content-between">3. Điều kiện lọc <button type="button" class="btn btn-sm btn-link p-0" id="addFilter">+ Thêm điều kiện</button></div>
+                <div class="card-body" id="filters"></div></div>
+            <div class="card mb-3"><div class="card-header d-flex justify-content-between">4. Sắp xếp & hiển thị <button type="button" class="btn btn-sm btn-link p-0" id="addSort">+ Sắp xếp</button></div>
+                <div class="card-body">
+                    <div id="sorts"></div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-4"><label class="form-label small mb-0">Số dòng tối đa</label><input type="number" id="top" min="1" max="5000" class="form-control form-control-sm" /></div>
+                        <div class="col-8"><label class="form-label small mb-0">Biểu đồ</label>
+                            <select id="chart" class="form-select form-select-sm"><option value="none">Không</option><option value="bar">Thanh ngang (xếp hạng)</option><option value="column">Cột đứng (theo thời gian)</option></select></div>
+                        <div class="col-6 chartOpt"><label class="form-label small mb-0">Cột nhãn</label><select id="chartLabel" class="form-select form-select-sm"></select></div>
+                        <div class="col-6 chartOpt"><label class="form-label small mb-0">Cột giá trị</label><select id="chartValue" class="form-select form-select-sm"></select></div>
+                    </div>
+                </div></div>
+            <div class="card mb-3"><div class="card-header">5. Lưu thiết kế</div><div class="card-body">
+                <input name="Name" value="@Model.Name" class="form-control form-control-sm mb-2" placeholder="Tên báo cáo" maxlength="150" />
+                <textarea name="Description" class="form-control form-control-sm mb-2" rows="2" placeholder="Mô tả (tùy chọn)" maxlength="500">@Model.Description</textarea>
+                <label class="small"><input type="checkbox" name="IsShared" value="true" class="form-check-input" checked="@Model.IsShared" /> Chia sẻ cho bộ phận mua hàng & Ban Giám đốc</label>
+            </div></div>
+        </div>
+
+        <div class="col-xl-8">
+            <div class="toolbar">
+                <button class="btn btn-primary" formaction="@Url.Action("Run")">▶ Chạy báo cáo</button>
+                <button class="btn btn-outline-success" formaction="@Url.Action("ExportExcel")">Xuất Excel</button>
+                <button class="btn btn-outline-secondary" formaction="@Url.Action("ExportSql")">Xuất SQL</button>
+                <button class="btn btn-outline-primary" formaction="@Url.Action("Save")">@(Model.Id.HasValue && Model.CanEdit ? "Lưu thiết kế" : "Lưu thành báo cáo mới")</button>
+                @if (Model.Id.HasValue && Model.CanEdit) { <button class="btn btn-outline-primary" formaction="@Url.Action("Save", new { asCopy = true })">Lưu bản sao</button> }
+                <button class="btn btn-outline-secondary" formaction="@Url.Action("ExportDesign")">Xuất thiết kế (JSON)</button>
+                <a asp-action="Index" class="btn btn-light ms-auto">Danh sách báo cáo</a>
+            </div>
+            @if (table != null)
+            {
+                <partial name="_ReportTable" model="table" />
+            }
+            else
+            {
+                <div class="card"><div class="card-body text-muted">Chọn nguồn dữ liệu, cột và điều kiện ở bên trái rồi bấm <b>Chạy báo cáo</b>.</div></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Sql))
+            {
+                <details class="card mt-3"><summary class="card-header">Câu lệnh SQL được sinh (chỉ đọc, có tham số)</summary>
+                    <pre class="card-body small mb-0" style="white-space:pre-wrap">@Model.Sql</pre></details>
+            }
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+(function () {
+    const catalog = @Html.Raw(JsonSerializer.Serialize(catalog, json));
+    const aggs = @Html.Raw(JsonSerializer.Serialize(DynamicReports.Aggregates.ToDictionary(a => a.Key, a => new { label = a.Value.Label, numeric = a.Value.NeedsNumeric }), json));
+    const ops = @Html.Raw(JsonSerializer.Serialize(DynamicReports.Operators, json));
+    let d = @Html.Raw(JsonSerializer.Serialize(Model.Design, DynamicReports.Json));
+    d.columns ||= []; d.filters ||= []; d.sorts ||= [];
+
+    const opsByType = {
+        text: ['eq', 'ne', 'contains', 'starts', 'in', 'null', 'notnull'],
+        number: ['eq', 'ne', 'gt', 'ge', 'lt', 'le', 'between', 'null', 'notnull'],
+        money: ['eq', 'ne', 'gt', 'ge', 'lt', 'le', 'between', 'null', 'notnull'],
+        date: ['eq', 'ne', 'gt', 'ge', 'lt', 'le', 'between', 'null', 'notnull'],
+        bool: ['eq', 'null', 'notnull'],
+        enum: ['eq', 'ne', 'in', 'null', 'notnull']
+    };
+    const $ = id => document.getElementById(id);
+    const el = (tag, attrs = {}, children = []) => {
+        const e = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) { if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v); }
+        children.forEach(c => e.appendChild(c)); return e;
+    };
+    const opt = (value, label, selected) => { const o = el('option', { value, text: label }); if (selected) o.selected = true; return o; };
+    const ds = () => catalog.find(x => x.key === d.dataset) || catalog[0];
+    const field = key => ds().fields.find(f => f.key === key);
+    const numeric = f => f && (f.type === 'number' || f.type === 'money');
+    const colLabel = (c, i) => c.label || ((c.agg && c.agg !== 'none' ? aggs[c.agg].label + ' ' : '') + (field(c.field)?.label || c.field)) || ('Cột ' + (i + 1));
+    const fieldSelect = (value, onchange) => el('select', { class: 'form-select form-select-sm', onchange }, ds().fields.map(f => opt(f.key, f.label, f.key === value)));
+    const btnX = onclick => el('button', { type: 'button', class: 'btn btn-sm btn-outline-danger', title: 'Xóa', onclick, text: '×' });
+
+    function renderDataset() {
+        const s = $('dataset'); s.innerHTML = '';
+        catalog.forEach(x => s.appendChild(opt(x.key, x.label, x.key === d.dataset)));
+        $('datasetDesc').textContent = ds().description;
+    }
+    function renderCols() {
+        const box = $('cols'); box.innerHTML = '';
+        d.columns.forEach((c, i) => {
+            const f = field(c.field);
+            const aggSel = el('select', { class: 'form-select form-select-sm', style: 'max-width:130px', onchange: e => { c.agg = e.target.value; renderAll(); } },
+                Object.entries(aggs).filter(([k, a]) => !a.numeric || numeric(f)).map(([k, a]) => opt(k, a.label, k === (c.agg || 'none'))));
+            box.appendChild(el('div', { class: 'd-flex gap-1 mb-1' }, [
+                fieldSelect(c.field, e => { c.field = e.target.value; if (aggs[c.agg]?.numeric && !numeric(field(c.field))) c.agg = 'none'; renderAll(); }),
+                aggSel,
+                el('button', { type: 'button', class: 'btn btn-sm btn-light border', title: 'Lên', onclick: () => { if (i > 0) { [d.columns[i - 1], d.columns[i]] = [d.columns[i], d.columns[i - 1]]; renderAll(); } }, text: '↑' }),
+                btnX(() => { d.columns.splice(i, 1); d.sorts = d.sorts.filter(s => s.column !== i).map(s => ({ ...s, column: s.column > i ? s.column - 1 : s.column })); renderAll(); })
+            ]));
+            box.appendChild(el('input', { class: 'form-control form-control-sm mb-2', placeholder: 'Tên cột (để trống = tự đặt)', value: c.label || '', oninput: e => { c.label = e.target.value || null; renderSortsAndChart(); } }));
+        });
+        if (!d.columns.length) box.appendChild(el('div', { class: 'small text-muted', text: 'Chưa có cột.' }));
+    }
+    function valueInput(f, value, onchange, multiple) {
+        if (f.options) {
+            const s = el('select', { class: 'form-select form-select-sm', onchange: e => onchange(multiple ? [...e.target.selectedOptions].map(o => o.value) : e.target.value) },
+                (multiple ? [] : [opt('', '-- chọn --', false)]).concat(f.options.map(o => opt(o.value, o.label, multiple ? (value || []).includes(o.value) : o.value === value))));
+            if (multiple) { s.multiple = true; s.size = Math.min(6, f.options.length); }
+            return s;
+        }
+        if (multiple) return el('input', { class: 'form-control form-control-sm', placeholder: 'Các giá trị, ngăn cách bằng ;', value: (value || []).join('; '),
+            oninput: e => onchange(e.target.value.split(';').map(x => x.trim()).filter(x => x)) });
+        const type = f.type === 'date' ? 'date' : numeric(f) ? 'number' : 'text';
+        return el('input', { type, step: 'any', class: 'form-control form-control-sm', value: value || '', oninput: e => onchange(e.target.value) });
+    }
+    function renderFilters() {
+        const box = $('filters'); box.innerHTML = '';
+        d.filters.forEach((fl, i) => {
+            const f = field(fl.field) || ds().fields[0]; fl.field = f.key;
+            const allowed = opsByType[f.type]; if (!allowed.includes(fl.op)) fl.op = allowed[0];
+            const row = el('div', { class: 'border rounded p-2 mb-2' }, [
+                el('div', { class: 'd-flex gap-1 mb-1' }, [
+                    fieldSelect(fl.field, e => { fl.field = e.target.value; fl.value = fl.value2 = null; fl.values = null; renderFilters(); }),
+                    el('select', { class: 'form-select form-select-sm', style: 'max-width:140px', onchange: e => { fl.op = e.target.value; renderFilters(); } }, allowed.map(o => opt(o, ops[o], o === fl.op))),
+                    btnX(() => { d.filters.splice(i, 1); renderFilters(); })
+                ])
+            ]);
+            if (fl.op === 'in') row.appendChild(valueInput(f, fl.values, v => fl.values = v, true));
+            else if (fl.op === 'between') row.appendChild(el('div', { class: 'd-flex gap-1' }, [valueInput(f, fl.value, v => fl.value = v), valueInput(f, fl.value2, v => fl.value2 = v)]));
+            else if (fl.op !== 'null' && fl.op !== 'notnull') row.appendChild(valueInput(f, fl.value, v => fl.value = v));
+            box.appendChild(row);
+        });
+        if (!d.filters.length) box.appendChild(el('div', { class: 'small text-muted', text: 'Không lọc – lấy toàn bộ dữ liệu.' }));
+    }
+    function renderSortsAndChart() {
+        const box = $('sorts'); box.innerHTML = '';
+        d.sorts = d.sorts.filter(s => s.column < d.columns.length);
+        d.sorts.forEach((s, i) => box.appendChild(el('div', { class: 'd-flex gap-1 mb-1' }, [
+            el('select', { class: 'form-select form-select-sm', onchange: e => s.column = +e.target.value }, d.columns.map((c, ci) => opt(ci, colLabel(c, ci), ci === s.column))),
+            el('select', { class: 'form-select form-select-sm', style: 'max-width:120px', onchange: e => s.desc = e.target.value === '1' }, [opt('0', 'Tăng dần', !s.desc), opt('1', 'Giảm dần', s.desc)]),
+            btnX(() => { d.sorts.splice(i, 1); renderSortsAndChart(); })
+        ])));
+        $('top').value = d.top || 500;
+        $('chart').value = d.chart || 'none';
+        for (const id of ['chartLabel', 'chartValue']) {
+            const s = $(id); s.innerHTML = '';
+            d.columns.forEach((c, ci) => s.appendChild(opt(ci, colLabel(c, ci), ci === (id === 'chartLabel' ? d.chartLabel : d.chartValue))));
+        }
+        document.querySelectorAll('.chartOpt').forEach(e => e.style.display = d.chart === 'none' ? 'none' : '');
+    }
+    function renderAll() { renderDataset(); renderCols(); renderFilters(); renderSortsAndChart(); }
+
+    $('dataset').addEventListener('change', e => {
+        if (d.columns.length && !confirm('Đổi nguồn dữ liệu sẽ xóa cột và điều kiện lọc hiện tại?')) { e.target.value = d.dataset; return; }
+        d = { version: 1, dataset: e.target.value, columns: [{ field: catalog.find(x => x.key === e.target.value).fields[0].key, agg: 'none' }], filters: [], sorts: [], top: 500, chart: 'none', chartLabel: 0, chartValue: 0 };
+        renderAll();
+    });
+    $('addCol').addEventListener('click', () => { const f = ds().fields.find(x => numeric(x)) || ds().fields[0]; d.columns.push({ field: f.key, agg: numeric(f) ? 'sum' : 'none' }); renderAll(); });
+    $('addFilter').addEventListener('click', () => { d.filters.push({ field: ds().fields[0].key, op: 'eq' }); renderFilters(); });
+    $('addSort').addEventListener('click', () => { if (d.columns.length) { d.sorts.push({ column: 0, desc: false }); renderSortsAndChart(); } });
+    $('top').addEventListener('input', e => d.top = +e.target.value || 500);
+    $('chart').addEventListener('change', e => { d.chart = e.target.value; renderSortsAndChart(); });
+    $('chartLabel').addEventListener('change', e => d.chartLabel = +e.target.value);
+    $('chartValue').addEventListener('change', e => d.chartValue = +e.target.value);
+    $('designer').addEventListener('submit', () => { $('designJson').value = JSON.stringify(d); });
+    renderAll();
+})();
+</script>
+}

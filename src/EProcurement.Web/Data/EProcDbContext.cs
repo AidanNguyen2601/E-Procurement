@@ -37,6 +37,7 @@ public class EProcDbContext : DbContext
     public DbSet<TenderComplaint> TenderComplaints => Set<TenderComplaint>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ContractLine> ContractLines => Set<ContractLine>();
+    public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

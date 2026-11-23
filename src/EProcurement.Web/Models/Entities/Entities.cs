@@ -624,3 +624,21 @@ public class ApprovalHistory
     [StringLength(1000)] public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
+
+// =====================================================================
+//  BÁO CÁO ĐỘNG – thiết kế đã lưu
+// =====================================================================
+public class ReportDefinition
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Đặt tên báo cáo"), StringLength(150)][Display(Name = "Tên báo cáo")] public string Name { get; set; } = string.Empty;
+    [StringLength(500)][Display(Name = "Mô tả")] public string? Description { get; set; }
+    [Required, StringLength(50)] public string Dataset { get; set; } = string.Empty;
+    /// <summary>Thiết kế dạng JSON (ReportDesign)</summary>
+    [Required] public string DesignJson { get; set; } = "{}";
+    [Display(Name = "Chia sẻ cho mọi người")] public bool IsShared { get; set; }
+    public int OwnerId { get; set; }
+    public AppUser? Owner { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}

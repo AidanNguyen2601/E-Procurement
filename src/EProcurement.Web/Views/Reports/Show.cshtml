@@ -1,0 +1,56 @@
+@model ReportResult
+@{
+    ViewData["Title"] = Model.Title;
+    var f = (ReportFilter)ViewBag.Filter;
+    var q = new Dictionary<string, string?>
+    {
+        ["From"] = f.From.ToString("yyyy-MM-dd"), ["To"] = f.To.ToString("yyyy-MM-dd"), ["Department"] = f.Department,
+        ["CategoryId"] = f.CategoryId?.ToString(), ["VendorId"] = f.VendorId?.ToString()
+    };
+    var today = DateTime.Today;
+    (string, DateTime, DateTime)[] presets =
+    {
+        ("Tháng này", new DateTime(today.Year, today.Month, 1), today),
+        ("Quý này", new DateTime(today.Year, (today.Month - 1) / 3 * 3 + 1, 1), today),
+        ("Năm nay", new DateTime(today.Year, 1, 1), today),
+        ("12 tháng", today.AddMonths(-12).AddDays(1), today),
+        ("Năm trước", new DateTime(today.Year - 1, 1, 1), new DateTime(today.Year - 1, 12, 31))
+    };
+}
+<form method="get" class="toolbar no-print">
+    <div><label class="form-label small mb-0">Từ ngày</label><input type="date" name="From" value="@f.From.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <div><label class="form-label small mb-0">Đến ngày</label><input type="date" name="To" value="@f.To.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <div><label class="form-label small mb-0">Phòng ban</label><select name="Department" class="form-select form-select-sm" asp-items="ViewBag.Departments"><option value="">Tất cả</option></select></div>
+    <div><label class="form-label small mb-0">Nhóm hàng</label><select name="CategoryId" class="form-select form-select-sm" asp-items="ViewBag.Categories"><option value="">Tất cả</option></select></div>
+    <div><label class="form-label small mb-0">Nhà cung cấp</label><select name="VendorId" class="form-select form-select-sm" style="max-width:220px" asp-items="ViewBag.Vendors"><option value="">Tất cả</option></select></div>
+    <button class="btn btn-sm btn-primary">Xem</button>
+    <div class="ms-auto d-flex gap-1">
+        <a class="btn btn-sm btn-outline-success" asp-action="Export" asp-route-id="@Model.Key" asp-all-route-data="q">Xuất Excel</a>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">In</button>
+    </div>
+</form>
+<div class="d-flex flex-wrap gap-1 mb-3 no-print">
+    @foreach (var (label, from, to) in presets)
+    {
+        var pq = new Dictionary<string, string?>(q) { ["From"] = from.ToString("yyyy-MM-dd"), ["To"] = to.ToString("yyyy-MM-dd") };
+        var active = from == f.From.Date && to == f.To.Date;
+        <a class="btn btn-sm @(active ? "btn-secondary" : "btn-light border")" asp-action="Show" asp-route-id="@Model.Key" asp-all-route-data="pq">@label</a>
+    }
+</div>
+<div class="small text-muted mb-3">@Model.Description · <b>@ViewBag.FilterText</b></div>
+
+<div class="row g-3 mb-3">
+    @foreach (var k in Model.Kpis)
+    {
+        <div class="col-md-3"><div class="card stat h-100"><div class="label">@k.Label</div>
+            <div class="value @(k.Warn ? "text-danger" : "")">@k.Value</div>
+            @if (!string.IsNullOrEmpty(k.Hint)) { <div class="small text-muted">@k.Hint</div> }</div></div>
+    }
+</div>
+<div class="row g-3">
+    @foreach (var t in Model.Tables)
+    {
+        <div class="col-lg-@t.Width"><partial name="_ReportTable" model="t" /></div>
+    }
+</div>
+<a asp-action="Index" class="btn btn-light mt-3 no-print">← Danh sách báo cáo</a>
