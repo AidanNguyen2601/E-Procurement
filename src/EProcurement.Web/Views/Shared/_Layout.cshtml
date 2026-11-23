@@ -1,39 +1,27 @@
 @inject Microsoft.Extensions.Options.IOptions<ProcurementSettings> ProcOptions
+@inject UiThemeService Themes
 @{
     var ctrl = ViewContext.RouteData.Values["controller"]?.ToString();
-    var act = ViewContext.RouteData.Values["action"]?.ToString();
-    string Active(string c) => ctrl == c ? "active" : "";
-    // Mục menu đang chọn: theo controller, riêng Đấu thầu / Báo giá theo action
-    var navKey = (ctrl, act) switch
-    {
-        ("Tenders", "Evaluations" or "Screen" or "Score") => "td-eval",
-        ("Tenders", "Negotiations" or "NegotiationMinutes") => "td-neg",
-        ("Tenders", "EvaluationReports" or "Report") => "td-report",
-        ("Tenders", "Appraisals" or "AppraisalReport") => "td-appraisal",
-        ("Tenders", _) => "td",
-        ("Quotes", "Direct") => "q-direct",
-        ("Quotes", "Competitive") => "q-comp",
-        ("Quotes", "Evaluations") or ("Rfqs", "Evaluate" or "Compare") => "q-eval",
-        ("Reports", "Index") when Context.Request.Query["group"] == "sourcing" => "src-report",
-        ("Reports", "Show") when EProcurement.Web.Infrastructure.Reporting.StandardReports.SourcingKeys.Contains(ViewContext.RouteData.Values["id"]?.ToString()) => "src-report",
-        _ => ctrl ?? ""
-    };
-    string On(string k) => navKey == k ? "active" : "";
     var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
-    var purchasing = User.IsPurchasing();
-    var director = User.IsInRole(AppRoles.Director);
-    var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
-    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", "Prequalifications" => "clipboard", "SupplierEvaluations" => "users", "PriceBank" => "database", "StandardPrices" => "tag", "OrgUnits" => "network", _ => null };
+    var menu = NavMenu.Build(Url, User, NavMenu.CurrentKey(ViewContext));
+    var ui = await Themes.ForAsync(User);
+    var fontHref = UiTheme.FontHref(ui);
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", "Prequalifications" => "clipboard", "SupplierEvaluations" => "users", "PriceBank" => "database", "StandardPrices" => "tag", "OrgUnits" => "network", "Appearance" => "palette", _ => null };
 }
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-nav="@ui.Nav" data-menu="@ui.Menu" data-accordion="@(ui.Accordion ? "1" : "0")" style="@UiTheme.Style(ui)">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1e1b4b" />
+    <meta name="theme-color" content="@ui.Color" />
     <link rel="manifest" href="~/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="~/icon.svg" />
     <title>@ViewData["Title"] - E-Procurement</title>
+    @if (fontHref != null)
+    {
+        <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="stylesheet" href="@fontHref" id="ui-font" />
+    }
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
@@ -46,111 +34,7 @@
             <button type="button" class="sb-btn" data-nav-mini title="Rút gọn / mở rộng menu (Ctrl+B)" aria-label="Rút gọn menu">@Icon.Svg("chevron-down", 16)</button></div>
         <div class="nav-search"><input type="search" id="nav-search" placeholder="Tìm chức năng…" autocomplete="off" aria-label="Tìm chức năng trong menu" /></div>
         <nav>
-            <div class="nav-group">Tổng quan</div>
-            <a class="@Active("Home")" asp-controller="Home" asp-action="Index">@Icon.Svg("dashboard")<span>Dashboard</span></a>
-            @if (approver) { <a class="@Active("Approvals")" asp-controller="Approvals" asp-action="Index">@Icon.Svg("inbox")<span>Chờ tôi duyệt</span></a> }
-
-            @* ===== Cây menu nghiệp vụ mua sắm ===== *@
-            <details class="nav-tree" open data-key="req">
-                <summary>@Icon.Svg("file-text")<span>Quản lý yêu cầu mua sắm</span></summary>
-                <a class="lvl1 @On("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">@Icon.Svg("cart", 15)<span>Yêu cầu mua sắm</span></a>
-                @if (purchasing || director)
-                {
-                    <a class="lvl1 @On("Packages")" asp-controller="Packages" asp-action="Index">@Icon.Svg("package", 15)<span>Quản lý gói mua sắm</span></a>
-                    <a class="lvl1 @On("SelectionPlans")" asp-controller="SelectionPlans" asp-action="Index">@Icon.Svg("clipboard", 15)<span>Kế hoạch lựa chọn nhà cung cấp</span></a>
-                }
-            </details>
-
-            <details class="nav-tree" open data-key="buy">
-                <summary>@Icon.Svg("building")<span>Quản lý mua hàng</span></summary>
-                @if (purchasing || director)
-                {
-                    <details open data-key="buy-direct">
-                        <summary class="lvl1">@Icon.Svg("award", 15)<span>Mua sắm trực tiếp</span></summary>
-                        <a class="lvl2 @On("DirectAwards")" asp-controller="DirectAwards" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ chào giá chỉ định</span></a>
-                        <a class="lvl2 @On("q-direct")" asp-controller="Quotes" asp-action="Direct">@Icon.Svg("receipt", 14)<span>Báo giá nhà cung cấp</span></a>
-                    </details>
-                    <details open data-key="buy-cq">
-                        <summary class="lvl1">@Icon.Svg("send", 15)<span>Chào giá cạnh tranh</span></summary>
-                        <a class="lvl2 @On("Rfqs")" asp-controller="Rfqs" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ chào giá cạnh tranh</span></a>
-                        <a class="lvl2 @On("q-comp")" asp-controller="Quotes" asp-action="Competitive">@Icon.Svg("receipt", 14)<span>Báo giá chào hàng cạnh tranh</span></a>
-                        <a class="lvl2 @On("q-eval")" asp-controller="Quotes" asp-action="Evaluations">@Icon.Svg("scale", 14)<span>Đánh giá hồ sơ chào giá</span></a>
-                    </details>
-                }
-                <details open data-key="buy-td">
-                    <summary class="lvl1">@Icon.Svg("gavel", 15)<span>Đấu thầu@(purchasing || director ? "" : " (tổ chuyên gia)")</span></summary>
-                    <a class="lvl2 @On("td")" asp-controller="Tenders" asp-action="Index">@Icon.Svg("file-text", 14)<span>Hồ sơ mời thầu / Hồ sơ yêu cầu</span></a>
-                    <a class="lvl2 @On("td-eval")" asp-controller="Tenders" asp-action="Evaluations">@Icon.Svg("scale", 14)<span>Đánh giá HSDT/HSCG</span></a>
-                    <details open data-key="buy-td-sel">
-                        <summary class="lvl2">@Icon.Svg("trophy", 14)<span>Lựa chọn nhà thầu</span></summary>
-                        <a class="lvl3 @On("td-neg")" asp-controller="Tenders" asp-action="Negotiations">@Icon.Svg("users", 13)<span>Đàm phán hợp đồng</span></a>
-                        <a class="lvl3 @On("td-report")" asp-controller="Tenders" asp-action="EvaluationReports">@Icon.Svg("bar-chart", 13)<span>Báo cáo đánh giá LCNT</span></a>
-                        <a class="lvl3 @On("td-appraisal")" asp-controller="Tenders" asp-action="Appraisals">@Icon.Svg("shield-check", 13)<span>Báo cáo thẩm định kết quả LCNT</span></a>
-                    </details>
-                </details>
-                @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
-                {
-                    <a class="lvl1 @On("Contracts")" asp-controller="Contracts" asp-action="Index">@Icon.Svg("file-check", 15)<span>Quản lý hợp đồng mua sắm</span></a>
-                    <a class="lvl1 @On("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">@Icon.Svg("cart", 15)<span>Khởi tạo đơn mua hàng</span></a>
-                }
-                @if (purchasing || director)
-                {
-                    <a class="lvl1 @On("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">@Icon.Svg("truck", 15)<span>Quản lý giao nhận</span></a>
-                }
-                @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
-                {
-                    <a class="lvl1 @On("Invoices")" asp-controller="Invoices" asp-action="Index">@Icon.Svg("receipt", 15)<span>Hoá đơn</span></a>
-                    <a class="lvl1 @On("Payments")" asp-controller="Payments" asp-action="Index">@Icon.Svg("coins", 15)<span>Đề nghị thanh toán</span></a>
-                }
-            </details>
-
-            @if (purchasing || director)
-            {
-                <details class="nav-tree" open data-key="src">
-                    <summary>@Icon.Svg("network")<span>Quản lý nguồn cung</span></summary>
-                    <a class="lvl1 @On("Prequalifications")" asp-controller="Prequalifications" asp-action="Index">@Icon.Svg("clipboard", 15)<span>Quản lý NCC đăng ký sơ tuyển</span></a>
-                    <a class="lvl1 @On("SupplierEvaluations")" asp-controller="SupplierEvaluations" asp-action="Index">@Icon.Svg("users", 15)<span>Đánh giá nhà cung cấp</span></a>
-                    <a class="lvl1 @On("PriceBank")" asp-controller="PriceBank" asp-action="Index">@Icon.Svg("database", 15)<span>Ngân hàng giá</span></a>
-                    <a class="lvl1 @On("StandardPrices")" asp-controller="StandardPrices" asp-action="Index">@Icon.Svg("tag", 15)<span>Bảng giá tiêu chuẩn hàng hoá vật tư</span></a>
-                    <a class="lvl1 @On("src-report")" asp-controller="Reports" asp-action="Index" asp-route-group="sourcing">@Icon.Svg("bar-chart", 15)<span>Báo cáo</span></a>
-                </details>
-            }
-
-            <div class="nav-group">Kế hoạch & ngân sách</div>
-            <a class="@Active("Plans")" asp-controller="Plans" asp-action="Index">@Icon.Svg("clipboard")<span>Kế hoạch mua sắm năm</span></a>
-            <a class="@Active("Ordering")" asp-controller="Ordering" asp-action="Index">@Icon.Svg("cart")<span>Mua theo hợp đồng khung</span></a>
-            @if (purchasing || approver)
-            {
-                <a class="@Active("Budgets")" asp-controller="Budgets" asp-action="Index">@Icon.Svg("wallet")<span>Ngân sách</span></a>
-            }
-            <a asp-controller="Tenders" asp-action="Public" target="_blank">@Icon.Svg("megaphone")<span>Thông báo mời thầu</span>@Icon.Svg("external", 12, "ms-auto")</a>
-
-            @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
-            {
-                <div class="nav-group">Báo cáo</div>
-                <a class="@On("Reports")" asp-controller="Reports" asp-action="Index">@Icon.Svg("bar-chart")<span>Báo cáo mua sắm</span></a>
-                <a class="@Active("ReportBuilder")" asp-controller="ReportBuilder" asp-action="Index">@Icon.Svg("sliders")<span>Báo cáo động</span></a>
-            }
-
-            <div class="nav-group">Danh mục</div>
-            <a class="@Active("OrgUnits")" asp-controller="OrgUnits" asp-action="Index">@Icon.Svg("network")<span>Cơ cấu tổ chức</span></a>
-            <a class="@Active("Items")" asp-controller="Items" asp-action="Index">@Icon.Svg("package")<span>Hàng hóa & nhóm hàng</span></a>
-            @if (purchasing || director)
-            {
-                <a class="@Active("Vendors")" asp-controller="Vendors" asp-action="Index">@Icon.Svg("building")<span>Nhà cung cấp</span></a>
-            }
-            @if (purchasing)
-            {
-                <a class="@Active("Catalogs")" asp-controller="Catalogs" asp-action="Index">@Icon.Svg("book")<span>Danh mục dùng chung</span></a>
-            }
-            @if (User.IsAdmin())
-            {
-                <div class="nav-group">Hệ thống</div>
-                <a class="@Active("Users")" asp-controller="Users" asp-action="Index">@Icon.Svg("users")<span>Người dùng & phân quyền</span></a>
-                <a class="@Active("ApprovalSettings")" asp-controller="ApprovalSettings" asp-action="Index">@Icon.Svg("shield-check")<span>Hạn mức & ủy quyền</span></a>
-                <a class="@Active("Integrations")" asp-controller="Integrations" asp-action="Index">@Icon.Svg("network")<span>Tích hợp ERP (API)</span></a>
-                <a class="@Active("SampleData")" asp-controller="SampleData" asp-action="Index">@Icon.Svg("database")<span>Dữ liệu mẫu</span></a>
-            }
+            <partial name="_NavVertical" model="menu" />
         </nav>
         <div class="sidebar-foot">
             <button type="button" class="sb-btn" data-nav-expand-all title="Mở rộng tất cả nhóm">⊞ <span>Mở rộng</span></button>
@@ -159,6 +43,7 @@
         </div>
     </aside>
     <div class="main">
+        <partial name="_NavHorizontal" model="menu" />
         <header class="topbar">
             <button type="button" class="btn btn-light nav-toggle" data-nav-toggle aria-label="Ẩn / hiện menu" title="Ẩn / hiện menu (Ctrl+B)">@Icon.Svg("menu", 18)</button>
             <h1 class="page-title d-flex align-items-center gap-2">@if (pageIcon != null) { <span class="text-primary d-inline-flex">@Icon.Svg(pageIcon, 20)</span> }@ViewData["Title"]</h1>
@@ -174,6 +59,7 @@
                         @foreach (var from in User.DelegatedFrom()) { <li><span class="dropdown-item-text small text-success">Đang được ủy quyền duyệt thay: @from</span></li> }
                         <li><a class="dropdown-item" asp-controller="Notifications" asp-action="Index">Thông báo</a></li>
                         @if (!User.IsAdmin() && (User.IsInRole(AppRoles.Director) || User.IsInRole(AppRoles.Approver))) { <li><a class="dropdown-item" asp-controller="ApprovalSettings" asp-action="Index">Ủy quyền duyệt</a></li> }
+                        <li><a class="dropdown-item" asp-controller="Appearance" asp-action="Index">Giao diện</a></li>
                         <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a></li>
                         <li><hr class="dropdown-divider" /></li>
                         <li><form asp-controller="Account" asp-action="Logout" method="post"><button class="dropdown-item text-danger">Đăng xuất</button></form></li>

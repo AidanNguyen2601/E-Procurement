@@ -1,0 +1,22 @@
+@model List<NavItem>
+@* Menu dọc (trái / phải): nhóm thu gọn được (details), tối đa 3 cấp *@
+@{
+    async Task Link(NavItem l, int level)
+    {
+        <a class="@(level > 0 ? "lvl" + level : "") @(l.Active ? "active" : "")" href="@l.Href" target="@(l.External ? "_blank" : null)">@Icon.Svg(l.Icon, level switch { 0 => 16, 1 => 15, _ => 14 })<span>@l.Label</span>@if (l.External) { @Icon.Svg("external", 12, "ms-auto") }</a>
+    }
+    async Task Group(NavItem g, int level)
+    {
+        <details class="@(level == 0 ? "nav-tree" : null)" data-key="@g.Key" open="@(level > 0 || g.HasActive)">
+            <summary class="@(level > 0 ? "lvl" + level : null)">@Icon.Svg(g.Icon, level == 0 ? 16 : 15)<span>@g.Label</span></summary>
+            @foreach (var c in g.Children)
+            {
+                if (c.IsGroup) { await Group(c, level + 1); } else { await Link(c, level + 1); }
+            }
+        </details>
+    }
+}
+@foreach (var m in Model)
+{
+    if (m.IsGroup) { await Group(m, 0); } else { await Link(m, 0); }
+}

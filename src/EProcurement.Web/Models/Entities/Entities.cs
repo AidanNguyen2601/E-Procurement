@@ -38,6 +38,8 @@ public class AppUser
 
     public DateTime? LastLoginAt { get; set; }
     [Display(Name = "Nhận thông báo qua email")] public bool EmailNotifications { get; set; } = true;
+    /// <summary>Tùy chọn giao diện riêng (JSON: vị trí menu, màu, font, cỡ chữ); null = theo mặc định hệ thống</summary>
+    [StringLength(1000)] public string? UiPrefs { get; set; }
     public int FailedLogins { get; set; }
     [Display(Name = "Tạm khóa đến")] public DateTime? LockoutEnd { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;

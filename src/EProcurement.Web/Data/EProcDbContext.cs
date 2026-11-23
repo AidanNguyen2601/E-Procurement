@@ -8,6 +8,7 @@ public class EProcDbContext : DbContext
     public EProcDbContext(DbContextOptions<EProcDbContext> options) : base(options) { }
 
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<Vendor> Vendors => Set<Vendor>();

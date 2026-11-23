@@ -39,7 +39,7 @@
             @foreach (var v in Model.TopVendors)
             {
                 <div class="mb-2 small"><div class="d-flex justify-content-between"><span class="text-truncate" style="max-width:230px">@v.Name</span><b>@v.Amount.ToShortMoney()</b></div>
-                    <div class="progress" style="height:6px"><div class="progress-bar" style="width:@((int)(v.Amount * 100 / maxV))%;background:#4f46e5"></div></div>
+                    <div class="progress" style="height:6px"><div class="progress-bar" style="width:@((int)(v.Amount * 100 / maxV))%;background:var(--accent)"></div></div>
                     <span class="stars">@v.Rating.Stars()</span></div>
             }
         </div></div></div>

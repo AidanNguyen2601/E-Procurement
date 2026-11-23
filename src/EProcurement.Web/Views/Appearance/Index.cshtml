@@ -1,0 +1,145 @@
+@model UiPrefs
+@{
+    var hasOwn = (bool)ViewBag.HasOwn;
+    var custom = UiTheme.Colors.All(c => c.Color != Model.Color);
+}
+<style>
+    .ui-opt { display: block; cursor: pointer; border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center; font-size: .85rem; background: #fff; }
+    .ui-opt:hover { border-color: var(--accent-line); }
+    input:checked + .ui-opt { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+    .ui-mock { position: relative; height: 64px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; margin-bottom: 8px; overflow: hidden; }
+    .ui-mock i { position: absolute; background: var(--accent); opacity: .85; }
+    .ui-mock.left i { left: 0; top: 0; bottom: 0; width: 26%; } .ui-mock.right i { right: 0; top: 0; bottom: 0; width: 26%; }
+    .ui-mock.top i { left: 0; right: 0; top: 0; height: 24%; } .ui-mock.bottom i { left: 0; right: 0; bottom: 0; height: 24%; }
+    .ui-mock b { position: absolute; left: 34%; right: 8%; top: 38%; height: 8px; border-radius: 4px; background: #cbd5e1; }
+    .ui-mock.right b { left: 8%; right: 34%; }
+    .ui-sw { width: 34px; height: 34px; border-radius: 50%; display: inline-block; cursor: pointer; border: 3px solid #fff; box-shadow: 0 0 0 1px #cbd5e1; }
+    input:checked + .ui-sw { box-shadow: 0 0 0 2px #0f172a; }
+    .ui-menu-sample { border-radius: 8px; padding: 8px; }
+    .ui-menu-sample.dark { background: #1e1b4b; color: #cfd0f3; } .ui-menu-sample.light { background: #fff; color: #334155; border: 1px solid #e2e8f0; }
+    .ui-menu-sample div { padding: 3px 6px; border-radius: 4px; font-size: .8rem; }
+    .ui-menu-sample .on { background: var(--accent); color: #fff; }
+</style>
+
+<form asp-action="Save" method="post" id="ui-form">
+<div class="row g-3">
+    <div class="col-xl-7">
+        <div class="card mb-3"><div class="card-header">Vị trí menu</div><div class="card-body">
+            <div class="row g-2">
+                @foreach (var (key, label) in UiTheme.NavPositions)
+                {
+                    <div class="col-6 col-md-3">
+                        <input type="radio" class="btn-check" name="Nav" value="@key" id="nav-@key" checked="@(Model.Nav == key)" />
+                        <label class="ui-opt" for="nav-@key"><div class="ui-mock @key"><i></i><b></b></div>@label</label>
+                    </div>
+                }
+            </div>
+            <div class="form-text">Trên điện thoại / màn hình hẹp, menu luôn là menu trượt bên trái (nút ☰).</div>
+            <div class="form-check mt-2">
+                <input type="checkbox" class="form-check-input" name="Accordion" value="true" id="acc" checked="@Model.Accordion" /><input type="hidden" name="Accordion" value="false" />
+                <label class="form-check-label" for="acc">Menu dọc gọn: chỉ mở một nhóm tại một thời điểm (mở nhóm này thì nhóm khác tự thu lại)</label>
+            </div>
+        </div></div>
+
+        <div class="card mb-3"><div class="card-header">Màu chủ đạo &amp; kiểu menu</div><div class="card-body">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                @foreach (var (color, label) in UiTheme.Colors)
+                {
+                    <span>
+                        <input type="radio" class="btn-check" name="Color" value="@color" id="c-@color.TrimStart('#')" checked="@(Model.Color == color)" />
+                        <label class="ui-sw" for="c-@color.TrimStart('#')" style="background:@color" title="@label"></label>
+                    </span>
+                }
+                <span class="ms-2 d-inline-flex align-items-center gap-2">
+                    <input type="radio" class="btn-check" name="Color" value="@Model.Color" id="c-custom" checked="@custom" />
+                    <label class="btn btn-sm btn-outline-secondary" for="c-custom">Màu khác</label>
+                    <input type="color" id="c-picker" value="@Model.Color" class="form-control form-control-color" title="Chọn màu bất kỳ" />
+                </span>
+            </div>
+            <div class="row g-2 mt-1" style="max-width:420px">
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="Menu" value="dark" id="m-dark" checked="@(Model.Menu == "dark")" />
+                    <label class="ui-opt" for="m-dark"><div class="ui-menu-sample dark mb-2"><div>Dashboard</div><div class="on">Đang chọn</div><div>Báo cáo</div></div>Menu tối</label>
+                </div>
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="Menu" value="light" id="m-light" checked="@(Model.Menu == "light")" />
+                    <label class="ui-opt" for="m-light"><div class="ui-menu-sample light mb-2"><div>Dashboard</div><div class="on">Đang chọn</div><div>Báo cáo</div></div>Menu sáng</label>
+                </div>
+            </div>
+            <div class="form-text">Nền menu tối được pha từ màu chủ đạo.</div>
+        </div></div>
+
+        <div class="card mb-3"><div class="card-header">Font &amp; cỡ chữ</div><div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="font">Font chữ</label>
+                <select name="Font" id="font" class="form-select">
+                    @foreach (var f in UiTheme.Fonts)
+                    {
+                        <option value="@f.Key" selected="@(Model.Font == f.Key)" data-stack="@f.Stack" data-href="@(f.GoogleFamily == null ? null : $"https://fonts.googleapis.com/css2?family={f.GoogleFamily}&display=swap")">@f.Label@(f.GoogleFamily != null ? " (font web)" : "")</option>
+                    }
+                </select>
+                <div class="form-text">Font web tải từ Google Fonts – cần Internet; không tải được thì dùng font hệ thống.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label d-block">Cỡ chữ</label>
+                <div class="btn-group flex-wrap" role="group">
+                    @foreach (var (px, label) in UiTheme.Sizes)
+                    {
+                        <input type="radio" class="btn-check" name="Size" value="@px" id="s-@px" checked="@(Model.Size == px)" />
+                        <label class="btn btn-outline-primary btn-sm" for="s-@px" title="@label" style="font-size:@(px)px">A<span class="small ms-1">@px</span></label>
+                    }
+                </div>
+                <div class="form-text" id="size-label">@UiTheme.Sizes.First(s => s.Px == Model.Size).Label</div>
+            </div>
+        </div></div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="card mb-3" style="position:sticky;top:12px"><div class="card-header">Xem trước</div><div class="card-body">
+            <p class="mb-2">Thay đổi được áp dụng ngay trên trang để xem thử; bấm <b>Lưu</b> để giữ lại.</p>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button type="button" class="btn btn-primary btn-sm">Nút chính</button>
+                <button type="button" class="btn btn-outline-primary btn-sm">Nút viền</button>
+                <span class="badge bg-primary align-self-center">Nhãn</span>
+                <span class="badge bg-primary-subtle text-primary-emphasis align-self-center">Nhãn nhạt</span>
+            </div>
+            <div class="flow mb-3"><span class="step done">Nháp</span><span class="arrow">›</span><span class="step current">Chờ duyệt</span><span class="arrow">›</span><span class="step">Đã duyệt</span></div>
+            <table class="table table-sm mb-2"><thead><tr><th>Đề nghị</th><th>Phòng ban</th><th class="text-end">Giá trị</th></tr></thead>
+                <tbody><tr><td><a href="#" onclick="return false">PR-2026-0012</a></td><td>Phòng CNTT</td><td class="money">125.000.000</td></tr>
+                <tr><td><a href="#" onclick="return false">PR-2026-0013</a></td><td>Phòng Kế toán</td><td class="money">8.450.000</td></tr></tbody></table>
+            <div class="progress mb-3" style="height:6px"><div class="progress-bar" style="width:64%"></div></div>
+            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked disabled /><label class="form-check-label">Công tắc</label></div>
+        </div>
+        <div class="card-footer d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" name="scope" value="me">Lưu cho tôi</button>
+            @if (User.IsAdmin())
+            {
+                <button class="btn btn-outline-primary" name="scope" value="default" data-confirm="Đặt giao diện này làm mặc định cho mọi người dùng chưa tự chọn giao diện riêng?">Đặt làm mặc định hệ thống</button>
+            }
+            @if (hasOwn)
+            {
+                <button class="btn btn-light" name="scope" value="reset" title="Bỏ tùy chọn riêng, dùng giao diện mặc định của hệ thống">Dùng mặc định hệ thống</button>
+            }
+            <a asp-action="Index" class="btn btn-link ms-auto">Hoàn tác xem thử</a>
+        </div></div>
+    </div>
+</div>
+</form>
+
+@section Scripts {
+<script>
+(function () {
+    const form = document.getElementById('ui-form'), picker = document.getElementById('c-picker'), custom = document.getElementById('c-custom');
+    const sizes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(UiTheme.Sizes.ToDictionary(s => s.Px.ToString(), s => s.Label)));
+    function current() {
+        const v = n => form.querySelector('[name="' + n + '"]:checked')?.value;
+        const font = form.querySelector('#font').selectedOptions[0];
+        return { nav: v('Nav'), color: v('Color'), menu: v('Menu'), size: v('Size'), accordion: form.querySelector('#acc').checked,
+                 fontStack: font.dataset.stack, fontHref: font.dataset.href || null };
+    }
+    function apply() { const p = current(); window.eprocUi.apply(p); document.getElementById('size-label').textContent = sizes[p.size] || ''; }
+    picker.addEventListener('input', () => { custom.value = picker.value; custom.checked = true; apply(); });
+    form.addEventListener('change', apply);
+})();
+</script>
+}

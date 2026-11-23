@@ -323,6 +323,8 @@ public static class DbSeeder
             "IF COL_LENGTH('Vendors','BusinessSector') IS NULL ALTER TABLE Vendors ADD BusinessSector nvarchar(200) NULL",
             "IF COL_LENGTH('Items','Origin') IS NULL ALTER TABLE Items ADD Origin nvarchar(100) NULL",
             "IF COL_LENGTH('Items','Brand') IS NULL ALTER TABLE Items ADD Brand nvarchar(100) NULL",
+            // Giao diện riêng của người dùng
+            "IF COL_LENGTH('Users','UiPrefs') IS NULL ALTER TABLE Users ADD UiPrefs nvarchar(1000) NULL",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"

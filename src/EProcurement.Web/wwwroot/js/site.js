@@ -110,10 +110,18 @@ document.addEventListener('submit', function (e) {
     try { saved = JSON.parse(localStorage.getItem(GKEY) || '{}'); } catch (e) { }
     const save = () => { saved = Object.fromEntries(groups.map(d => [d.dataset.key, d.open])); try { localStorage.setItem(GKEY, JSON.stringify(saved)); } catch (e) { } };
     const hasActive = d => !!d.querySelector('a.active');
+    // Chế độ gọn (accordion): chỉ mở một nhóm cấp 1; mở nhóm này thì các nhóm khác thu lại
+    const accordion = () => document.documentElement.dataset.accordion === '1';
     groups.forEach(d => {
         if (hasActive(d)) d.open = true;
+        else if (accordion() && d.classList.contains('nav-tree')) d.open = false;
         else if (d.dataset.key in saved) d.open = saved[d.dataset.key];
-        d.addEventListener('toggle', () => { if (!searching) save(); });
+        d.addEventListener('toggle', () => {
+            if (searching) return;
+            if (accordion() && d.open && d.classList.contains('nav-tree'))
+                groups.forEach(o => { if (o !== d && o.classList.contains('nav-tree') && o.open) o.open = false; });
+            save();
+        });
     });
     on('[data-nav-expand-all]', () => { groups.forEach(d => d.open = true); save(); });
     on('[data-nav-collapse-all]', () => { groups.forEach(d => d.open = hasActive(d)); save(); });
@@ -140,7 +148,7 @@ document.addEventListener('submit', function (e) {
             d.classList.toggle('nav-hit-hidden', searching && !any);
             if (searching && any) d.open = true;
         });
-        if (!searching) groups.forEach(d => d.open = hasActive(d) || (d.dataset.key in saved ? saved[d.dataset.key] : true));
+        if (!searching) groups.forEach(d => d.open = hasActive(d) || (accordion() && d.classList.contains('nav-tree') ? false : d.dataset.key in saved ? saved[d.dataset.key] : true));
     });
     box?.addEventListener('keydown', e => {
         if (e.key === 'Enter') { const first = sidebar.querySelector('nav a:not(.nav-hit-hidden)'); if (first) { e.preventDefault(); location.href = first.href; } }
@@ -152,6 +160,52 @@ document.addEventListener('submit', function (e) {
         const a = act.getBoundingClientRect(), n = navEl.getBoundingClientRect();
         if (a.bottom > n.bottom || a.top < n.top) navEl.scrollTop += a.top - n.top - n.height / 2 + a.height / 2;
     }
+})();
+
+// ===== Giao diện: áp dụng tùy chọn (dùng cho xem trước ở trang Giao diện) + menu ngang trên / dưới =====
+window.eprocUi = {
+    apply(p) {
+        const h = document.documentElement;
+        if (p.nav) h.dataset.nav = p.nav;
+        if (p.menu) h.dataset.menu = p.menu;
+        if (p.accordion !== undefined) h.dataset.accordion = p.accordion ? '1' : '0';
+        if (p.color) { h.style.setProperty('--accent', p.color); document.querySelector('meta[name=theme-color]')?.setAttribute('content', p.color); }
+        if (p.fontStack) h.style.setProperty('--font', p.fontStack);
+        if (p.size) h.style.fontSize = p.size + 'px';
+        let link = document.getElementById('ui-font');
+        if (p.fontHref) {
+            if (!link) { link = document.createElement('link'); link.rel = 'stylesheet'; link.id = 'ui-font'; document.head.appendChild(link); }
+            if (link.getAttribute('href') !== p.fontHref) link.href = p.fontHref;
+        }
+        this.dropDirection();
+    },
+    // Menu ở dưới: danh sách thả lên trên
+    dropDirection() {
+        const up = document.documentElement.dataset.nav === 'bottom';
+        document.querySelectorAll('.hnav .dropdown').forEach(d => { d.classList.toggle('dropup', up); d.classList.toggle('dropdown', !up); });
+    }
+};
+(function () {
+    const hnav = document.querySelector('.hnav');
+    if (!hnav) return;
+    window.eprocUi.dropDirection();
+    // Tìm chức năng trong menu ngang
+    const box = document.getElementById('hnav-search'), out = document.getElementById('hnav-results');
+    const links = [...hnav.querySelectorAll('.hnav-menu a')];
+    const btn = hnav.querySelector('.hnav-search-btn');
+    btn?.addEventListener('shown.bs.dropdown', () => box.focus());
+    box?.addEventListener('input', () => {
+        const k = box.value.trim().toLocaleLowerCase('vi');
+        out.innerHTML = '';
+        if (!k) return;
+        links.filter(a => a.textContent.toLocaleLowerCase('vi').includes(k)).slice(0, 12).forEach(a => {
+            const c = a.cloneNode(true); c.className = 'dropdown-item'; out.appendChild(c);
+        });
+        if (!out.children.length) out.innerHTML = '<div class="small text-muted px-2 py-1">Không tìm thấy chức năng</div>';
+    });
+    box?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { const a = out.querySelector('a'); if (a) { e.preventDefault(); location.href = a.href; } }
+    });
 })();
 
 // Đếm ngược: <span data-countdown="số giây còn lại"> (tính từ server, không phụ thuộc múi giờ máy khách)
