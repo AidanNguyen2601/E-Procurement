@@ -51,6 +51,11 @@ public class PurchaseRequestsController : ProcControllerBase
         if (!CanViewPr(pr)) return Forbid();
         pr.Lines = pr.Lines.OrderBy(l => l.SortOrder).ToList();
         ViewBag.History = await HistoryAsync(DocType.PR, id);
+        if (!string.Equals(Settings.BudgetControl, "Off", StringComparison.OrdinalIgnoreCase) && pr.Status is PrStatus.Draft or PrStatus.Submitted or PrStatus.PendingDirector or PrStatus.Approved)
+        {
+            ViewBag.Budget = await HttpContext.RequestServices.GetRequiredService<BudgetService>().CheckAsync(pr);
+            ViewBag.BudgetMode = Settings.BudgetControl;
+        }
         ViewBag.Rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
         ViewBag.Orders = await Db.PurchaseOrders.Include(p => p.Vendor).Where(p => p.PurchaseRequestId == id).ToListAsync();
         ViewBag.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Where(d => d.PurchaseRequestId == id).ToListAsync();
@@ -184,10 +189,27 @@ public class PurchaseRequestsController : ProcControllerBase
         return await DoSubmit(pr);
     }
 
+    /// <summary>Kiểm tra ngân sách theo chế độ cấu hình: trả về thông điệp vượt / thiếu ngân sách (null = ổn hoặc đã tắt kiểm soát)</summary>
+    private async Task<string?> BudgetProblemAsync(PurchaseRequest pr)
+    {
+        if (string.Equals(Settings.BudgetControl, "Off", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!Db.Entry(pr).Collection(p => p.Lines).IsLoaded) await Db.Entry(pr).Collection(p => p.Lines).LoadAsync();
+        var svc = HttpContext.RequestServices.GetRequiredService<BudgetService>();
+        return BudgetService.Problem(await svc.CheckAsync(pr));
+    }
+
+    private bool BudgetBlocks => string.Equals(Settings.BudgetControl, "Block", StringComparison.OrdinalIgnoreCase);
+
     private async Task<IActionResult> DoSubmit(PurchaseRequest pr)
     {
+        var budget = await BudgetProblemAsync(pr);
+        if (budget != null && BudgetBlocks)
+        {
+            TempData["Error"] = "Không gửi duyệt được – vượt / chưa có ngân sách: " + budget;
+            return RedirectToAction(nameof(Details), new { id = pr.Id });
+        }
         pr.SubmittedAt = DateTime.Now;
-        Log(DocType.PR, pr.Id, "Gửi duyệt");
+        Log(DocType.PR, pr.Id, "Gửi duyệt", budget == null ? null : "Cảnh báo ngân sách: " + budget);
         // Người đề nghị là Trưởng bộ phận → bỏ qua cấp 1; là Giám đốc / Quản trị → duyệt luôn
         if (User.IsInRole(AppRoles.Director) || User.IsAdmin())
         {
@@ -219,6 +241,20 @@ public class PurchaseRequestsController : ProcControllerBase
         }
 
         var level = pr.Status == PrStatus.Submitted ? "Trưởng bộ phận" : "Giám đốc";
+        if (approve && await BudgetProblemAsync(pr) is string budget)
+        {
+            if (BudgetBlocks)
+            {
+                TempData["Error"] = "Không duyệt được – vượt / chưa có ngân sách: " + budget;
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            if (string.IsNullOrWhiteSpace(comment))
+            {
+                TempData["Error"] = "Đề nghị vượt / chưa có ngân sách – nhập ý kiến (lý do chấp thuận) khi duyệt. " + budget;
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            comment = $"{comment.Trim()} [Duyệt vượt ngân sách: {budget}]";
+        }
         if (!approve)
         {
             pr.Status = PrStatus.Rejected;

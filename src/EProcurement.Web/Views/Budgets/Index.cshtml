@@ -1,0 +1,87 @@
+@model EProcurement.Web.Controllers.BudgetsController.BudgetPage
+@{
+    var e = Model.Editing;
+    var total = Model.Rows.Sum(r => r.Budget.Amount); var used = Model.Rows.Sum(r => r.Used);
+    var ordered = Model.Rows.Sum(r => r.Ordered); var reserved = Model.Rows.Sum(r => r.Reserved); var pending = Model.Rows.Sum(r => r.Pending);
+}
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <form method="get" class="d-flex gap-2 align-items-center">
+        <label class="small text-muted">Năm</label>
+        <select name="year" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+            @foreach (var y in Model.Years) { <option value="@y" selected="@(y == Model.Year)">@y</option> }
+        </select>
+    </form>
+    <span class="small text-muted ms-2">Kiểm soát khi gửi / duyệt PR:
+        <b>@(Model.Mode.ToLower() switch { "off" => "tắt", "block" => "chặn khi vượt", _ => "cảnh báo, người duyệt ghi lý do khi duyệt vượt" })</b>
+        · giá trị trước VAT</span>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md"><div class="card stat"><div class="label">Ngân sách</div><div class="value">@total.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md"><div class="card stat"><div class="label">Đã đặt hàng (PO)</div><div class="value">@ordered.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md"><div class="card stat"><div class="label">Giữ chỗ (PR đã duyệt)</div><div class="value">@reserved.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md"><div class="card stat"><div class="label">Còn lại</div><div class="value @(total - used < 0 ? "text-danger" : "")">@((total - used).ToShortMoney())</div>
+        <div class="small text-muted">@(total == 0 ? "—" : Math.Round(used * 100 / total, 1) + "% đã dùng")</div></div></div>
+    <div class="col-6 col-md"><div class="card stat"><div class="label">PR đang chờ duyệt</div><div class="value">@pending.ToShortMoney()</div><div class="small text-muted">chưa trừ ngân sách</div></div></div>
+</div>
+
+@if (Model.CanEdit)
+{
+    <div class="card mb-3"><div class="card-header">@(e == null ? "Thêm dòng ngân sách" : "Sửa dòng ngân sách")</div><div class="card-body">
+        <form asp-action="Save" method="post" class="row g-2 align-items-end">
+            <input type="hidden" name="Id" value="@(e?.Id ?? 0)" /><input type="hidden" name="Year" value="@Model.Year" />
+            <div class="col-md-3"><label class="form-label small mb-0">Phòng ban</label>
+                <select name="Department" class="form-select form-select-sm" asp-items="ViewBag.Departments" required><option value="">-- Chọn --</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-0">Nhóm hàng</label>
+                <select name="CategoryId" class="form-select form-select-sm" asp-items="ViewBag.Categories"><option value="">Tất cả nhóm hàng</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-0">Ngân sách (đ, trước VAT)</label><input name="Amount" type="number" min="0" step="1000000" value="@(e?.Amount.ToString("0"))" class="form-control form-control-sm" required /></div>
+            <div class="col-md-3"><label class="form-label small mb-0">Ghi chú</label><input name="Note" value="@e?.Note" maxlength="500" class="form-control form-control-sm" /></div>
+            <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">@(e == null ? "Thêm" : "Lưu")</button></div>
+        </form>
+        <div class="small text-muted mt-2">Dòng hàng được trừ vào ngân sách đúng nhóm hàng của phòng ban; nếu phòng ban không có ngân sách riêng cho nhóm đó thì trừ vào dòng "Tất cả nhóm hàng".</div>
+    </div></div>
+}
+
+<div class="card mb-3"><div class="card-body p-0"><table class="table mb-0 align-middle">
+    <thead><tr><th>Phòng ban</th><th>Nhóm hàng</th><th class="money">Ngân sách</th><th class="money">Đã đặt hàng</th><th class="money">Giữ chỗ</th><th class="money">Còn lại</th><th style="width:180px">Đã dùng</th><th class="money">Chờ duyệt</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model.Rows)
+    {
+        var pct = r.UsedPercent;
+        var cls = pct > 100 ? "bg-danger" : pct >= Model.WarnPercent ? "bg-warning" : "";
+        <tr>
+            <td>@r.Budget.Department</td>
+            <td>@(r.Budget.Category?.Name ?? "Tất cả nhóm hàng") @if (!string.IsNullOrEmpty(r.Budget.Note)) { <div class="small text-muted">@r.Budget.Note</div> }</td>
+            <td class="money">@r.Budget.Amount.ToMoney()</td>
+            <td class="money">@r.Ordered.ToMoney()</td>
+            <td class="money">@r.Reserved.ToMoney()</td>
+            <td class="money @(r.Available < 0 ? "text-danger fw-semibold" : "")">@r.Available.ToMoney()</td>
+            <td><div class="d-flex align-items-center gap-2" title="@pct% đã dùng">
+                <div class="progress flex-grow-1" style="height:8px"><div class="progress-bar @cls" style="width:@(Math.Min(100, pct).ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                <span class="small @(pct > 100 ? "text-danger" : "")" style="width:48px">@ReportFormat.Cell(pct, ColumnKind.Percent)</span></div></td>
+            <td class="money text-muted">@r.Pending.ToMoney()</td>
+            <td class="text-end text-nowrap">
+                @if (Model.CanEdit)
+                {
+                    <a asp-action="Index" asp-route-year="@Model.Year" asp-route-edit="@r.Budget.Id" class="btn btn-sm btn-link">Sửa</a>
+                    <form asp-action="Delete" asp-route-id="@r.Budget.Id" method="post" class="d-inline" data-confirm="Xóa dòng ngân sách này?"><button class="btn btn-sm btn-link text-danger">Xóa</button></form>
+                }
+            </td>
+        </tr>
+    }
+    @if (!Model.Rows.Any()) { <tr><td colspan="9" class="text-muted p-3">Chưa lập ngân sách năm @Model.Year – đề nghị mua hàng năm này không bị kiểm soát ngân sách.</td></tr> }
+    </tbody>
+</table></div></div>
+
+@if (Model.CanEdit)
+{
+    <div class="card"><div class="card-body">
+        <form asp-action="CopyYear" method="post" class="d-flex flex-wrap gap-2 align-items-center small">
+            <span>Lập ngân sách năm</span><input type="hidden" name="to" value="@Model.Year" /><b>@Model.Year</b>
+            <span>từ năm</span><input name="from" type="number" value="@(Model.Year - 1)" class="form-control form-control-sm" style="width:90px" />
+            <span>điều chỉnh</span><input name="percent" type="number" step="0.5" value="0" class="form-control form-control-sm" style="width:80px" /><span>%</span>
+            <button class="btn btn-sm btn-outline-primary">Sao chép</button>
+            <span class="text-muted">Chỉ thêm các dòng chưa có, làm tròn đến triệu đồng.</span>
+        </form>
+    </div></div>
+}

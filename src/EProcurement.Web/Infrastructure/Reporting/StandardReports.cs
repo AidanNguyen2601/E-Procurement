@@ -18,6 +18,7 @@ public class StandardReports
         new("vendors", "Đánh giá nhà cung cấp", "Điểm đánh giá, giá trị mua, tỷ lệ phản hồi báo giá và trúng thầu.", "building"),
         new("competition", "Hiệu quả cạnh tranh", "Số báo giá / HSDT bình quân, tỷ lệ không chọn giá thấp nhất, giá trúng so với giá gói thầu, chỉ định thầu.", "trophy"),
         new("contracts", "Tình hình thực hiện hợp đồng", "Giá trị thực hiện, hợp đồng sắp hết hạn, bảo lãnh thực hiện sắp hết hiệu lực.", "file-check"),
+        new("budget", "Ngân sách – thực hiện", "Ngân sách năm theo phòng ban × nhóm hàng: đã đặt hàng, giữ chỗ, còn lại, dòng vượt ngân sách.", "wallet"),
     };
 
     private readonly EProcDbContext _db;
@@ -32,8 +33,35 @@ public class StandardReports
         "vendors" => VendorsAsync(f),
         "competition" => CompetitionAsync(f),
         "contracts" => ContractsAsync(f),
+        "budget" => BudgetAsync(f),
         _ => throw new KeyNotFoundException(key)
     };
+
+    // ------------------------------------------------------------------ 8. Ngân sách – thực hiện (theo năm của ngày kết thúc kỳ lọc)
+    private async Task<ReportResult> BudgetAsync(ReportFilter f)
+    {
+        var r = New("budget");
+        var year = f.To.Year;
+        var rows = await new BudgetService(_db).StatusAsync(year);
+        if (!string.IsNullOrEmpty(f.Department)) rows = rows.Where(x => x.Budget.Department == f.Department).ToList();
+        if (f.CategoryId.HasValue) rows = rows.Where(x => x.Budget.CategoryId == f.CategoryId).ToList();
+        var total = rows.Sum(x => x.Budget.Amount); var used = rows.Sum(x => x.Used);
+        r.Description = $"Năm {year} (theo ngày kết thúc kỳ lọc). " + r.Description;
+        r.Kpis.Add(new("Ngân sách năm " + year, total.ToShortMoney() + " đ", $"{rows.Count} dòng ngân sách"));
+        r.Kpis.Add(new("Đã dùng", Pc(Pct(used, total)), $"đặt hàng {rows.Sum(x => x.Ordered).ToShortMoney()} + giữ chỗ {rows.Sum(x => x.Reserved).ToShortMoney()} đ", total > 0 && used > total));
+        r.Kpis.Add(new("Còn lại", (total - used).ToShortMoney() + " đ", null, total - used < 0));
+        r.Kpis.Add(new("Dòng vượt ngân sách", rows.Count(x => x.Available < 0).ToString(), null, rows.Any(x => x.Available < 0)));
+        r.Tables.Add(new ReportTable
+        {
+            Title = "Thực hiện ngân sách", Chart = ChartKind.Bar, ChartLabel = 0, ChartValue = 6,
+            Note = "Giá trị trước VAT. Đã dùng = đã đặt hàng (PO đã duyệt) + giữ chỗ (PR đã duyệt chưa lập PO). PR chờ duyệt chưa trừ ngân sách.",
+            Columns = { new("Dòng ngân sách"), new("Ngân sách", ColumnKind.Money), new("Đã đặt hàng", ColumnKind.Money), new("Giữ chỗ", ColumnKind.Money),
+                        new("Còn lại", ColumnKind.Money), new("Chờ duyệt", ColumnKind.Money), new("% đã dùng", ColumnKind.Percent) },
+            Rows = rows.OrderByDescending(x => x.UsedPercent).Select(x => new object?[] { x.Pool, x.Budget.Amount, x.Ordered, x.Reserved, x.Available, x.Pending, x.UsedPercent }).ToList(),
+            Totals = new object?[] { "Tổng", total, rows.Sum(x => x.Ordered), rows.Sum(x => x.Reserved), total - used, rows.Sum(x => x.Pending), Pct(used, total) }
+        });
+        return r;
+    }
 
     private static ReportResult New(string key)
     {

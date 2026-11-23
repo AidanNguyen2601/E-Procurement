@@ -74,6 +74,8 @@
     }
 </div>
 
+@if (ViewBag.Budget is BudgetCheck bc) { <partial name="_BudgetCheck" model="bc" /> }
+
 @if (canApprove)
 {
     <div class="card mb-3 border-warning"><div class="card-body">

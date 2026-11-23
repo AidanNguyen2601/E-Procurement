@@ -6,7 +6,7 @@
     var purchasing = User.IsPurchasing();
     var director = User.IsInRole(AppRoles.Director);
     var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
-    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", _ => null };
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", _ => null };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -30,6 +30,10 @@
             <a class="@Active("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">@Icon.Svg("file-text")<span>Đề nghị mua hàng (PR)</span></a>
             <a class="@Active("Tenders")" asp-controller="Tenders" asp-action="Index">@Icon.Svg("gavel")<span>Đấu thầu@(purchasing || director ? "" : " (tổ chuyên gia)")</span></a>
             <a asp-controller="Tenders" asp-action="Public" target="_blank">@Icon.Svg("megaphone")<span>Thông báo mời thầu</span>@Icon.Svg("external", 12, "ms-auto")</a>
+            @if (purchasing || approver)
+            {
+                <a class="@Active("Budgets")" asp-controller="Budgets" asp-action="Index">@Icon.Svg("wallet")<span>Ngân sách</span></a>
+            }
 
             @if (purchasing || director)
             {

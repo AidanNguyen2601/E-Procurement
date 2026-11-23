@@ -1,0 +1,33 @@
+@model BudgetCheck
+@{ var mode = (string?)ViewData["BudgetMode"] ?? "Warn"; }
+@if (Model.Active)
+{
+    <div class="card mb-3 @(Model.Ok ? "" : "border-danger")"><div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="@(Model.Ok ? "text-success" : "text-danger") d-inline-flex">@Icon.Svg(Model.Ok ? "shield-check" : "alert", 18)</span>
+            <b>Ngân sách năm @Model.Year</b>
+            <span class="small text-muted">
+                @if (Model.Ok) { <text>– đề nghị nằm trong ngân sách còn lại.</text> }
+                else if (mode.Equals("Block", StringComparison.OrdinalIgnoreCase)) { <text>– vượt / chưa có ngân sách: không gửi hoặc duyệt được.</text> }
+                else { <text>– vượt / chưa có ngân sách: người duyệt phải ghi lý do khi chấp thuận.</text> }
+            </span>
+            <a asp-controller="Budgets" asp-action="Index" asp-route-year="@Model.Year" class="small ms-auto">Xem ngân sách →</a>
+        </div>
+        <table class="table table-sm mb-0 small">
+            <thead><tr><th>Dòng ngân sách</th><th class="money">Ngân sách</th><th class="money">Còn lại (trước PR này)</th><th class="money">Đề nghị này</th><th class="money">Còn lại sau</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var l in Model.Lines)
+            {
+                <tr class="@(l.Over || l.NoBudget ? "table-danger" : "")">
+                    <td>@l.Pool</td>
+                    <td class="money">@(l.Status?.Budget.Amount.ToMoney() ?? "—")</td>
+                    <td class="money">@(l.AvailableBefore?.ToMoney() ?? "—")</td>
+                    <td class="money">@l.Request.ToMoney()</td>
+                    <td class="money">@(l.AvailableAfter?.ToMoney() ?? "—")</td>
+                    <td>@if (l.NoBudget) { <span class="badge bg-danger">Chưa có ngân sách</span> } else if (l.Over) { <span class="badge bg-danger">Vượt</span> } else { <span class="badge bg-success-subtle text-success">Trong ngân sách</span> }</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div></div>
+}

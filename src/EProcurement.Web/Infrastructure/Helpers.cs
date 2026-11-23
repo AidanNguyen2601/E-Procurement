@@ -13,6 +13,10 @@ public class ProcurementSettings
     public decimal PrDirectorThreshold { get; set; } = 50_000_000;
     /// <summary>PO có tổng giá trị vượt ngưỡng này phải được Giám đốc duyệt trước khi gửi NCC</summary>
     public decimal PoApprovalThreshold { get; set; } = 100_000_000;
+    /// <summary>Kiểm soát ngân sách khi gửi / duyệt PR: Off = tắt, Warn = cảnh báo (người duyệt phải ghi ý kiến khi duyệt vượt), Block = chặn</summary>
+    public string BudgetControl { get; set; } = "Warn";
+    /// <summary>Cảnh báo khi ngân sách đã dùng từ mức này (%)</summary>
+    public int BudgetWarnPercent { get; set; } = 90;
     /// <summary>Số NCC tối thiểu mời báo giá cho mỗi RFQ</summary>
     public int MinVendorsPerRfq { get; set; } = 3;
     /// <summary>Số báo giá hợp lệ (đủ dòng, đạt kỹ thuật) tối thiểu; ít hơn → kết quả phải trình Giám đốc duyệt</summary>

@@ -29,6 +29,12 @@ public class ApprovalsController : ProcControllerBase
             vm.Requests = await prQ.Where(p => p.Status == PrStatus.Submitted && p.Department == dept && p.RequesterId != Me).ToListAsync();
         }
         vm.Requests = vm.Requests.OrderByDescending(p => p.Priority).ThenBy(p => p.SubmittedAt).ToList();
+        var budgets = HttpContext.RequestServices.GetRequiredService<BudgetService>();
+        var flags = new Dictionary<int, string>();
+        if (!string.Equals(Settings.BudgetControl, "Off", StringComparison.OrdinalIgnoreCase))
+            foreach (var p in vm.Requests)
+                if (BudgetService.Problem(await budgets.CheckAsync(p)) is string problem) flags[p.Id] = problem;
+        ViewBag.BudgetFlags = flags;
 
         if (User.IsAdmin() || User.IsInRole(AppRoles.Director))
             vm.Orders = await Db.PurchaseOrders.Include(p => p.Vendor).Include(p => p.Buyer).Include(p => p.PurchaseRequest)

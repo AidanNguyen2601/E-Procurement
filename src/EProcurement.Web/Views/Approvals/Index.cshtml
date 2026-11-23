@@ -12,7 +12,8 @@
             <td>@p.Requester?.FullName<br /><small class="text-muted">@p.Department</small></td>
             <td><partial name="_Badge" model="p.Priority" /></td>
             <td>@p.NeededDate.ToDate()</td>
-            <td class="money">@p.EstimatedTotal.ToMoney()</td>
+            <td class="money">@p.EstimatedTotal.ToMoney()
+                @if (((Dictionary<int, string>)ViewBag.BudgetFlags).TryGetValue(p.Id, out var bp)) { <div><span class="badge bg-danger" title="@bp">Vượt ngân sách</span></div> }</td>
             <td><partial name="_Badge" model="p.Status" /></td>
             <td>
                 <form asp-controller="PurchaseRequests" asp-action="Decide" asp-route-id="@p.Id" method="post" class="d-flex gap-1">

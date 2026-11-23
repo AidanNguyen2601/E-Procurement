@@ -87,6 +87,7 @@ public static class SampleDataSeeder
             await db.ApprovalHistories.Where(x => x.DocumentType == type && ids.Contains(x.DocumentId)).ExecuteDeleteAsync();
             await db.Attachments.Where(x => x.DocumentType == type && ids.Contains(x.DocumentId)).ExecuteDeleteAsync();
         }
+        await db.Budgets.Where(b => b.Note == Builder.BudgetNote).ExecuteDeleteAsync();
         await tx.CommitAsync();
         await RecalculateRatingsAsync(db);
     }
@@ -137,6 +138,7 @@ public static class SampleDataSeeder
             DirectAwards();
             Tenders();
             PipelineRequests();
+            await BudgetsAsync();
             FinishRequests();
             Evaluations();
             await db.SaveChangesAsync();
@@ -939,6 +941,24 @@ public static class SampleDataSeeder
                 new[] { (it["DV-SEC"], 24m), (it["DV-CLEAN"], 24m) }, purpose: "Hợp đồng dịch vụ hiện tại hết hạn cuối năm.");
             NewTender(prE, "Dịch vụ bảo vệ và vệ sinh 2027–2028", 8, 0, 20, TenderStatus.PendingPlanApproval, EnvelopeMethod.OneEnvelope,
                 TenderEvaluationMethod.LowestEvaluatedPrice, false, 730, new[] { apHc, apNs, buyer });
+        }
+
+        // ------------------------------------------------------------------ Ngân sách mẫu (năm nay + năm trước)
+        public const string BudgetNote = "Dữ liệu mẫu";
+        private async Task BudgetsAsync()
+        {
+            var plan = new (string dept, string? cat, decimal amount)[]
+            {
+                (CNTT, null, 7_000_000_000), (CNTT, "SW", 400_000_000), (HC, null, 8_500_000_000), (HC, "VPP", 150_000_000), (KT, null, 750_000_000),
+                (KD, null, 1_600_000_000), (KTH, null, 7_000_000_000), (KTH, "BHLD", 80_000_000), (NS, null, 600_000_000)
+            };
+            foreach (var year in new[] { today.Year - 1, today.Year })
+                foreach (var (dept, code, amount) in plan)
+                {
+                    int? catId = code == null ? null : cat[code].Id;
+                    if (await db.Budgets.AnyAsync(b => b.Year == year && b.Department == dept && b.CategoryId == catId)) continue;
+                    db.Budgets.Add(new Budget { Year = year, Department = dept, CategoryId = catId, Amount = year == today.Year ? amount : Math.Round(amount * 0.9m / 1_000_000m) * 1_000_000m, Note = BudgetNote });
+                }
         }
 
         // ------------------------------------------------------------------ 4. Đề nghị ở các bước duyệt

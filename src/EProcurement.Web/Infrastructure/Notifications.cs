@@ -45,7 +45,8 @@ public class NotificationService
 {
     private readonly EProcDbContext _db;
     private readonly NotificationSettings _s;
-    public NotificationService(EProcDbContext db, IOptions<NotificationSettings> s) { _db = db; _s = s.Value; }
+    private readonly ProcurementSettings _p;
+    public NotificationService(EProcDbContext db, IOptions<NotificationSettings> s, IOptions<ProcurementSettings> p) { _db = db; _s = s.Value; _p = p.Value; }
 
     public static string UrlOf(DocType t, int id) => t switch
     {
@@ -181,6 +182,18 @@ public class NotificationService
             if (c.PerformanceSecurityExpiry is DateTime ps && ps <= soon)
                 R(new[] { c.CreatedById }, NotificationKind.Warning, $"Bảo lãnh thực hiện HĐ {c.Number} hết hiệu lực {ps.ToDate()}",
                     c.PerformanceSecurityRef, DocType.Contract, c.Id, $"rem:HD:{c.Id}:security:{(ps < today ? "past" : "soon")}");
+        }
+
+        // Ngân sách sắp hết / đã vượt
+        foreach (var b in await new BudgetService(_db).StatusAsync(today.Year))
+        {
+            var level = b.UsedPercent > 100 ? 100 : b.UsedPercent >= _p.BudgetWarnPercent ? _p.BudgetWarnPercent : 0;
+            if (level == 0) continue;
+            var heads = await UsersAsync(u => u.Role == AppRoles.Approver && u.Department == b.Budget.Department);
+            created += Add(directors.Concat(heads), NotificationKind.Warning,
+                level == 100 ? $"Vượt ngân sách: {b.Pool}" : $"Ngân sách đã dùng {b.UsedPercent}%: {b.Pool}",
+                $"Ngân sách {b.Budget.Amount.ToMoney()} đ, đã dùng {b.Used.ToMoney()} đ, còn {b.Available.ToMoney()} đ.", null,
+                $"rem:BG:{b.Budget.Id}:{b.Budget.Amount}:{level}", $"/Budgets?year={b.Budget.Year}");
         }
 
         // Chờ duyệt quá lâu – nhắc lại mỗi tuần

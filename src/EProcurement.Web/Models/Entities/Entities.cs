@@ -678,3 +678,20 @@ public class Notification
     public DateTime? ReadAt { get; set; }
     public DateTime? EmailedAt { get; set; }
 }
+
+// =====================================================================
+//  NGÂN SÁCH MUA SẮM
+// =====================================================================
+/// <summary>Ngân sách năm của một phòng ban (cho một nhóm hàng, hoặc mọi nhóm hàng khi CategoryId = null). Giá trị trước VAT.</summary>
+public class Budget
+{
+    public int Id { get; set; }
+    [Range(2000, 2100)][Display(Name = "Năm")] public int Year { get; set; } = DateTime.Today.Year;
+    [Required(ErrorMessage = "Chọn phòng ban"), StringLength(100)][Display(Name = "Phòng ban")] public string Department { get; set; } = string.Empty;
+    [Display(Name = "Nhóm hàng")] public int? CategoryId { get; set; }
+    public Category? Category { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Ngân sách (trước VAT)")] public decimal Amount { get; set; }
+    [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
