@@ -6,7 +6,7 @@
     var purchasing = User.IsPurchasing();
     var director = User.IsInRole(AppRoles.Director);
     var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
-    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", _ => null };
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", _ => null };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -43,6 +43,18 @@
                 <a class="@Active("Contracts")" asp-controller="Contracts" asp-action="Index">@Icon.Svg("file-check")<span>Hợp đồng</span></a>
                 <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">@Icon.Svg("cart")<span>Đơn mua hàng (PO)</span></a>
                 <a class="@Active("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">@Icon.Svg("truck")<span>Nhận hàng (GRN)</span></a>
+
+            }
+            @if (purchasing || director || User.IsInRole(AppRoles.Accountant))
+            {
+                <div class="nav-group">Tài chính</div>
+                <a class="@Active("Invoices")" asp-controller="Invoices" asp-action="Index">@Icon.Svg("receipt")<span>Hóa đơn NCC</span></a>
+                <a class="@Active("Payments")" asp-controller="Payments" asp-action="Index">@Icon.Svg("coins")<span>Thanh toán</span></a>
+                @if (User.IsInRole(AppRoles.Accountant) && !purchasing && !director)
+                {
+                    <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">@Icon.Svg("cart")<span>Đơn mua hàng (PO)</span></a>
+                    <a class="@Active("Contracts")" asp-controller="Contracts" asp-action="Index">@Icon.Svg("file-check")<span>Hợp đồng</span></a>
+                }
 
                 <div class="nav-group">Báo cáo</div>
                 <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index">@Icon.Svg("bar-chart")<span>Báo cáo mua sắm</span></a>

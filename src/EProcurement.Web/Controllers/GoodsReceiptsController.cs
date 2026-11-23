@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace EProcurement.Web.Controllers;
 
 /// <summary>Phiếu nhận hàng (GRN): ghi nhận số lượng đạt / không đạt theo từng dòng PO</summary>
-[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director + "," + AppRoles.Accountant)]
 public class GoodsReceiptsController : ProcControllerBase
 {
     public GoodsReceiptsController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }

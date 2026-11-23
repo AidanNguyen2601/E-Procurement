@@ -1,0 +1,21 @@
+@model List<Payment>
+@{ var counts = (Dictionary<PaymentStatus, (int N, decimal S)>)ViewBag.Counts; var st = (PaymentStatus?)ViewBag.Status; }
+<div class="row g-3 mb-3">
+    @foreach (var s in Enum.GetValues<PaymentStatus>())
+    {
+        var c = counts.GetValueOrDefault(s);
+        <div class="col-6 col-md-3"><a asp-action="Index" asp-route-status="@s" class="card stat text-decoration-none text-reset @(st == s ? "border-primary" : "")">
+            <div class="label">@s.GetDisplayName()</div><div class="value">@c.N</div><div class="small text-muted">@c.S.ToShortMoney() đ</div></a></div>
+    }
+</div>
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>Số</th><th>Loại</th><th>Nhà cung cấp</th><th>Căn cứ</th><th class="money">Thực chi</th><th>Đề nghị lúc</th><th>Trạng thái</th></tr></thead><tbody>
+    @foreach (var p in Model)
+    {
+        <tr><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td><td class="small">@p.Type.GetDisplayName()</td><td class="small">@p.Vendor?.Name</td>
+            <td class="small">@if (p.Invoice != null) { <a asp-controller="Invoices" asp-action="Details" asp-route-id="@p.InvoiceId">HĐ @p.Invoice.InvoiceNo</a> } @if (p.Contract != null) { <a asp-controller="Contracts" asp-action="Details" asp-route-id="@p.ContractId">@p.Contract.Number</a> }</td>
+            <td class="money">@p.NetAmount.ToMoney()</td><td class="small">@p.RequestedAt.ToDateTime()</td>
+            <td><span class="badge @(p.Status switch { PaymentStatus.Requested => "bg-warning text-dark", PaymentStatus.Approved => "bg-primary", PaymentStatus.Paid => "bg-success", _ => "bg-secondary" })">@p.Status.GetDisplayName()</span></td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Chưa có đề nghị thanh toán.</td></tr> }
+</tbody></table></div></div></div>

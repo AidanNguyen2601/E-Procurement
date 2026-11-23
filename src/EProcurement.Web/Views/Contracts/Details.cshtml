@@ -50,6 +50,7 @@
         @foreach (var o in orders) { <li class="list-group-item d-flex justify-content-between"><span><a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@o.Id">@o.Number</a> · @o.OrderDate.ToDate() · @o.SubTotal.ToMoney() đ</span><partial name="_Badge" model="o.Status" /></li> }
         @if (!orders.Any()) { <li class="list-group-item small text-muted">Chưa có đơn hàng.</li> }
     </ul></div>
+    <partial name="_ContractFinance" model="Model" />
     <partial name="_Attachments" model="attachments" />
 </div>
 <div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>

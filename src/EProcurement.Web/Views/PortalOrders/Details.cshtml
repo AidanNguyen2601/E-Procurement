@@ -1,5 +1,10 @@
 @model PurchaseOrder
-@{ Layout = "_PortalLayout"; var ships = (List<PoShipment>)ViewBag.Shipments; var receipts = (List<GoodsReceipt>)ViewBag.Receipts; }
+@{
+    Layout = "_PortalLayout"; var ships = (List<PoShipment>)ViewBag.Shipments; var receipts = (List<GoodsReceipt>)ViewBag.Receipts;
+    var invoices = (List<Invoice>)ViewBag.Invoices; var payments = (List<Payment>)ViewBag.Payments;
+    var invoicedQty = invoices.Where(i => i.Status != InvoiceStatus.Rejected).SelectMany(i => i.Lines).GroupBy(l => l.PurchaseOrderLineId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+    var canInvoice = Model.Status is PoStatus.PartiallyReceived or PoStatus.Received && Model.Lines.Any(l => l.ReceivedQuantity > invoicedQty.GetValueOrDefault(l.Id));
+}
 <div class="card mb-3"><div class="card-body small">
     <div class="d-flex flex-wrap gap-4">
         <div>Ngày đặt <b>@Model.OrderDate.ToDate()</b></div><div>Hạn giao <b>@Model.DeliveryDate.ToDate()</b></div>
@@ -50,3 +55,39 @@
         </div></div>
     </div>
 </div>
+
+<div class="card mt-3"><div class="card-header">Hóa đơn & thanh toán</div><div class="card-body small">
+    @foreach (var i in invoices)
+    {
+        var pay = payments.Where(p => p.InvoiceId == i.Id && p.Status != PaymentStatus.Rejected).OrderByDescending(p => p.RequestedAt).FirstOrDefault();
+        <div class="border-bottom pb-2 mb-2">HĐ <b>@i.Series @i.InvoiceNo</b> ngày @i.InvoiceDate.ToDate() · @i.Total.ToMoney() đ · <span class="badge bg-light text-dark border">@i.Status.GetDisplayName()</span> · hạn thanh toán @i.DueDate.ToDate()
+            @if (pay != null) { <span> · @pay.Status.GetDisplayName()@(pay.PaidAt != null ? $" ngày {pay.PaidAt:dd/MM/yyyy}, thực nhận {pay.NetAmount.ToMoney()} đ" : "")@(pay.PenaltyAmount > 0 ? $" (phạt chậm giao {pay.PenaltyAmount.ToMoney()} đ)" : "")</span> }
+            @if (i.Status is InvoiceStatus.Exception or InvoiceStatus.Rejected) { <div class="text-danger">@i.MatchNote @i.DecisionNote</div> }</div>
+    }
+    @if (canInvoice)
+    {
+        <form asp-action="SubmitInvoice" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+            <div class="fw-semibold mb-1">Gửi hóa đơn điện tử</div>
+            <div class="row g-2 mb-2">
+                <div class="col-md-2"><input name="Series" maxlength="20" placeholder="Ký hiệu" class="form-control form-control-sm" /></div>
+                <div class="col-md-3"><input name="InvoiceNo" maxlength="30" placeholder="Số hóa đơn" class="form-control form-control-sm" required /></div>
+                <div class="col-md-3"><input name="InvoiceDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
+                <div class="col-md-4"><input name="file" type="file" class="form-control form-control-sm" required /></div>
+            </div>
+            <table class="table table-sm"><thead><tr><th>Hàng hóa</th><th class="money">Đã giao (bên mua nhận đạt)</th><th class="money">Đã xuất HĐ</th><th style="width:120px">SL xuất HĐ</th><th style="width:150px">Đơn giá</th></tr></thead><tbody>
+            @{ var k = 0; }
+            @foreach (var l in Model.Lines)
+            {
+                var rem = Math.Max(0, l.ReceivedQuantity - invoicedQty.GetValueOrDefault(l.Id));
+                <tr><td>@l.Description<input type="hidden" name="Lines[@k].PurchaseOrderLineId" value="@l.Id" /></td><td class="money">@l.ReceivedQuantity.ToQty()</td><td class="money">@invoicedQty.GetValueOrDefault(l.Id).ToQty()</td>
+                    <td><input name="Lines[@k].Quantity" type="number" min="0" step="0.01" value="@rem.ToString(System.Globalization.CultureInfo.InvariantCulture)" class="form-control form-control-sm text-end" /></td>
+                    <td><input name="Lines[@k].UnitPrice" type="number" min="0" value="@l.UnitPrice.ToString("0")" class="form-control form-control-sm text-end" /></td></tr>
+                k++;
+            }
+            </tbody></table>
+            <div class="d-flex gap-2 align-items-center"><input name="VatAmount" type="number" min="0" placeholder="Thuế GTGT trên HĐ (để trống = @Model.VatPercent.ToString("0.#")%)" class="form-control form-control-sm" style="max-width:320px" />
+                <button class="btn btn-sm btn-primary">Gửi hóa đơn</button></div>
+        </form>
+    }
+    else if (!invoices.Any()) { <div class="text-muted">Gửi hóa đơn sau khi bên mua đã nhận hàng.</div> }
+</div></div>

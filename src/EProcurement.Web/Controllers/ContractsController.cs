@@ -13,7 +13,7 @@ namespace EProcurement.Web.Controllers;
 /// Hợp đồng ký với nhà thầu trúng thầu. Hợp đồng thường → sinh 1 PO toàn bộ; hợp đồng khung → đặt hàng nhiều đợt,
 /// mỗi đợt không vượt khối lượng còn lại. Theo dõi bảo đảm thực hiện hợp đồng và giá trị đã thực hiện.
 /// </summary>
-[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director + "," + AppRoles.Accountant)]
 public class ContractsController : ProcControllerBase
 {
     public ContractsController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }
@@ -38,6 +38,8 @@ public class ContractsController : ProcControllerBase
         ViewBag.Remaining = await RemainingAsync(c);
         ViewBag.History = await HistoryAsync(DocType.Contract, id);
         ViewBag.Attachments = await AttachmentPanelAsync(DocType.Contract, id, User.IsPurchasing() && c.Status == ContractStatus.Active);
+        ViewBag.Payments = await Db.Payments.AsNoTracking().Where(p => p.ContractId == id).OrderBy(p => p.RequestedAt).ToListAsync();
+        ViewBag.PaySummary = await HttpContext.RequestServices.GetRequiredService<FinanceService>().ContractPaymentsAsync(id);
         return View(c);
     }
 
@@ -201,9 +203,148 @@ public class ContractsController : ProcControllerBase
         Notes = $"Theo hợp đồng {c.Number} ký ngày {c.SignedDate.ToDate()}", CreatedAt = DateTime.Now
     };
 
+    // ------------------------------------------------------------------ Phụ lục hợp đồng
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddAmendment(int id, string? description, decimal valueChange, DateTime? newEndDate)
+    {
+        var c = await Db.Contracts.FindAsync(id);
+        if (c == null) return NotFound();
+        IActionResult Back(string? e = null) { if (e != null) TempData["Error"] = e; return RedirectToAction(nameof(Details), new { id }); }
+        if (c.Status != ContractStatus.Active) return Back("Chỉ lập phụ lục cho hợp đồng đang thực hiện.");
+        if (string.IsNullOrWhiteSpace(description)) return Back("Nhập nội dung phụ lục.");
+        if (valueChange == 0 && newEndDate == null) return Back("Phụ lục cần điều chỉnh giá trị hoặc gia hạn.");
+        if (c.Value + valueChange <= 0) return Back("Giá trị hợp đồng sau điều chỉnh phải lớn hơn 0.");
+        if (newEndDate.HasValue && newEndDate.Value.Date <= c.StartDate) return Back("Ngày gia hạn không hợp lệ.");
+        if (await Db.ContractAmendments.AnyAsync(a => a.ContractId == id && a.Status == AmendmentStatus.Pending)) return Back("Đang có phụ lục chờ duyệt.");
+        var n = await Db.ContractAmendments.CountAsync(a => a.ContractId == id) + 1;
+        var a = new ContractAmendment { ContractId = id, Number = $"PL{n:00}", Description = description.Trim()[..Math.Min(2000, description.Trim().Length)], ValueChange = Math.Round(valueChange, 0), NewEndDate = newEndDate?.Date, CreatedById = Me };
+        Db.ContractAmendments.Add(a);
+        Log(DocType.Contract, id, $"Trình duyệt phụ lục {a.Number}",
+            $"{a.Description}" + (a.ValueChange != 0 ? $" · giá trị {(a.ValueChange > 0 ? "+" : "")}{a.ValueChange.ToMoney()} đ" : "") + (a.NewEndDate.HasValue ? $" · gia hạn đến {a.NewEndDate:dd/MM/yyyy}" : ""));
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã trình phụ lục {a.Number} – chờ Giám đốc duyệt.";
+        return Back();
+    }
+
+    [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> DecideAmendment(int id, int amendmentId, bool approve, string? comment)
+    {
+        var c = await Db.Contracts.FindAsync(id);
+        var a = await Db.ContractAmendments.FirstOrDefaultAsync(x => x.Id == amendmentId && x.ContractId == id && x.Status == AmendmentStatus.Pending);
+        if (c == null || a == null) return NotFound();
+        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do không duyệt."; return RedirectToAction(nameof(Details), new { id }); }
+        a.Status = approve ? AmendmentStatus.Approved : AmendmentStatus.Rejected; a.DecidedById = Me; a.DecidedAt = DateTime.Now; a.DecisionNote = comment?.Trim();
+        if (approve)
+        {
+            c.Value += a.ValueChange;
+            if (a.NewEndDate.HasValue) { c.EndDate = a.NewEndDate.Value; if (c.PerformanceSecurityExpiry < c.EndDate) Log(DocType.Contract, id, "Cảnh báo: bảo lãnh thực hiện hết hạn trước ngày gia hạn – yêu cầu NCC gia hạn bảo lãnh"); }
+        }
+        Log(DocType.Contract, id, approve ? $"Giám đốc duyệt phụ lục {a.Number} – giá trị HĐ {c.Value.ToMoney()} đ, hiệu lực đến {c.EndDate:dd/MM/yyyy}" : $"Giám đốc không duyệt phụ lục {a.Number}", comment);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = approve ? $"Phụ lục {a.Number} có hiệu lực." : $"Đã trả lại phụ lục {a.Number}.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // ------------------------------------------------------------------ Lịch thanh toán, bảo lãnh, điều khoản phạt
+    [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Accountant)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddMilestone(int id, string? name, PaymentType type, decimal percent, DateTime? dueDate, string? condition)
+    {
+        var c = await Db.Contracts.Include(x => x.Milestones).FirstOrDefaultAsync(x => x.Id == id);
+        if (c == null) return NotFound();
+        IActionResult Back(string? e = null) { if (e != null) TempData["Error"] = e; return RedirectToAction(nameof(Details), new { id }); }
+        if (string.IsNullOrWhiteSpace(name) || percent is <= 0 or > 100 || type == PaymentType.Invoice) return Back("Nhập tên đợt và tỷ lệ (0–100%).");
+        if (c.Milestones.Sum(m => m.Percent) + percent > 100) return Back($"Tổng tỷ lệ các đợt vượt 100% (đã có {c.Milestones.Sum(m => m.Percent):0.#}%).");
+        var gross = Math.Round(c.Value * (1 + c.VatPercent / 100m), 0);
+        c.Milestones.Add(new ContractMilestone { Name = name.Trim(), Type = type, Percent = percent, Amount = Math.Round(gross * percent / 100m, 0), DueDate = dueDate?.Date, Condition = condition?.Trim(), SortOrder = c.Milestones.Count + 1 });
+        await Db.SaveChangesAsync();
+        TempData["Success"] = "Đã thêm đợt thanh toán.";
+        return Back();
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Accountant)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteMilestone(int id, int milestoneId)
+    {
+        if (await Db.Payments.AnyAsync(p => p.MilestoneId == milestoneId && p.Status != PaymentStatus.Rejected)) { TempData["Error"] = "Đợt đã có đề nghị thanh toán."; return RedirectToAction(nameof(Details), new { id }); }
+        await Db.ContractMilestones.Where(m => m.Id == milestoneId && m.ContractId == id).ExecuteDeleteAsync();
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Đề nghị thanh toán một đợt / tạm ứng. Tạm ứng bắt buộc có bảo lãnh tạm ứng còn hiệu lực, đủ giá trị.</summary>
+    [Authorize(Roles = AppRoles.Finance)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestMilestonePayment(int id, int milestoneId)
+    {
+        var c = await Db.Contracts.FindAsync(id);
+        var m = await Db.ContractMilestones.FirstOrDefaultAsync(x => x.Id == milestoneId && x.ContractId == id);
+        if (c == null || m == null) return NotFound();
+        IActionResult Back(string? e = null) { if (e != null) TempData["Error"] = e; return RedirectToAction(nameof(Details), new { id }); }
+        if (c.Status != ContractStatus.Active) return Back("Hợp đồng không còn hiệu lực.");
+        if (await Db.Payments.AnyAsync(p => p.MilestoneId == m.Id && p.Status != PaymentStatus.Rejected)) return Back("Đợt này đã có đề nghị thanh toán.");
+        if (m.Type == PaymentType.Advance)
+        {
+            var cover = await Db.ContractGuarantees.Where(g => g.ContractId == id && g.Type == GuaranteeType.Advance && g.ReleasedAt == null && g.ExpiryDate >= DateTime.Today).SumAsync(g => (decimal?)g.Amount) ?? 0;
+            if (cover < m.Amount) return Back($"Tạm ứng {m.Amount.ToMoney()} đ cần bảo lãnh tạm ứng còn hiệu lực tương ứng (hiện có {cover.ToMoney()} đ).");
+        }
+        var pay = new Payment
+        {
+            Number = await DocNumbers.NextAsync(Db.Payments.Select(x => x.Number), "TT"), Type = m.Type, VendorId = c.VendorId, ContractId = id, MilestoneId = m.Id,
+            Amount = m.Amount, NetAmount = m.Amount, Note = $"{m.Name} ({m.Percent:0.#}% HĐ {c.Number})" + (string.IsNullOrEmpty(m.Condition) ? "" : " – " + m.Condition),
+            RequestedById = Me, RequestedAt = DateTime.Now
+        };
+        Db.Payments.Add(pay);
+        await Db.SaveChangesAsync();
+        Log(DocType.Payment, pay.Id, $"Đề nghị {m.Type.GetDisplayName().ToLower()} {pay.NetAmount.ToMoney()} đ", pay.Note);
+        Log(DocType.Contract, id, $"Lập đề nghị thanh toán {pay.Number} – {m.Name}");
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã lập {pay.Number} – chờ Giám đốc duyệt.";
+        return RedirectToAction("Details", "Payments", new { id = pay.Id });
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddGuarantee(int id, GuaranteeType type, decimal amount, string? reference, string? bank, DateTime expiryDate, string? note)
+    {
+        if (!await Db.Contracts.AnyAsync(c => c.Id == id)) return NotFound();
+        if (amount <= 0 || expiryDate.Date < DateTime.Today) { TempData["Error"] = "Giá trị và ngày hiệu lực bảo lãnh không hợp lệ."; return RedirectToAction(nameof(Details), new { id }); }
+        Db.ContractGuarantees.Add(new ContractGuarantee { ContractId = id, Type = type, Amount = Math.Round(amount, 0), Reference = reference?.Trim(), Bank = bank?.Trim(), ExpiryDate = expiryDate.Date, Note = note?.Trim() });
+        Log(DocType.Contract, id, $"Tiếp nhận {type.GetDisplayName().ToLower()} {amount.ToMoney()} đ", $"{reference} – {bank}, hiệu lực đến {expiryDate:dd/MM/yyyy}");
+        await Db.SaveChangesAsync();
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReleaseGuarantee(int id, int guaranteeId)
+    {
+        var g = await Db.ContractGuarantees.FirstOrDefaultAsync(x => x.Id == guaranteeId && x.ContractId == id && x.ReleasedAt == null);
+        if (g == null) return NotFound();
+        g.ReleasedAt = DateTime.Now;
+        Log(DocType.Contract, id, $"Giải tỏa {g.Type.GetDisplayName().ToLower()} {g.Reference}");
+        await Db.SaveChangesAsync();
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> PenaltyTerms(int id, decimal perDay, decimal cap)
+    {
+        var c = await Db.Contracts.FindAsync(id);
+        if (c == null) return NotFound();
+        if (perDay is < 0 or > 5 || cap is < 0 or > 100) { TempData["Error"] = "Mức phạt không hợp lệ."; return RedirectToAction(nameof(Details), new { id }); }
+        c.LatePenaltyPercentPerDay = perDay; c.LatePenaltyCapPercent = cap;
+        Log(DocType.Contract, id, $"Cập nhật điều khoản phạt chậm giao: {perDay:0.###}%/ngày, tối đa {cap:0.#}%");
+        await Db.SaveChangesAsync();
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
     private async Task<Contract?> LoadAsync(int id)
     {
         var c = await Db.Contracts.Include(x => x.Vendor).Include(x => x.Tender).Include(x => x.CreatedBy).Include(x => x.Lines)
+            .Include(x => x.Amendments).Include(x => x.Milestones).Include(x => x.Guarantees).AsSplitQuery()
             .AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (c != null) c.Lines = c.Lines.OrderBy(l => l.SortOrder).ToList();
         return c;

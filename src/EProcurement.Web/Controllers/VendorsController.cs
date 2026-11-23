@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace EProcurement.Web.Controllers;
 
-[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director + "," + AppRoles.Accountant)]
 public class VendorsController : ProcControllerBase
 {
     public VendorsController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }

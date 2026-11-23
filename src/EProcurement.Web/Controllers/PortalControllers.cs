@@ -502,6 +502,8 @@ public class PortalOrdersController : PortalControllerBase
         po.Lines = po.Lines.OrderBy(l => l.SortOrder).ToList();
         ViewBag.Shipments = await Db.PoShipments.AsNoTracking().Include(s => s.VendorUser).Where(s => s.PurchaseOrderId == id).OrderBy(s => s.CreatedAt).ToListAsync();
         ViewBag.Receipts = await Db.GoodsReceipts.AsNoTracking().Include(g => g.Lines).Where(g => g.PurchaseOrderId == id).OrderBy(g => g.ReceiptDate).ToListAsync();
+        ViewBag.Invoices = await Db.Invoices.AsNoTracking().Include(i => i.Lines).Where(i => i.PurchaseOrderId == id).OrderBy(i => i.CreatedAt).ToListAsync();
+        ViewBag.Payments = await Db.Payments.AsNoTracking().Where(p => p.Invoice!.PurchaseOrderId == id).ToListAsync();
         ViewData["Title"] = po.Number;
         return View(po);
     }
@@ -538,6 +540,32 @@ public class PortalOrdersController : PortalControllerBase
         });
         await Db.SaveChangesAsync();
         TempData["Success"] = accept ? "Đã xác nhận đơn hàng." : "Đã gửi từ chối đơn hàng.";
+        return Back();
+    }
+
+    /// <summary>NCC gửi hóa đơn điện tử cho PO đã nhận hàng – hệ thống đối chiếu 3 bên ngay</summary>
+    [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(30 * 1024 * 1024)]
+    public async Task<IActionResult> SubmitInvoice(int id, InvoiceForm f, IFormFile? file)
+    {
+        var po = await Db.PurchaseOrders.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == id && p.VendorId == MyVendor.Id && p.IssuedAt != null);
+        if (po == null) return NotFound();
+        IActionResult Back(string? err = null) { if (err != null) TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
+        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
+        if (po.Status is not (PoStatus.PartiallyReceived or PoStatus.Received)) return Back("Chỉ gửi hóa đơn sau khi bên mua đã nhận hàng.");
+        if (file == null || file.Length == 0) return Back("Đính kèm file hóa đơn điện tử (pdf / xml).");
+        f.PurchaseOrderId = id;
+        var fin = HttpContext.RequestServices.GetRequiredService<FinanceService>();
+        var (inv, match, err) = await InvoiceFactory.CreateAsync(Db, fin, po, f, file, MaxFileBytes, null, Me.Id);
+        if (err != null) return Back(err);
+        await Db.SaveChangesAsync();
+        Db.ApprovalHistories.Add(new ApprovalHistory { DocumentType = DocType.Invoice, DocumentId = inv!.Id, UserId = po.BuyerId, CreatedAt = DateTime.Now,
+            Action = $"NCC gửi hóa đơn {inv.Series} {inv.InvoiceNo} qua cổng – {inv.Total.ToMoney()} đ", Comment = $"{Me.FullName} – {MyVendor.Name}" });
+        Db.ApprovalHistories.Add(new ApprovalHistory { DocumentType = DocType.Invoice, DocumentId = inv.Id, UserId = po.BuyerId, CreatedAt = DateTime.Now,
+            Action = match!.Ok ? "Đối chiếu 3 bên: khớp" : "Đối chiếu 3 bên: lệch", Comment = inv.MatchNote });
+        await NotifyBuyersAsync(await Db.Users.Where(u => u.IsActive && u.Role == AppRoles.Accountant).Select(u => u.Id).ToListAsync(),
+            $"Hóa đơn mới từ {MyVendor.Name}: {inv.InvoiceNo} – {(match.Ok ? "khớp 3 bên" : "LỆCH")}", inv.MatchNote, $"/Invoices/Details/{inv.Id}");
+        TempData[match.Ok ? "Success" : "Error"] = match.Ok ? $"Đã gửi hóa đơn {inv.InvoiceNo} – khớp với đơn hàng và số lượng đã giao. Hạn thanh toán dự kiến {inv.DueDate:dd/MM/yyyy}."
+            : $"Đã gửi hóa đơn {inv.InvoiceNo} nhưng chưa khớp: {inv.MatchNote}. Bộ phận kế toán sẽ liên hệ.";
         return Back();
     }
 

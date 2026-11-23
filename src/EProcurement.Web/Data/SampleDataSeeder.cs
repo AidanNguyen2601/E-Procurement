@@ -57,6 +57,18 @@ public static class SampleDataSeeder
         await db.PurchaseOrders.Where(x => !poIds.Contains(x.Id) && x.PurchaseRequestId != null && prIds.Contains(x.PurchaseRequestId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PurchaseRequestId, (int?)null));
         await db.Rfqs.Where(x => !rfqIds.Contains(x.Id) && x.PurchaseRequestId != null && prIds.Contains(x.PurchaseRequestId.Value)).ExecuteUpdateAsync(s => s.SetProperty(x => x.PurchaseRequestId, (int?)null));
 
+        // Hóa đơn, thanh toán, giao hàng, nộp online gắn với chứng từ mẫu
+        var invIds = await db.Invoices.Where(x => poIds.Contains(x.PurchaseOrderId)).Select(x => x.Id).ToListAsync();
+        var payIds = await db.Payments.Where(x => (x.InvoiceId != null && invIds.Contains(x.InvoiceId.Value)) || (x.ContractId != null && contractIds.Contains(x.ContractId.Value))).Select(x => x.Id).ToListAsync();
+        await db.Payments.Where(x => payIds.Contains(x.Id)).ExecuteDeleteAsync();
+        await db.InvoiceLines.Where(x => invIds.Contains(x.InvoiceId)).ExecuteDeleteAsync();
+        await db.Invoices.Where(x => invIds.Contains(x.Id)).ExecuteDeleteAsync();
+        await db.PoShipments.Where(x => poIds.Contains(x.PurchaseOrderId)).ExecuteDeleteAsync();
+        await db.VendorSubmissions.Where(x => (x.RfqVendorId != null && rfqIds.Contains(x.RfqVendor!.RfqId)) || (x.TenderBidderId != null && tenderIds.Contains(x.TenderBidder!.TenderId))).ExecuteDeleteAsync();
+        await db.ContractAmendments.Where(x => contractIds.Contains(x.ContractId)).ExecuteDeleteAsync();
+        await db.ContractMilestones.Where(x => contractIds.Contains(x.ContractId)).ExecuteDeleteAsync();
+        await db.ContractGuarantees.Where(x => contractIds.Contains(x.ContractId)).ExecuteDeleteAsync();
+
         await db.VendorEvaluations.Where(x => x.PurchaseOrderId != null && poIds.Contains(x.PurchaseOrderId.Value)).ExecuteDeleteAsync();
         await db.GoodsReceiptLines.Where(x => poIds.Contains(x.GoodsReceipt!.PurchaseOrderId)).ExecuteDeleteAsync();
         await db.GoodsReceipts.Where(x => poIds.Contains(x.PurchaseOrderId)).ExecuteDeleteAsync();
@@ -82,7 +94,7 @@ public static class SampleDataSeeder
         await db.PurchaseRequestLines.Where(x => prIds.Contains(x.PurchaseRequestId)).ExecuteDeleteAsync();
         await db.PurchaseRequests.Where(x => prIds.Contains(x.Id)).ExecuteDeleteAsync();
 
-        foreach (var (type, ids) in new[] { (DocType.PR, prIds), (DocType.PO, poIds), (DocType.RFQ, rfqIds), (DocType.DirectAward, daIds), (DocType.Tender, tenderIds), (DocType.Contract, contractIds) })
+        foreach (var (type, ids) in new[] { (DocType.PR, prIds), (DocType.PO, poIds), (DocType.RFQ, rfqIds), (DocType.DirectAward, daIds), (DocType.Tender, tenderIds), (DocType.Contract, contractIds), (DocType.Invoice, invIds), (DocType.Payment, payIds) })
         {
             await db.ApprovalHistories.Where(x => x.DocumentType == type && ids.Contains(x.DocumentId)).ExecuteDeleteAsync();
             await db.Attachments.Where(x => x.DocumentType == type && ids.Contains(x.DocumentId)).ExecuteDeleteAsync();
@@ -121,7 +133,8 @@ public static class SampleDataSeeder
         private readonly List<PurchaseOrder> pos = new();
         private readonly Dictionary<PurchaseOrder, DateTime> lastReceipt = new();
 
-        private AppUser admin = null!, director = null!, buyer = null!, buyer2 = null!;
+        private AppUser admin = null!, director = null!, buyer = null!, buyer2 = null!, accountant = null!;
+        private Contract contractA = null!, contractB = null!;
         private readonly Dictionary<string, (AppUser Req, AppUser Appr)> depts = new();
         private readonly Dictionary<string, Category> cat = new();
         private readonly Dictionary<string, Item> it = new();
@@ -141,6 +154,7 @@ public static class SampleDataSeeder
             await BudgetsAsync();
             FinishRequests();
             Evaluations();
+            Finance();
             await db.SaveChangesAsync();
 
             foreach (var l in logs)
@@ -166,6 +180,7 @@ public static class SampleDataSeeder
             director = await U("director", "Nguyễn Văn Đức", AppRoles.Director, "Ban Giám đốc");
             buyer = await U("buyer", "Vũ Thị Thu", AppRoles.Buyer, "Phòng Mua hàng");
             buyer2 = await U("buyer2", "Đỗ Quang Vinh", AppRoles.Buyer, "Phòng Mua hàng");
+            accountant = await U("ketoan.tt", "Phạm Thị Kim Oanh", AppRoles.Accountant, KT);
             depts[CNTT] = (await U("requester", "Trần Văn Nam", AppRoles.Requester, CNTT), await U("approver", "Lê Thị Hồng", AppRoles.Approver, CNTT));
             depts[HC] = (await U("requester2", "Hoàng Thị Mai", AppRoles.Requester, HC), await U("approver2", "Phan Minh Quân", AppRoles.Approver, HC));
             depts[KT] = (await U("ketoan", "Nguyễn Thị Lan Anh", AppRoles.Requester, KT), await U("ketoan.tp", "Bùi Văn Hải", AppRoles.Approver, KT));
@@ -875,6 +890,7 @@ public static class SampleDataSeeder
             });
             Log(DocType.Tender, () => tA.Id, buyer, "Tiếp nhận kiến nghị của nhà thầu", Day(253).AddHours(10), "Công ty CP Công nghệ Phong Vũ Số: đề nghị xem xét lại điểm kỹ thuật");
             var cA = NewContract(tA, winA, 245, Day(155), "Hợp đồng cung cấp, lắp đặt hạ tầng máy chủ và lưu trữ");
+            contractA = cA;
             contractUsed = 0;
             var poA = CallOff(cA, prA, 244, 60, ("IT-SRV-01", 24), ("IT-NAS", 10), ("IT-UPS-3K", 20), ("IT-NET-SW", 20));
             var srv = poA.Lines.First(l => l.ItemId == it["IT-SRV-01"].Id);
@@ -898,6 +914,7 @@ public static class SampleDataSeeder
             });
             var winB = Evaluate(tB, 300)!;
             var cB = NewContract(tB, winB, 292, today.AddDays(25), "Hợp đồng khung cung cấp laptop và màn hình năm 2026");
+            contractB = cB;
             contractUsed = 0;
             var callOffs = new (string dept, int day, int lead, int lap, int mon, int recv)[]
             {
@@ -987,6 +1004,119 @@ public static class SampleDataSeeder
                 pr.Status = PrStatus.Completed;
                 Log(DocType.PR, () => pr.Id, buyer, "Hoàn tất – đã nhận đủ hàng", list.Max(p => lastReceipt[p]).AddHours(15));
             }
+        }
+
+        // ------------------------------------------------------------------ Hóa đơn, thanh toán, hợp đồng nâng cao
+        private Payment Pay(PaymentType type, Vendor v, DateTime at, decimal amount, decimal penalty, decimal advance, string note, PaymentStatus st,
+            Invoice? inv = null, Contract? c = null, ContractMilestone? m = null)
+        {
+            var p = new Payment
+            {
+                Number = No("TT", at), Type = type, VendorId = v.Id, Invoice = inv, Contract = c, Milestone = m, Amount = amount, PenaltyAmount = penalty,
+                AdvanceDeduction = advance, NetAmount = amount - penalty - advance, Note = note, Status = st, RequestedById = accountant.Id, RequestedAt = at.AddHours(10)
+            };
+            Func<int> id = () => p.Id;
+            Log(DocType.Payment, id, accountant, $"Đề nghị thanh toán {p.NetAmount.ToMoney()} đ", note, p.RequestedAt);
+            if (st is PaymentStatus.Approved or PaymentStatus.Paid)
+            {
+                p.ApprovedById = director.Id; p.ApprovedAt = at.AddDays(1).AddHours(9);
+                Log(DocType.Payment, id, director, "Giám đốc duyệt thanh toán", null, p.ApprovedAt.Value);
+            }
+            if (st == PaymentStatus.Paid)
+            {
+                p.PaidById = accountant.Id; p.PaidAt = at.AddDays(rnd.Next(2, 5)).Date; p.PaymentRef = "UNC" + rnd.Next(10000, 99999);
+                Log(DocType.Payment, id, accountant, $"Đã chi {p.NetAmount.ToMoney()} đ", $"UNC {p.PaymentRef} ngày {p.PaidAt:dd/MM/yyyy}", p.PaidAt.Value.AddHours(15));
+            }
+            db.Payments.Add(p);
+            return p;
+        }
+
+        private void Log(DocType t, Func<int> id, AppUser u, string action, string? comment, DateTime at) => Log(t, id, u, action, at, comment);
+
+        private void Finance()
+        {
+            // Hợp đồng A: tạm ứng 30% có bảo lãnh tạm ứng, thanh toán theo hóa đơn có phạt chậm giao và khấu trừ tạm ứng
+            var cA = contractA; var gA = Math.Round(cA.Value * 1.1m, 0);
+            var adv = new ContractMilestone { Name = "Tạm ứng 30%", Type = PaymentType.Advance, Percent = 30, Amount = Math.Round(gA * 0.3m, 0), DueDate = cA.SignedDate.AddDays(7), Condition = "Sau khi nộp bảo lãnh tạm ứng", SortOrder = 1 };
+            cA.Milestones.Add(adv);
+            cA.Milestones.Add(new ContractMilestone { Name = "Thanh toán 70% theo hóa đơn từng đợt giao", Type = PaymentType.Milestone, Percent = 70, Amount = gA - adv.Amount, Condition = "Nghiệm thu, hóa đơn hợp lệ", SortOrder = 2 });
+            cA.Guarantees.Add(new ContractGuarantee { Type = GuaranteeType.Advance, Amount = adv.Amount, Reference = "BLTU-2026-118", Bank = "BIDV", ExpiryDate = cA.EndDate.AddDays(30), ReleasedAt = cA.EndDate.AddDays(5) });
+            cA.Guarantees.Add(new ContractGuarantee { Type = GuaranteeType.Warranty, Amount = Math.Round(cA.Value * 0.05m, 0), Reference = "BLBH-2026-042", Bank = "BIDV", ExpiryDate = cA.EndDate.AddMonths(24) });
+            var advPay = Pay(PaymentType.Advance, cA.Vendor!, cA.SignedDate.AddDays(3), adv.Amount, 0, 0, $"Tạm ứng 30% HĐ {cA.Number}", PaymentStatus.Paid, c: cA, m: adv);
+            var advanceRate = adv.Amount / gA;
+            var recovered = 0m;
+
+            var invSeq = 0; var exceptionDone = false;
+            foreach (var po in pos.Where(p => (p.Status == PoStatus.Received || (p.Status == PoStatus.PartiallyReceived && p.Lines.Any(l => l.ReceivedQuantity > 0)))
+                                              && lastReceipt.ContainsKey(p) && (today - lastReceipt[p]).Days >= 4))
+            {
+                var recv = lastReceipt[po];
+                var invDate = recv.AddDays(rnd.Next(1, 4));
+                if (invDate > today) continue;
+                invSeq++;
+                var inv = new Invoice
+                {
+                    Number = No("HDV", invDate), VendorId = po.VendorId!.Value, PurchaseOrder = po, InvoiceNo = rnd.Next(1000, 99999).ToString("0000000"), Series = "1C" + invDate.ToString("yy") + "T" + (char)('A' + rnd.Next(0, 6)) + "A",
+                    InvoiceDate = invDate.Date, DueDate = Infrastructure.FinanceService.DueDate(invDate, po.PaymentTerms), FromPortal = rnd.NextDouble() < 0.3, CreatedById = accountant.Id, CreatedAt = invDate.AddHours(11)
+                };
+                // Một hóa đơn văn phòng phẩm ghi đơn giá mực cao hơn PO → lệch, chờ Giám đốc xử lý
+                var priceUp = !exceptionDone && po.Method == ProcurementMethod.DirectPurchase && (today - recv).Days < 40 && po.Lines.Any(l => l.ItemId == it["VPP-INK"].Id && l.ReceivedQuantity > 0);
+                if (priceUp) exceptionDone = true;
+                foreach (var l in po.Lines.Where(l => l.ReceivedQuantity > 0))
+                {
+                    var price = priceUp && l.ItemId == it["VPP-INK"].Id ? R(l.UnitPrice * 1.05m) : l.UnitPrice;
+                    inv.Lines.Add(new InvoiceLine { PurchaseOrderLine = l, Quantity = l.ReceivedQuantity, UnitPrice = price, Amount = Math.Round(l.ReceivedQuantity * price, 0) });
+                }
+                inv.SubTotal = inv.Lines.Sum(l => l.Amount); inv.VatAmount = Math.Round(inv.SubTotal * po.VatPercent / 100m, 0); inv.Total = inv.SubTotal + inv.VatAmount;
+                Func<int> iid = () => inv.Id;
+                Log(DocType.Invoice, iid, accountant, $"Nhận hóa đơn {inv.Series} {inv.InvoiceNo} – {inv.Total.ToMoney()} đ", null, inv.CreatedAt);
+                if (priceUp)
+                {
+                    inv.Status = InvoiceStatus.Exception;
+                    inv.MatchNote = "Mực in laser HP 107A: đơn giá hóa đơn cao hơn giá PO 5%";
+                    Log(DocType.Invoice, iid, accountant, "Đối chiếu 3 bên: lệch", inv.MatchNote, inv.CreatedAt.AddMinutes(1));
+                    db.Invoices.Add(inv);
+                    continue;
+                }
+                inv.Status = InvoiceStatus.Matched; inv.MatchNote = "Khớp 3 bên: số lượng ≤ đã nhận, đơn giá ≤ PO, thuế GTGT đúng.";
+                Log(DocType.Invoice, iid, accountant, "Đối chiếu 3 bên: khớp", null, inv.CreatedAt.AddMinutes(1));
+                db.Invoices.Add(inv);
+
+                var age = (today - invDate).Days;
+                if (age < 6 || po.Status == PoStatus.PartiallyReceived) continue; // mới nhận / chưa giao đủ – chờ đề nghị thanh toán
+                decimal penalty = 0, deduct = 0; var notes = new List<string> { $"Thanh toán hóa đơn {inv.Series} {inv.InvoiceNo} – {po.Number}" };
+                var contract = po.Contract;
+                if (contract != null)
+                {
+                    var late = (recv.Date - po.DeliveryDate.Date).Days;
+                    if (late > 0)
+                    {
+                        var pct = Math.Min(contract.LatePenaltyCapPercent, contract.LatePenaltyPercentPerDay * late);
+                        penalty = Math.Round(inv.SubTotal * pct / 100m, 0);
+                        notes.Add($"Phạt chậm giao {late} ngày × {contract.LatePenaltyPercentPerDay:0.###}%/ngày = {pct:0.###}% tiền hàng");
+                    }
+                    if (contract == cA)
+                    {
+                        deduct = Math.Min(adv.Amount - recovered, Math.Round(inv.Total * advanceRate, 0));
+                        recovered += deduct;
+                        notes.Add($"Khấu trừ tạm ứng {advanceRate * 100:0.#}%");
+                    }
+                }
+                var st = age > 30 ? PaymentStatus.Paid : age > 15 ? PaymentStatus.Approved : PaymentStatus.Requested;
+                inv.Status = st == PaymentStatus.Paid ? InvoiceStatus.Paid : InvoiceStatus.PaymentRequested;
+                var pay = Pay(PaymentType.Invoice, po.Vendor!, invDate.AddDays(rnd.Next(2, 5)), inv.Total, penalty, deduct, string.Join("; ", notes), st, inv, contract);
+                Log(DocType.Invoice, iid, accountant, $"Lập đề nghị thanh toán {pay.Number}", null, pay.RequestedAt);
+            }
+
+            // Hợp đồng khung B: bảo lãnh bảo hành; phụ lục gia hạn 3 tháng đang chờ duyệt (HĐ sắp hết hạn, còn khối lượng)
+            var cB = contractB;
+            cB.Guarantees.Add(new ContractGuarantee { Type = GuaranteeType.Warranty, Amount = Math.Round(cB.Value * 0.03m, 0), Reference = "BLBH-2026-077", Bank = "Vietcombank", ExpiryDate = today.AddDays(20) });
+            cB.Amendments.Add(new ContractAmendment
+            {
+                Number = "PL01", Description = "Gia hạn thời gian thực hiện hợp đồng khung 3 tháng để các phòng ban đặt hàng phần khối lượng còn lại; giữ nguyên đơn giá.",
+                NewEndDate = cB.EndDate.AddMonths(3), Status = AmendmentStatus.Pending, CreatedById = buyer.Id, CreatedAt = today.AddDays(-2).AddHours(10)
+            });
+            Log(DocType.Contract, () => cB.Id, buyer, "Trình duyệt phụ lục PL01", $"Gia hạn đến {cB.EndDate.AddMonths(3):dd/MM/yyyy}", today.AddDays(-2).AddHours(10));
         }
 
         private void Evaluations()

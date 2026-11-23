@@ -47,6 +47,12 @@ public class EProcDbContext : DbContext
     public DbSet<VendorDocument> VendorDocuments => Set<VendorDocument>();
     public DbSet<VendorSubmission> VendorSubmissions => Set<VendorSubmission>();
     public DbSet<PoShipment> PoShipments => Set<PoShipment>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<ContractAmendment> ContractAmendments => Set<ContractAmendment>();
+    public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
+    public DbSet<ContractGuarantee> ContractGuarantees => Set<ContractGuarantee>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -79,6 +85,13 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<VendorSubmission>().HasIndex(x => new { x.RfqVendorId, x.IsLatest });
         modelBuilder.Entity<VendorSubmission>().HasIndex(x => new { x.TenderBidderId, x.IsLatest });
         modelBuilder.Entity<PoShipment>().HasIndex(x => x.PurchaseOrderId);
+        modelBuilder.Entity<Invoice>().HasIndex(x => x.Number).IsUnique();
+        modelBuilder.Entity<Invoice>().HasIndex(x => new { x.VendorId, x.InvoiceNo, x.Series });
+        modelBuilder.Entity<Payment>().HasIndex(x => x.Number).IsUnique();
+        modelBuilder.Entity<Payment>().HasIndex(x => new { x.Status, x.RequestedAt });
+        modelBuilder.Entity<Payment>().HasOne(x => x.RequestedBy).WithMany().HasForeignKey(x => x.RequestedById);
+        modelBuilder.Entity<Payment>().HasOne(x => x.ApprovedBy).WithMany().HasForeignKey(x => x.ApprovedById);
+        modelBuilder.Entity<Payment>().HasOne(x => x.PaidBy).WithMany().HasForeignKey(x => x.PaidById);
         modelBuilder.Entity<ApprovalDelegation>().HasOne(x => x.FromUser).WithMany().HasForeignKey(x => x.FromUserId);
         modelBuilder.Entity<ApprovalDelegation>().HasOne(x => x.ToUser).WithMany().HasForeignKey(x => x.ToUserId);
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.Key }).IsUnique().HasFilter("[Key] IS NOT NULL");

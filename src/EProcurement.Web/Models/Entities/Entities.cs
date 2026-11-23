@@ -50,13 +50,16 @@ public static class AppRoles
     public const string Approver = "Approver";
     public const string Buyer = "Buyer";
     public const string Requester = "Requester";
+    public const string Accountant = "Accountant";
+    /// <summary>Nhận hóa đơn, đối chiếu, đề nghị và ghi nhận thanh toán</summary>
+    public const string Finance = Admin + "," + Accountant;
 
     /// <summary>Bộ phận mua hàng (quản lý NCC, RFQ, PO, nhận hàng)</summary>
     public const string Purchasing = Admin + "," + Buyer;
     /// <summary>Người duyệt chứng từ</summary>
     public const string Approvers = Admin + "," + Director + "," + Approver;
 
-    public static readonly string[] All = { Admin, Director, Approver, Buyer, Requester };
+    public static readonly string[] All = { Admin, Director, Approver, Buyer, Accountant, Requester };
 
     public static string DisplayName(string role) => role switch
     {
@@ -64,6 +67,7 @@ public static class AppRoles
         Director => "Ban Giám đốc",
         Approver => "Trưởng bộ phận",
         Buyer => "Nhân viên mua hàng",
+        Accountant => "Kế toán",
         _ => "Người đề nghị"
     };
 }
@@ -820,4 +824,133 @@ public class PoShipment
     public int VendorUserId { get; set; }
     public VendorUser? VendorUser { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+
+// =====================================================================
+//  HÓA ĐƠN – ĐỐI CHIẾU 3 BÊN – THANH TOÁN
+// =====================================================================
+public class Invoice
+{
+    public int Id { get; set; }
+    [Required, StringLength(30)][Display(Name = "Số chứng từ")] public string Number { get; set; } = string.Empty;
+    public int VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+    [Display(Name = "Đơn mua hàng")] public int PurchaseOrderId { get; set; }
+    public PurchaseOrder? PurchaseOrder { get; set; }
+    [Required(ErrorMessage = "Nhập số hóa đơn"), StringLength(30)][Display(Name = "Số hóa đơn")] public string InvoiceNo { get; set; } = string.Empty;
+    [StringLength(20)][Display(Name = "Ký hiệu")] public string? Series { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Ngày hóa đơn")] public DateTime InvoiceDate { get; set; } = DateTime.Today;
+    [DataType(DataType.Date)][Display(Name = "Hạn thanh toán")] public DateTime DueDate { get; set; } = DateTime.Today.AddDays(30);
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Tiền hàng")] public decimal SubTotal { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Thuế GTGT")] public decimal VatAmount { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Tổng thanh toán")] public decimal Total { get; set; }
+    [Display(Name = "Trạng thái")] public InvoiceStatus Status { get; set; } = InvoiceStatus.Received;
+    [StringLength(2000)][Display(Name = "Kết quả đối chiếu")] public string? MatchNote { get; set; }
+    [StringLength(1000)][Display(Name = "Lý do chấp nhận / từ chối")] public string? DecisionNote { get; set; }
+    [Display(Name = "NCC gửi qua cổng")] public bool FromPortal { get; set; }
+    [StringLength(260)] public string? FileName { get; set; }
+    [StringLength(100)] public string? ContentType { get; set; }
+    public byte[]? FileData { get; set; }
+    public int? CreatedById { get; set; }
+    public AppUser? CreatedBy { get; set; }
+    public int? VendorUserId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public ICollection<InvoiceLine> Lines { get; set; } = new List<InvoiceLine>();
+}
+
+public class InvoiceLine
+{
+    public int Id { get; set; }
+    public int InvoiceId { get; set; }
+    public Invoice? Invoice { get; set; }
+    public int PurchaseOrderLineId { get; set; }
+    public PurchaseOrderLine? PurchaseOrderLine { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal Quantity { get; set; }
+    [Column(TypeName = "decimal(18,0)")] public decimal UnitPrice { get; set; }
+    [Column(TypeName = "decimal(18,0)")] public decimal Amount { get; set; }
+}
+
+/// <summary>Đề nghị thanh toán / phiếu chi (gồm VAT): tạm ứng, theo hóa đơn, theo đợt hợp đồng</summary>
+public class Payment
+{
+    public int Id { get; set; }
+    [Required, StringLength(30)][Display(Name = "Số đề nghị")] public string Number { get; set; } = string.Empty;
+    [Display(Name = "Loại")] public PaymentType Type { get; set; }
+    public int VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+    public int? InvoiceId { get; set; }
+    public Invoice? Invoice { get; set; }
+    public int? ContractId { get; set; }
+    public Contract? Contract { get; set; }
+    public int? MilestoneId { get; set; }
+    public ContractMilestone? Milestone { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Số tiền đề nghị")] public decimal Amount { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Phạt chậm giao")] public decimal PenaltyAmount { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Khấu trừ tạm ứng")] public decimal AdvanceDeduction { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Thực chi")] public decimal NetAmount { get; set; }
+    [StringLength(1000)][Display(Name = "Diễn giải")] public string? Note { get; set; }
+    [Display(Name = "Trạng thái")] public PaymentStatus Status { get; set; } = PaymentStatus.Requested;
+    public int RequestedById { get; set; }
+    public AppUser? RequestedBy { get; set; }
+    public DateTime RequestedAt { get; set; } = DateTime.Now;
+    public int? ApprovedById { get; set; }
+    public AppUser? ApprovedBy { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public int? PaidById { get; set; }
+    public AppUser? PaidBy { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Ngày chi")] public DateTime? PaidAt { get; set; }
+    [StringLength(100)][Display(Name = "Số chứng từ chi / UNC")] public string? PaymentRef { get; set; }
+    [StringLength(1000)] public string? RejectReason { get; set; }
+}
+
+// =====================================================================
+//  HỢP ĐỒNG NÂNG CAO
+// =====================================================================
+/// <summary>Phụ lục hợp đồng: điều chỉnh giá trị / gia hạn – có hiệu lực khi Giám đốc duyệt</summary>
+public class ContractAmendment
+{
+    public int Id { get; set; }
+    public int ContractId { get; set; }
+    public Contract? Contract { get; set; }
+    [Required, StringLength(30)][Display(Name = "Số phụ lục")] public string Number { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Nhập nội dung"), StringLength(2000)][Display(Name = "Nội dung điều chỉnh")] public string Description { get; set; } = string.Empty;
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Tăng / giảm giá trị (trước VAT)")] public decimal ValueChange { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Gia hạn đến")] public DateTime? NewEndDate { get; set; }
+    [Display(Name = "Trạng thái")] public AmendmentStatus Status { get; set; } = AmendmentStatus.Pending;
+    public int CreatedById { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public int? DecidedById { get; set; }
+    public AppUser? DecidedBy { get; set; }
+    public DateTime? DecidedAt { get; set; }
+    [StringLength(1000)] public string? DecisionNote { get; set; }
+}
+
+/// <summary>Lịch thanh toán của hợp đồng (tạm ứng, các đợt)</summary>
+public class ContractMilestone
+{
+    public int Id { get; set; }
+    public int ContractId { get; set; }
+    public Contract? Contract { get; set; }
+    [Required, StringLength(200)][Display(Name = "Đợt")] public string Name { get; set; } = string.Empty;
+    [Display(Name = "Loại")] public PaymentType Type { get; set; } = PaymentType.Milestone;
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "% giá trị HĐ")] public decimal Percent { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Số tiền (gồm VAT)")] public decimal Amount { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Dự kiến")] public DateTime? DueDate { get; set; }
+    [StringLength(500)][Display(Name = "Điều kiện thanh toán")] public string? Condition { get; set; }
+    public int SortOrder { get; set; }
+}
+
+/// <summary>Bảo lãnh hợp đồng ngoài bảo lãnh thực hiện chính (tạm ứng, bảo hành…)</summary>
+public class ContractGuarantee
+{
+    public int Id { get; set; }
+    public int ContractId { get; set; }
+    public Contract? Contract { get; set; }
+    [Display(Name = "Loại bảo lãnh")] public GuaranteeType Type { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Giá trị")] public decimal Amount { get; set; }
+    [StringLength(100)][Display(Name = "Số bảo lãnh")] public string? Reference { get; set; }
+    [StringLength(100)][Display(Name = "Ngân hàng phát hành")] public string? Bank { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Hiệu lực đến")] public DateTime ExpiryDate { get; set; }
+    [Display(Name = "Đã giải tỏa")] public DateTime? ReleasedAt { get; set; }
+    [StringLength(500)] public string? Note { get; set; }
 }

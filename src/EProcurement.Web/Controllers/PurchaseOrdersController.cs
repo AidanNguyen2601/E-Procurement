@@ -14,7 +14,7 @@ namespace EProcurement.Web.Controllers;
 /// Đơn mua hàng (PO). Nháp → (vượt ngưỡng: chờ Giám đốc duyệt) → Đã duyệt → Gửi NCC
 /// → Nhận một phần / Nhận đủ (qua phiếu nhận hàng) → Đánh giá NCC.
 /// </summary>
-[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director + "," + AppRoles.Accountant)]
 public class PurchaseOrdersController : ProcControllerBase
 {
     public PurchaseOrdersController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }

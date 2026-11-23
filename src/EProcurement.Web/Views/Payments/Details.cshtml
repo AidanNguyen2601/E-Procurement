@@ -1,0 +1,46 @@
+@model Payment
+@{ var history = (List<ApprovalHistory>)ViewBag.History; var director = User.IsAdmin() || User.IsInRole(AppRoles.Director); var finance = User.IsAdmin() || User.IsInRole(AppRoles.Accountant); }
+<div class="row g-3">
+<div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+            <div><h5 class="mb-1">@Model.Type.GetDisplayName() – @Model.Vendor?.Name</h5><div class="small text-muted">@Model.Note</div>
+                <div class="small mt-1">Ngân hàng NCC: @Model.Vendor?.BankName @Model.Vendor?.BankAccount</div></div>
+            <span class="badge fs-6 align-self-start @(Model.Status switch { PaymentStatus.Requested => "bg-warning text-dark", PaymentStatus.Approved => "bg-primary", PaymentStatus.Paid => "bg-success", _ => "bg-secondary" })">@Model.Status.GetDisplayName()</span>
+        </div>
+        <table class="table table-sm small mt-3 mb-0" style="max-width:480px">
+            <tr><td>Số tiền đề nghị</td><td class="money">@Model.Amount.ToMoney()</td></tr>
+            @if (Model.PenaltyAmount > 0) { <tr><td>Phạt chậm giao</td><td class="money text-danger">−@Model.PenaltyAmount.ToMoney()</td></tr> }
+            @if (Model.AdvanceDeduction > 0) { <tr><td>Khấu trừ tạm ứng</td><td class="money">−@Model.AdvanceDeduction.ToMoney()</td></tr> }
+            <tr class="fw-semibold"><td>Thực chi</td><td class="money">@Model.NetAmount.ToMoney()</td></tr>
+        </table>
+        <div class="small mt-2">
+            @if (Model.Invoice != null) { <span>Hóa đơn <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId">@Model.Invoice.Series @Model.Invoice.InvoiceNo</a> · </span> }
+            @if (Model.Contract != null) { <span>Hợp đồng <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId">@Model.Contract.Number</a> · </span> }
+            Đề nghị: @Model.RequestedBy?.FullName @Model.RequestedAt.ToDateTime()
+            @if (Model.ApprovedBy != null) { <span> · Duyệt: @Model.ApprovedBy.FullName @Model.ApprovedAt.ToDateTime()</span> }
+            @if (Model.PaidAt != null) { <span> · Đã chi @Model.PaidAt.ToDate() (UNC @Model.PaymentRef, @Model.PaidBy?.FullName)</span> }
+            @if (!string.IsNullOrEmpty(Model.RejectReason)) { <div class="text-danger">Từ chối: @Model.RejectReason</div> }
+        </div>
+    </div></div>
+    @if (Model.Status == PaymentStatus.Requested && director)
+    {
+        <div class="card mb-3 border-warning"><div class="card-body">
+            <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+                <input name="comment" class="form-control form-control-sm" placeholder="Ý kiến (bắt buộc khi từ chối)" />
+                <button name="approve" value="true" class="btn btn-sm btn-success text-nowrap">Duyệt chi</button>
+                <button name="approve" value="false" class="btn btn-sm btn-outline-danger text-nowrap">Từ chối</button>
+            </form></div></div>
+    }
+    @if (Model.Status == PaymentStatus.Approved && finance)
+    {
+        <div class="card mb-3 border-primary"><div class="card-body">
+            <form asp-action="MarkPaid" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
+                <div class="col-md-4"><label class="form-label small mb-0">Ngày chi</label><input name="paidAt" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                <div class="col-md-5"><label class="form-label small mb-0">Số UNC / chứng từ chi</label><input name="paymentRef" maxlength="100" class="form-control form-control-sm" required /></div>
+                <div class="col-md-3"><button class="btn btn-sm btn-primary w-100">Ghi nhận đã chi</button></div>
+            </form></div></div>
+    }
+</div>
+<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+</div>

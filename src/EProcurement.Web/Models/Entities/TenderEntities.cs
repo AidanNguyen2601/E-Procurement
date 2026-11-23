@@ -206,6 +206,11 @@ public class Contract
     [StringLength(200)][Display(Name = "Điều khoản thanh toán")] public string? PaymentTerms { get; set; }
     [StringLength(4000)][Display(Name = "Điều khoản khác")] public string? Terms { get; set; }
     [Display(Name = "Trạng thái")] public ContractStatus Status { get; set; } = ContractStatus.Active;
+    [Column(TypeName = "decimal(5,3)")][Range(0, 5)][Display(Name = "Phạt chậm giao (%/ngày)")] public decimal LatePenaltyPercentPerDay { get; set; } = 0.1m;
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Mức phạt tối đa (%)")] public decimal LatePenaltyCapPercent { get; set; } = 8;
+    public ICollection<ContractAmendment> Amendments { get; set; } = new List<ContractAmendment>();
+    public ICollection<ContractMilestone> Milestones { get; set; } = new List<ContractMilestone>();
+    public ICollection<ContractGuarantee> Guarantees { get; set; } = new List<ContractGuarantee>();
     public int CreatedById { get; set; }
     public AppUser? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;

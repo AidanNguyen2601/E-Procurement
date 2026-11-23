@@ -256,6 +256,9 @@ public static class DbSeeder
             "IF COL_LENGTH('Users','EmailNotifications') IS NULL ALTER TABLE Users ADD EmailNotifications bit NOT NULL CONSTRAINT DF_Users_EmailNotifications DEFAULT 1",
             "IF COL_LENGTH('Users','FailedLogins') IS NULL ALTER TABLE Users ADD FailedLogins int NOT NULL CONSTRAINT DF_Users_FailedLogins DEFAULT 0",
             "IF COL_LENGTH('Users','LockoutEnd') IS NULL ALTER TABLE Users ADD LockoutEnd datetime2 NULL",
+            // Hợp đồng: mức phạt chậm giao
+            "IF COL_LENGTH('Contracts','LatePenaltyPercentPerDay') IS NULL ALTER TABLE Contracts ADD LatePenaltyPercentPerDay decimal(5,3) NOT NULL CONSTRAINT DF_Contracts_LatePenalty DEFAULT 0.1",
+            "IF COL_LENGTH('Contracts','LatePenaltyCapPercent') IS NULL ALTER TABLE Contracts ADD LatePenaltyCapPercent decimal(5,2) NOT NULL CONSTRAINT DF_Contracts_LatePenaltyCap DEFAULT 8",
             // Cổng NCC: phản hồi PO
             "IF COL_LENGTH('PurchaseOrders','VendorConfirmedAt') IS NULL ALTER TABLE PurchaseOrders ADD VendorConfirmedAt datetime2 NULL",
             "IF COL_LENGTH('PurchaseOrders','VendorPromisedDate') IS NULL ALTER TABLE PurchaseOrders ADD VendorPromisedDate datetime2 NULL",

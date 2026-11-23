@@ -57,7 +57,9 @@ public enum DocType
     [Display(Name = "Yêu cầu báo giá")] RFQ = 3,
     [Display(Name = "Tờ trình chỉ định thầu")] DirectAward = 4,
     [Display(Name = "Gói thầu")] Tender = 5,
-    [Display(Name = "Hợp đồng")] Contract = 6
+    [Display(Name = "Hợp đồng")] Contract = 6,
+    [Display(Name = "Hóa đơn")] Invoice = 7,
+    [Display(Name = "Đề nghị thanh toán")] Payment = 8
 }
 
 /// <summary>Hình thức lựa chọn nhà cung cấp (xếp theo mức độ cạnh tranh tăng dần)</summary>
@@ -175,4 +177,43 @@ public enum SubmissionKind
 {
     [Display(Name = "Báo giá")] Quote = 1,
     [Display(Name = "Hồ sơ dự thầu")] Bid = 2
+}
+
+public enum InvoiceStatus
+{
+    [Display(Name = "Chờ đối chiếu")] Received = 1,
+    [Display(Name = "Khớp 3 bên – chờ đề nghị thanh toán")] Matched = 2,
+    [Display(Name = "Lệch – chờ xử lý")] Exception = 3,
+    [Display(Name = "Đã đề nghị thanh toán")] PaymentRequested = 4,
+    [Display(Name = "Đã thanh toán")] Paid = 5,
+    [Display(Name = "Từ chối")] Rejected = 6
+}
+
+public enum PaymentType
+{
+    [Display(Name = "Tạm ứng hợp đồng")] Advance = 1,
+    [Display(Name = "Thanh toán theo hóa đơn")] Invoice = 2,
+    [Display(Name = "Thanh toán theo đợt hợp đồng")] Milestone = 3
+}
+
+public enum PaymentStatus
+{
+    [Display(Name = "Chờ duyệt")] Requested = 1,
+    [Display(Name = "Đã duyệt – chờ chi")] Approved = 2,
+    [Display(Name = "Đã chi")] Paid = 3,
+    [Display(Name = "Từ chối")] Rejected = 4
+}
+
+public enum GuaranteeType
+{
+    [Display(Name = "Bảo lãnh tạm ứng")] Advance = 1,
+    [Display(Name = "Bảo lãnh bảo hành")] Warranty = 2,
+    [Display(Name = "Bảo lãnh thực hiện (bổ sung / gia hạn)")] Performance = 3
+}
+
+public enum AmendmentStatus
+{
+    [Display(Name = "Chờ Giám đốc duyệt")] Pending = 1,
+    [Display(Name = "Đã duyệt – có hiệu lực")] Approved = 2,
+    [Display(Name = "Không duyệt")] Rejected = 3
 }

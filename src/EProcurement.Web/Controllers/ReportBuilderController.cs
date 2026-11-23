@@ -17,7 +17,7 @@ namespace EProcurement.Web.Controllers;
 /// Báo cáo động: thiết kế (chọn nguồn, cột, tổng hợp, lọc, sắp xếp, biểu đồ) → chạy → xuất Excel / xuất SQL;
 /// lưu thiết kế để dùng lại, chia sẻ, xuất / nhập thiết kế dạng JSON.
 /// </summary>
-[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director + "," + AppRoles.Accountant)]
 public class ReportBuilderController : ProcControllerBase
 {
     private const string DesignFileType = "eproc-report-design";

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace EProcurement.Web.Controllers;
 
 /// <summary>Báo cáo chuẩn về mua sắm: xem, lọc, in, xuất Excel</summary>
-[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director + "," + AppRoles.Accountant)]
 public class ReportsController : ProcControllerBase
 {
     private readonly StandardReports _reports;

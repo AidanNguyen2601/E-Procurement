@@ -56,6 +56,8 @@ public class NotificationService
         DocType.DirectAward => $"/DirectAwards/Details/{id}",
         DocType.Tender => $"/Tenders/Details/{id}",
         DocType.Contract => $"/Contracts/Details/{id}",
+        DocType.Invoice => $"/Invoices/Details/{id}",
+        DocType.Payment => $"/Payments/Details/{id}",
         _ => "/"
     };
 
@@ -137,7 +139,33 @@ public class NotificationService
             case DocType.Contract:
             {
                 var c = await _db.Contracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == e.Id);
-                if (c != null) Owner(c.CreatedById, e, $"{c.Number}: {e.Action}");
+                if (c == null) return;
+                if (await _db.ContractAmendments.AnyAsync(a => a.ContractId == c.Id && a.Status == AmendmentStatus.Pending))
+                    Add(await DirectorsAsync(), NotificationKind.Action, $"Phụ lục hợp đồng {c.Number} chờ duyệt", c.Title, e,
+                        $"act:HD:{c.Id}:amend:{await _db.ContractAmendments.Where(a => a.ContractId == c.Id).CountAsync()}");
+                Owner(c.CreatedById, e, $"{c.Number}: {e.Action}");
+                break;
+            }
+            case DocType.Invoice:
+            {
+                var inv = await _db.Invoices.AsNoTracking().Include(x => x.Vendor).FirstOrDefaultAsync(x => x.Id == e.Id);
+                if (inv == null) return;
+                if (inv.Status == InvoiceStatus.Exception)
+                    Add(await DirectorsAsync(), NotificationKind.Warning, $"Hóa đơn lệch đối chiếu 3 bên: {inv.Vendor?.Name} {inv.InvoiceNo}", inv.MatchNote, e, $"act:INV:{inv.Id}:exception");
+                if (inv.Status == InvoiceStatus.Matched)
+                    Add(await UsersAsync(u => u.Role == AppRoles.Accountant), NotificationKind.Action, $"Hóa đơn {inv.Number} đã khớp – lập đề nghị thanh toán", $"{inv.Vendor?.Name} · {inv.Total.ToMoney()} đ", e, $"act:INV:{inv.Id}:matched");
+                if (inv.CreatedById.HasValue) Owner(inv.CreatedById.Value, e, $"{inv.Number}: {e.Action}");
+                break;
+            }
+            case DocType.Payment:
+            {
+                var p = await _db.Payments.AsNoTracking().Include(x => x.Vendor).FirstOrDefaultAsync(x => x.Id == e.Id);
+                if (p == null) return;
+                if (p.Status == PaymentStatus.Requested)
+                    Add(await DirectorsAsync(), NotificationKind.Action, $"Đề nghị thanh toán chờ duyệt: {p.Number}", $"{p.Vendor?.Name} · thực chi {p.NetAmount.ToMoney()} đ", e, $"act:TT:{p.Id}:requested");
+                if (p.Status == PaymentStatus.Approved)
+                    Add(await UsersAsync(u => u.Role == AppRoles.Accountant), NotificationKind.Action, $"Đã duyệt {p.Number} – tiến hành chi", $"{p.Vendor?.Name} · {p.NetAmount.ToMoney()} đ", e, $"act:TT:{p.Id}:approved");
+                Owner(p.RequestedById, e, $"{p.Number}: {e.Action}");
                 break;
             }
         }
@@ -183,6 +211,20 @@ public class NotificationService
                 R(new[] { c.CreatedById }, NotificationKind.Warning, $"Bảo lãnh thực hiện HĐ {c.Number} hết hiệu lực {ps.ToDate()}",
                     c.PerformanceSecurityRef, DocType.Contract, c.Id, $"rem:HD:{c.Id}:security:{(ps < today ? "past" : "soon")}");
         }
+
+        // Hóa đơn đến hạn / quá hạn thanh toán
+        var accountants = await UsersAsync(u => u.Role == AppRoles.Accountant);
+        foreach (var inv in await _db.Invoices.AsNoTracking().Include(x => x.Vendor)
+                     .Where(x => x.Status != InvoiceStatus.Paid && x.Status != InvoiceStatus.Rejected && x.DueDate <= today.AddDays(3)).ToListAsync())
+            created += Add(accountants, inv.DueDate < today ? NotificationKind.Warning : NotificationKind.Reminder,
+                (inv.DueDate < today ? "Quá hạn thanh toán: " : "Sắp đến hạn thanh toán: ") + $"{inv.Vendor?.Name} – HĐ {inv.InvoiceNo} ({inv.DueDate.ToDate()})",
+                $"{inv.Total.ToMoney()} đ · {inv.Status.GetDisplayName()}", null, $"rem:INV:{inv.Id}:{(inv.DueDate < today ? "overdue" : "due")}", UrlOf(DocType.Invoice, inv.Id), DocType.Invoice, inv.Id);
+        // Bảo lãnh tạm ứng / bảo hành sắp hết hiệu lực
+        foreach (var g in await _db.ContractGuarantees.AsNoTracking().Include(x => x.Contract)
+                     .Where(x => x.ReleasedAt == null && x.ExpiryDate <= soon).ToListAsync())
+            created += Add(new[] { g.Contract!.CreatedById }, NotificationKind.Warning,
+                $"{g.Type.GetDisplayName()} HĐ {g.Contract.Number} {(g.ExpiryDate < today ? "đã hết" : "sắp hết")} hiệu lực {g.ExpiryDate.ToDate()}",
+                $"{g.Reference} – {g.Amount.ToMoney()} đ", null, $"rem:BL:{g.Id}:{(g.ExpiryDate < today ? "past" : "soon")}", UrlOf(DocType.Contract, g.ContractId), DocType.Contract, g.ContractId);
 
         // Hồ sơ pháp lý NCC sắp / đã hết hiệu lực (đang hợp tác, hồ sơ đã xác minh)
         var buyers = await UsersAsync(u => u.Role == AppRoles.Buyer);
