@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] – Thông báo mời thầu</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body style="background:#f8fafc">
+    <div class="container py-4" style="max-width:1000px">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a asp-controller="Tenders" asp-action="Public" class="text-decoration-none"><h5 class="mb-0">Thông báo mời thầu</h5></a>
+            <span class="small text-muted">Trang công khai – không cần đăng nhập</span>
+        </div>
+        @RenderBody()
+    </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
-// Xác nhận trước thao tác quan trọng: <form data-confirm="...">
+// Xác nhận trước thao tác quan trọng: <form data-confirm="..."> hoặc <button data-confirm="..."> (ưu tiên nút được bấm)
 document.addEventListener('submit', function (e) {
-    const msg = e.target.getAttribute('data-confirm');
+    const msg = (e.submitter && e.submitter.getAttribute('data-confirm')) || e.target.getAttribute('data-confirm');
     if (msg && !confirm(msg)) e.preventDefault();
 });
 

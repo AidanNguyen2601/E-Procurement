@@ -1,0 +1,64 @@
+@model Tender
+@{
+    Layout = "_PublicLayout";
+    ViewData["Title"] = Model.Number;
+    var open = Model.Status == TenderStatus.Published && Model.ClosingAt > DateTime.Now;
+    var showResult = Model.Status is TenderStatus.Awarded or TenderStatus.Contracted;
+}
+<div class="card mb-3"><div class="card-body">
+    <div class="d-flex justify-content-between">
+        <h4>@Model.Title</h4>
+        @if (open) { <span><span class="badge bg-success">Đang nhận HSDT</span></span> } else { <span><span class="badge bg-secondary">Đã đóng thầu</span></span> }
+    </div>
+    <dl class="row small mb-0">
+        <dt class="col-sm-3">Số thông báo</dt><dd class="col-sm-9">@Model.Number</dd>
+        <dt class="col-sm-3">Phát hành HSMT</dt><dd class="col-sm-9">@Model.PublishedAt.ToDateTime()</dd>
+        <dt class="col-sm-3">Thời điểm đóng thầu</dt><dd class="col-sm-9 fw-bold">@Model.ClosingAt.ToDateTime()</dd>
+        <dt class="col-sm-3">Phương thức</dt><dd class="col-sm-9">@Model.EnvelopeMethod.GetDisplayName() · @Model.EvaluationMethod.GetDisplayName()</dd>
+        <dt class="col-sm-3">Loại / thời gian HĐ</dt><dd class="col-sm-9">@Model.ContractType · @Model.ContractDurationDays ngày@(Model.IsFramework ? " · hợp đồng khung" : "")</dd>
+        <dt class="col-sm-3">Bảo đảm dự thầu</dt><dd class="col-sm-9">@Model.BidSecurityAmount.ToMoney() đ, hiệu lực đến ít nhất @Model.ClosingAt.Date.AddDays(Model.BidValidityDays + 30).ToDate(); hiệu lực HSDT ≥ @Model.BidValidityDays ngày</dd>
+        <dt class="col-sm-3">Liên hệ nhận HSMT</dt><dd class="col-sm-9">@Model.Buyer?.FullName – @Model.Buyer?.Email</dd>
+    </dl>
+</div></div>
+
+<div class="card mb-3"><div class="card-header">Phạm vi cung cấp</div><div class="card-body p-0"><table class="table table-sm mb-0">
+    <thead><tr><th>#</th><th>Hạng mục</th><th>ĐVT</th><th class="money">Số lượng</th></tr></thead>
+    <tbody>@foreach (var l in Model.Lines) { <tr><td>@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td></tr> }</tbody>
+</table></div></div>
+
+<div class="card mb-3"><div class="card-header">Yêu cầu</div><div class="card-body small">
+    <p class="mb-1"><b>Kỹ thuật:</b></p><div class="pre mb-2">@Model.TechnicalRequirements</div>
+    <p class="mb-1"><b>Năng lực, kinh nghiệm:</b></p><div class="pre mb-2">@Model.QualificationCriteria</div>
+    @if (!string.IsNullOrEmpty(Model.ContractTerms)) { <p class="mb-1"><b>Điều kiện hợp đồng:</b></p><div class="pre">@Model.ContractTerms</div> }
+</div></div>
+
+@if (Model.Clarifications.Any())
+{
+    <div class="card mb-3"><div class="card-header">Làm rõ / sửa đổi HSMT</div><ul class="list-group list-group-flush">
+        @foreach (var c in Model.Clarifications.OrderBy(c => c.CreatedAt))
+        {
+            <li class="list-group-item small">@if (c.IsAmendment) { <span class="badge bg-warning text-dark">Sửa đổi</span> } <span class="text-muted">@c.CreatedAt.ToDateTime()</span>
+                @if (!string.IsNullOrEmpty(c.Question)) { <div><b>Hỏi:</b> @c.Question</div> }
+                <div class="pre"><b>@(c.IsAmendment ? "Nội dung:" : "Trả lời:")</b> @c.Answer</div></li>
+        }
+    </ul></div>
+}
+
+@if (Model.OpenedAt.HasValue)
+{
+    <div class="card mb-3"><div class="card-header">Kết quả mở thầu (@Model.OpenedAt.ToDateTime())</div><div class="card-body p-0"><table class="table table-sm mb-0">
+        <thead><tr><th>Nhà thầu</th>@if (Model.EnvelopeMethod == EnvelopeMethod.OneEnvelope) { <th class="money">Giá dự thầu</th><th class="money">Giảm giá</th> }</tr></thead>
+        <tbody>@foreach (var b in Model.Bidders.Where(b => b.Submitted).OrderBy(b => b.Vendor?.Name))
+        {
+            <tr><td>@b.Vendor?.Name</td>@if (Model.EnvelopeMethod == EnvelopeMethod.OneEnvelope) { <td class="money">@b.BidPrice.ToMoney()</td><td class="money">@b.DiscountPercent.ToString("0.##")%</td> }</tr>
+        }</tbody>
+    </table></div></div>
+}
+
+@if (showResult)
+{
+    <div class="card mb-3 border-success"><div class="card-header">Kết quả lựa chọn nhà thầu</div><div class="card-body small">
+        Nhà thầu trúng thầu: <b>@Model.AwardedVendor?.Name</b> · Giá trúng thầu: <b>@Model.AwardPrice?.ToMoney() đ</b> (chưa VAT)<br />
+        Hạn kiến nghị kết quả: @Model.ComplaintDeadline.ToDateTime()
+    </div></div>
+}

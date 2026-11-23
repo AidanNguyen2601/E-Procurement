@@ -33,6 +33,15 @@ public class ProcurementSettings
     public int DirectAwardSplitWindowDays { get; set; } = 90;
     /// <summary>Dung lượng tối đa mỗi file đính kèm (MB)</summary>
     public int MaxAttachmentMb { get; set; } = 10;
+    // ----- Đấu thầu rộng rãi -----
+    /// <summary>Thời gian tối thiểu từ phát hành HSMT đến đóng thầu (ngày)</summary>
+    public int TenderMinBiddingDays { get; set; } = 10;
+    /// <summary>Sửa đổi HSMT phải trước thời điểm đóng thầu tối thiểu N ngày; nếu không phải gia hạn</summary>
+    public int TenderAmendmentMinDays { get; set; } = 3;
+    /// <summary>Số thành viên tổ chuyên gia tối thiểu</summary>
+    public int TenderMinCommittee { get; set; } = 3;
+    /// <summary>Thời gian nhà thầu được kiến nghị kết quả (ngày) – chưa hết hạn / còn kiến nghị chưa giải quyết thì chưa ký HĐ</summary>
+    public double TenderComplaintDays { get; set; } = 5;
 }
 
 public static class FormatExtensions
@@ -47,6 +56,7 @@ public static class FormatExtensions
     public static string ToDate(this DateTime value) => value.ToString("dd/MM/yyyy");
     public static string ToDate(this DateTime? value) => value?.ToString("dd/MM/yyyy") ?? "";
     public static string ToDateTime(this DateTime value) => value.ToString("dd/MM/yyyy HH:mm");
+    public static string ToDateTime(this DateTime? value) => value?.ToString("dd/MM/yyyy HH:mm") ?? "";
     public static string GetDisplayName(this Enum value)
     {
         var member = value.GetType().GetMember(value.ToString()).FirstOrDefault();

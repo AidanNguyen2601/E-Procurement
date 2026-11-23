@@ -70,6 +70,9 @@ public class AttachmentsController : ProcControllerBase
     private async Task<bool> CanEditAsync(DocType type, int id) => type switch
     {
         DocType.DirectAward => await Db.DirectAwards.AnyAsync(d => d.Id == id && d.Status == DirectAwardStatus.Draft),
+        // HSMT, phụ lục: khi lập và trong thời gian mời thầu (trước đóng thầu)
+        DocType.Tender => await Db.Tenders.AnyAsync(t => t.Id == id && (t.Status == TenderStatus.Draft || (t.Status == TenderStatus.Published && t.ClosingAt > DateTime.Now))),
+        DocType.Contract => await Db.Contracts.AnyAsync(c => c.Id == id && c.Status == ContractStatus.Active),
         _ => false
     };
 

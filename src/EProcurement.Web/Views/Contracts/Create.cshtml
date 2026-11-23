@@ -1,0 +1,35 @@
+@model ContractFormViewModel
+@{
+    var t = Model.Tender!;
+    ViewData["Title"] = $"Ký hợp đồng – {t.Number}";
+    var bid = t.Bidders.First(b => b.VendorId == t.AwardedVendorId);
+    var factor = 1 - bid.DiscountPercent / 100m;
+}
+<div class="alert alert-info py-2">Nhà thầu trúng thầu <b>@t.AwardedVendor?.Name</b> – giá trúng thầu <b>@t.AwardPrice?.ToMoney() đ</b> (trước VAT, đã trừ giảm giá @bid.DiscountPercent.ToString("0.##")%).
+    @(t.IsFramework ? "Hợp đồng khung: đặt hàng nhiều đợt sau khi ký." : "Ký xong hệ thống tạo đơn mua hàng nháp cho toàn bộ hợp đồng.")</div>
+<form asp-action="Create" method="post">
+    <input type="hidden" asp-for="TenderId" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="card mb-3"><div class="card-body row g-3">
+        <div class="col-md-12"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="SignedDate" class="form-label"></label><input asp-for="SignedDate" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="StartDate" class="form-label"></label><input asp-for="StartDate" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="EndDate" class="form-label"></label><input asp-for="EndDate" class="form-control" /><span asp-validation-for="EndDate" class="text-danger small"></span></div>
+        <div class="col-md-4"><label asp-for="PerformanceSecurityAmount" class="form-label"></label><input asp-for="PerformanceSecurityAmount" type="number" step="1000" class="form-control" />
+            <div class="small text-muted">Tối thiểu @t.PerformanceSecurityPercent.ToString("0.##")% giá hợp đồng.</div><span asp-validation-for="PerformanceSecurityAmount" class="text-danger small"></span></div>
+        <div class="col-md-4"><label asp-for="PerformanceSecurityRef" class="form-label"></label><input asp-for="PerformanceSecurityRef" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="PerformanceSecurityExpiry" class="form-label"></label><input asp-for="PerformanceSecurityExpiry" class="form-control" /><span asp-validation-for="PerformanceSecurityExpiry" class="text-danger small"></span></div>
+        <div class="col-md-12"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" /></div>
+        <div class="col-md-12"><label asp-for="Terms" class="form-label"></label><textarea asp-for="Terms" class="form-control" rows="3"></textarea></div>
+    </div></div>
+    <div class="card mb-3"><div class="card-header">Phụ lục giá (theo HSDT trúng thầu, đã trừ giảm giá)</div><div class="card-body p-0"><table class="table table-sm mb-0">
+        <thead><tr><th>Hạng mục</th><th>ĐVT</th><th class="money">SL</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead>
+        <tbody>@foreach (var l in t.Lines.OrderBy(l => l.SortOrder))
+        {
+            var p = Math.Round(bid.Lines.First(x => x.TenderLineId == l.Id).UnitPrice * factor, 0);
+            <tr><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@p.ToMoney()</td><td class="money">@Math.Round(p * l.Quantity, 0).ToMoney()</td></tr>
+        }</tbody>
+    </table></div></div>
+    <button class="btn btn-primary">Ký hợp đồng</button>
+    <a asp-controller="Tenders" asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">Hủy</a>
+</form>

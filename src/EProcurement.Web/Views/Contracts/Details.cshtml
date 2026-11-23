@@ -1,0 +1,56 @@
+@model Contract
+@{
+    ViewData["Title"] = $"Hợp đồng {Model.Number}";
+    var orders = (List<PurchaseOrder>)ViewBag.Orders;
+    var remaining = (Dictionary<int, decimal>)ViewBag.Remaining;
+    var history = (List<ApprovalHistory>)ViewBag.History;
+    var attachments = (AttachmentPanel)ViewBag.Attachments;
+    var buyer = User.IsPurchasing();
+    var used = orders.Where(o => o.Status != PoStatus.Cancelled).Sum(o => o.SubTotal);
+    var pct = Model.Value == 0 ? 0 : used * 100 / Model.Value;
+    var secWarn = Model.Status == ContractStatus.Active && Model.PerformanceSecurityExpiry < DateTime.Today.AddDays(15);
+}
+<div class="toolbar">
+    @if (buyer && Model.Status == ContractStatus.Active && Model.IsFramework) { <a class="btn btn-primary" asp-action="CreatePo" asp-route-id="@Model.Id">Đặt hàng đợt mới</a> }
+    @if (Model.TenderId.HasValue) { <a class="btn btn-outline-secondary" asp-controller="Tenders" asp-action="Details" asp-route-id="@Model.TenderId">Gói thầu @Model.Tender?.Number</a> }
+    @if (buyer && Model.Status == ContractStatus.Active)
+    {
+        <form asp-action="Close" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1">
+            <input name="reason" class="form-control form-control-sm" placeholder="Nội dung thanh lý / lý do chấm dứt" />
+            <button name="terminate" value="false" class="btn btn-sm btn-outline-success text-nowrap" data-confirm="Thanh lý – hoàn thành hợp đồng?">Thanh lý</button>
+            <button name="terminate" value="true" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="Chấm dứt hợp đồng trước hạn?">Chấm dứt</button>
+        </form>
+    }
+</div>
+@if (secWarn) { <div class="alert alert-danger py-2">Bảo lãnh thực hiện hợp đồng hết hạn ngày @Model.PerformanceSecurityExpiry.ToDate() – yêu cầu nhà thầu gia hạn.</div> }
+<div class="row g-3">
+<div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+        <div class="d-flex justify-content-between"><h5>@Model.Title</h5><partial name="_Badge" model="Model.Status" /></div>
+        <dl class="row small mb-0 info">
+            <dt class="col-sm-3">Nhà cung cấp</dt><dd class="col-sm-9"><a asp-controller="Vendors" asp-action="Details" asp-route-id="@Model.VendorId" class="fw-semibold">@Model.Vendor?.Name</a></dd>
+            <dt class="col-sm-3">Loại</dt><dd class="col-sm-9">@(Model.IsFramework ? "Hợp đồng khung – đặt hàng nhiều đợt" : "Hợp đồng trọn gói")</dd>
+            <dt class="col-sm-3">Ký / hiệu lực</dt><dd class="col-sm-9">@Model.SignedDate.ToDate() · @Model.StartDate.ToDate() → @Model.EndDate.ToDate()</dd>
+            <dt class="col-sm-3">Giá trị</dt><dd class="col-sm-9"><b>@Model.Value.ToMoney() đ</b> (trước VAT, VAT @Model.VatPercent.ToString("0.##")%) · đã thực hiện <b>@used.ToMoney() đ (@pct.ToString("0")%)</b>
+                <div class="progress mt-1" style="height:6px"><div class="progress-bar" style="width:@Math.Min(100, pct).ToString("0", System.Globalization.CultureInfo.InvariantCulture)%"></div></div></dd>
+            <dt class="col-sm-3">Bảo đảm thực hiện</dt><dd class="col-sm-9">@Model.PerformanceSecurityAmount.ToMoney() đ · @Model.PerformanceSecurityRef · đến @Model.PerformanceSecurityExpiry.ToDate()</dd>
+            <dt class="col-sm-3">Thanh toán</dt><dd class="col-sm-9">@Model.PaymentTerms</dd>
+            @if (!string.IsNullOrEmpty(Model.Terms)) { <dt class="col-sm-3">Điều khoản</dt><dd class="col-sm-9 pre">@Model.Terms</dd> }
+        </dl>
+    </div></div>
+    <div class="card mb-3"><div class="card-header">Hạng mục & khối lượng</div><div class="card-body p-0"><table class="table table-sm mb-0">
+        <thead><tr><th>Hạng mục</th><th>ĐVT</th><th class="money">SL hợp đồng</th><th class="money">Đã đặt</th><th class="money">Còn lại</th><th class="money">Đơn giá</th></tr></thead>
+        <tbody>@foreach (var l in Model.Lines)
+        {
+            <tr><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@((l.Quantity - remaining[l.Id]).ToQty())</td>
+                <td class="money fw-semibold">@remaining[l.Id].ToQty()</td><td class="money">@l.UnitPrice.ToMoney()</td></tr>
+        }</tbody>
+    </table></div></div>
+    <div class="card mb-3"><div class="card-header">Đơn mua hàng theo hợp đồng (@orders.Count)</div><ul class="list-group list-group-flush">
+        @foreach (var o in orders) { <li class="list-group-item d-flex justify-content-between"><span><a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@o.Id">@o.Number</a> · @o.OrderDate.ToDate() · @o.SubTotal.ToMoney() đ</span><partial name="_Badge" model="o.Status" /></li> }
+        @if (!orders.Any()) { <li class="list-group-item small text-muted">Chưa có đơn hàng.</li> }
+    </ul></div>
+    <partial name="_Attachments" model="attachments" />
+</div>
+<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+</div>

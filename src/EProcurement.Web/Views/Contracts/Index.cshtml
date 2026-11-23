@@ -1,0 +1,33 @@
+@model List<Contract>
+@{
+    ViewData["Title"] = "Hợp đồng";
+    var used = (Dictionary<int, decimal>)ViewBag.Used;
+    var status = ViewBag.Status as ContractStatus?;
+    var items = Html.GetEnumSelectList<ContractStatus>().ToList();
+    foreach (var i in items) i.Selected = status.HasValue && i.Value == ((int)status.Value).ToString();
+}
+<form method="get" class="toolbar">
+    <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="items" onchange="this.form.submit()"><option value="">-- Mọi trạng thái --</option></select>
+</form>
+<div class="card"><div class="card-body p-0"><table class="table mb-0">
+    <thead><tr><th>Số HĐ</th><th>Tên hợp đồng</th><th>Nhà cung cấp</th><th>Hiệu lực</th><th class="money">Giá trị</th><th class="money">Đã thực hiện</th><th>Bảo lãnh TH</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+    @foreach (var c in Model)
+    {
+        var u = used.GetValueOrDefault(c.Id);
+        var pct = c.Value == 0 ? 0 : u * 100 / c.Value;
+        var secWarn = c.Status == ContractStatus.Active && c.PerformanceSecurityExpiry < DateTime.Today.AddDays(15);
+        <tr>
+            <td><a asp-action="Details" asp-route-id="@c.Id" class="fw-semibold">@c.Number</a>@if (c.IsFramework) { <span class="badge bg-light text-dark border ms-1">khung</span> }</td>
+            <td>@c.Title<br /><small class="text-muted">@c.Tender?.Number</small></td>
+            <td>@c.Vendor?.Name</td>
+            <td class="@(c.Status == ContractStatus.Active && c.EndDate < DateTime.Today ? "text-danger" : "")">@c.StartDate.ToDate() → @c.EndDate.ToDate()</td>
+            <td class="money">@c.Value.ToMoney()</td>
+            <td class="money">@u.ToMoney()<br /><small class="text-muted">@pct.ToString("0")%</small></td>
+            <td class="small @(secWarn ? "text-danger" : "")">@c.PerformanceSecurityExpiry.ToDate()@(secWarn ? " – sắp/đã hết hạn" : "")</td>
+            <td><partial name="_Badge" model="c.Status" /></td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">Chưa có hợp đồng nào.</td></tr> }
+    </tbody>
+</table></div></div>

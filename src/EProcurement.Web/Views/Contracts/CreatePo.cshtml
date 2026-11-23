@@ -1,0 +1,30 @@
+@model ContractPoViewModel
+@{
+    var c = Model.Contract!;
+    var remaining = (Dictionary<int, decimal>)ViewBag.Remaining;
+    ViewData["Title"] = $"Đặt hàng theo hợp đồng khung {c.Number}";
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<div class="alert alert-info py-2">@c.Vendor?.Name · hiệu lực đến @c.EndDate.ToDate(). Đơn giá theo hợp đồng; số lượng mỗi đợt không vượt khối lượng còn lại.
+    Đơn hàng trong giá trị hợp đồng được duyệt tự động khi trình.</div>
+<form asp-action="CreatePo" method="post">
+    <input type="hidden" asp-for="ContractId" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="card mb-3"><div class="card-body row g-3">
+        <div class="col-md-4"><label asp-for="DeliveryDate" class="form-label"></label><input asp-for="DeliveryDate" class="form-control" /></div>
+    </div></div>
+    <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
+        <thead><tr><th>Hạng mục</th><th>ĐVT</th><th class="money">Còn lại</th><th class="money">Đơn giá</th><th style="width:150px">SL đặt đợt này</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < Model.Lines.Count; i++)
+        {
+            var l = c.Lines.First(x => x.Id == Model.Lines[i].ContractLineId);
+            <tr><td>@l.Description<input type="hidden" asp-for="Lines[i].ContractLineId" /></td><td>@l.Unit</td>
+                <td class="money">@remaining[l.Id].ToQty()</td><td class="money">@l.UnitPrice.ToMoney()</td>
+                <td><input name="Lines[@i].Quantity" type="number" min="0" max="@remaining[l.Id].ToString(inv)" step="any" class="form-control form-control-sm" value="@Model.Lines[i].Quantity.ToString(inv)" /></td></tr>
+        }
+        </tbody>
+    </table></div></div>
+    <button class="btn btn-primary">Tạo đơn mua hàng</button>
+    <a asp-action="Details" asp-route-id="@c.Id" class="btn btn-light">Hủy</a>
+</form>

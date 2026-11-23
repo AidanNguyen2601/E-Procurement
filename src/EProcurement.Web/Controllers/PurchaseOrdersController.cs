@@ -192,7 +192,16 @@ public class PurchaseOrdersController : ProcControllerBase
         if (po == null) return NotFound();
         if (po.Status != PoStatus.Draft) return BadRequest();
         var award = po.DirectAwardId.HasValue ? await Db.DirectAwards.FindAsync(po.DirectAwardId) : null;
-        if (award is { Status: DirectAwardStatus.Approved } && po.Total <= award.NegotiatedGrandTotal)
+        var contract = po.ContractId.HasValue ? await Db.Contracts.FindAsync(po.ContractId) : null;
+        var contractUsed = contract == null ? 0 : await Db.PurchaseOrders
+            .Where(p => p.ContractId == contract.Id && p.Id != po.Id && p.Status != PoStatus.Cancelled).SumAsync(p => (decimal?)p.SubTotal) ?? 0;
+        if (contract is { Status: ContractStatus.Active } && contractUsed + po.SubTotal <= contract.Value)
+        {
+            // Kết quả đấu thầu và hợp đồng đã được Giám đốc phê duyệt → đặt hàng trong giá trị hợp đồng không duyệt lại
+            po.Status = PoStatus.Approved;
+            Log(DocType.PO, id, $"Duyệt theo hợp đồng {contract.Number} (đã thực hiện {(contractUsed + po.SubTotal).ToMoney()}/{contract.Value.ToMoney()} đ)");
+        }
+        else if (award is { Status: DirectAwardStatus.Approved } && po.Total <= award.NegotiatedGrandTotal)
         {
             // Giám đốc đã duyệt đúng NCC và giá trên tờ trình chỉ định → không duyệt lại
             po.Status = PoStatus.Approved;
@@ -346,7 +355,7 @@ public class PurchaseOrdersController : ProcControllerBase
     private async Task<PurchaseOrder?> LoadPoAsync(int id)
     {
         var po = await Db.PurchaseOrders.Include(p => p.Vendor).Include(p => p.Buyer).Include(p => p.PurchaseRequest).Include(p => p.Rfq)
-            .Include(p => p.ReferencePo).Include(p => p.DirectAward).Include(p => p.Lines).AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+            .Include(p => p.ReferencePo).Include(p => p.DirectAward).Include(p => p.Contract).Include(p => p.Lines).AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
         if (po != null) po.Lines = po.Lines.OrderBy(l => l.SortOrder).ToList();
         return po;
     }

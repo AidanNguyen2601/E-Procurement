@@ -39,7 +39,11 @@ Ngưỡng duyệt cấu hình trong `appsettings.json`:
   "DirectPurchaseMaxQuantityPercent": 130, // Mua sắm trực tiếp: tổng khối lượng ≤ % khối lượng PO tham chiếu
   "DirectAwardMax": 100000000,             // Chỉ định thầu: giá trị sau thương thảo tối đa (vượt chỉ khi khẩn cấp)
   "DirectAwardSplitWindowDays": 90,        // Chỉ định thầu: cộng dồn tờ trình cùng NCC / nhóm hàng trong N ngày để cảnh báo chia nhỏ gói
-  "MaxAttachmentMb": 10                    // Dung lượng tối đa mỗi file đính kèm
+  "MaxAttachmentMb": 10,                   // Dung lượng tối đa mỗi file đính kèm
+  "TenderMinBiddingDays": 10,              // Đấu thầu: từ phát hành HSMT đến đóng thầu tối thiểu N ngày
+  "TenderAmendmentMinDays": 3,             // Đấu thầu: sửa đổi HSMT sát hạn hơn N ngày thì bắt buộc gia hạn đóng thầu
+  "TenderMinCommittee": 3,                 // Đấu thầu: số thành viên tổ chuyên gia tối thiểu
+  "TenderComplaintDays": 5                 // Đấu thầu: thời gian nhà thầu kiến nghị kết quả trước khi ký hợp đồng
 }
 ```
 Trong Docker: `Procurement__PoApprovalThreshold: "200000000"` trong phần `environment`.

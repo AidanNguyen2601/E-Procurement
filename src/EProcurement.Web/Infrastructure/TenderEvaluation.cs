@@ -1,0 +1,89 @@
+using EProcurement.Web.Models.Entities;
+
+namespace EProcurement.Web.Infrastructure;
+
+/// <summary>Kết quả đánh giá một hồ sơ dự thầu</summary>
+public class BidResult
+{
+    public TenderBidder Bid { get; set; } = null!;
+    /// <summary>Đạt bước hợp lệ + năng lực → được chấm kỹ thuật</summary>
+    public bool Responsive => Bid.Valid == true && Bid.Qualified == true;
+    public int ScoreCount { get; set; }
+    public decimal? TechnicalAverage { get; set; }
+    /// <summary>Đủ điểm của mọi thành viên và đạt điểm kỹ thuật tối thiểu</summary>
+    public bool TechnicalPass { get; set; }
+    public decimal PriceScore { get; set; }
+    public decimal Total { get; set; }
+    public int? Rank { get; set; }
+    public List<string> Issues { get; set; } = new();
+}
+
+/// <summary>
+/// Đánh giá HSDT theo từng bước: hợp lệ → năng lực, kinh nghiệm → kỹ thuật (điểm trung bình tổ chuyên gia ≥ tối thiểu)
+/// → giá đánh giá (sau giảm giá, gồm VAT) → xếp hạng.
+/// </summary>
+public static class TenderEvaluation
+{
+    public static List<BidResult> Evaluate(Tender t)
+    {
+        var committee = t.Committee.Count;
+        var results = t.Bidders.Where(b => b.Submitted).Select(b =>
+        {
+            var r = new BidResult { Bid = b, ScoreCount = b.Scores.Count };
+            if (b.Valid == null) r.Issues.Add("Chưa đánh giá tính hợp lệ");
+            else if (b.Valid == false) r.Issues.Add("Không hợp lệ" + (string.IsNullOrEmpty(b.ValidNote) ? "" : ": " + b.ValidNote));
+            if (b.Valid == true && b.Qualified == null) r.Issues.Add("Chưa đánh giá năng lực");
+            else if (b.Qualified == false) r.Issues.Add("Không đạt năng lực" + (string.IsNullOrEmpty(b.QualifiedNote) ? "" : ": " + b.QualifiedNote));
+            if (r.Responsive)
+            {
+                if (r.ScoreCount > 0) r.TechnicalAverage = Math.Round((decimal)b.Scores.Average(s => s.TechnicalScore), 2);
+                if (r.ScoreCount < committee) r.Issues.Add($"Mới có {r.ScoreCount}/{committee} thành viên chấm kỹ thuật");
+                else if (r.TechnicalAverage < t.MinTechnicalScore) r.Issues.Add($"Điểm kỹ thuật {r.TechnicalAverage:0.##} < tối thiểu {t.MinTechnicalScore}");
+                r.TechnicalPass = committee > 0 && r.ScoreCount >= committee && r.TechnicalAverage >= t.MinTechnicalScore;
+            }
+            return r;
+        }).ToList();
+
+        var passed = results.Where(r => r.TechnicalPass).ToList();
+        if (passed.Count > 0)
+        {
+            var min = passed.Min(r => r.Bid.EvaluatedPrice);
+            foreach (var r in passed)
+            {
+                r.PriceScore = r.Bid.EvaluatedPrice <= 0 ? 0 : Math.Round(min * 100m / r.Bid.EvaluatedPrice, 2);
+                r.Total = t.EvaluationMethod == TenderEvaluationMethod.Combined
+                    ? Math.Round((r.TechnicalAverage!.Value * t.TechnicalWeight + r.PriceScore * t.PriceWeight) / 100m, 2)
+                    : r.PriceScore;
+            }
+            var ordered = t.EvaluationMethod == TenderEvaluationMethod.Combined
+                ? passed.OrderByDescending(r => r.Total).ThenBy(r => r.Bid.EvaluatedPrice)
+                : passed.OrderBy(r => r.Bid.EvaluatedPrice).ThenByDescending(r => r.TechnicalAverage);
+            var rank = 1;
+            foreach (var r in ordered) r.Rank = rank++;
+        }
+        return results.OrderBy(r => r.Rank ?? int.MaxValue).ThenBy(r => r.Bid.Vendor?.Name).ToList();
+    }
+
+    /// <summary>Mọi thành viên đã hoàn thành chấm kỹ thuật (và đã có HSDT đạt bước hợp lệ + năng lực)</summary>
+    public static bool ScoringComplete(Tender t) =>
+        t.Committee.Count > 0 && t.Committee.All(m => m.ScoringCompletedAt.HasValue)
+        && t.Bidders.Where(b => b.Submitted).All(b => b.Valid.HasValue && (b.Valid == false || b.Qualified.HasValue));
+
+    /// <summary>Giá dự thầu được xem: một túi → sau mở thầu; hai túi → sau mở hồ sơ tài chính</summary>
+    public static bool PricesVisible(Tender t) =>
+        t.OpenedAt.HasValue && (t.EnvelopeMethod == EnvelopeMethod.OneEnvelope || t.FinancialOpenedAt.HasValue);
+
+    /// <summary>Kiểm tra bảo đảm dự thầu: đủ số tiền, hiệu lực ≥ thời điểm đóng thầu + hiệu lực HSDT + 30 ngày</summary>
+    public static List<string> SecurityProblems(Tender t, TenderBidder b)
+    {
+        var p = new List<string>();
+        if (t.BidSecurityAmount > 0)
+        {
+            if (b.BidSecurityAmount < t.BidSecurityAmount) p.Add($"Bảo đảm dự thầu {b.BidSecurityAmount.ToMoney()} < yêu cầu {t.BidSecurityAmount.ToMoney()} đ");
+            var need = t.ClosingAt.Date.AddDays(t.BidValidityDays + 30);
+            if (b.BidSecurityExpiry == null || b.BidSecurityExpiry < need) p.Add($"Bảo lãnh phải hiệu lực đến ít nhất {need.ToDate()}");
+        }
+        if (b.ValidityDays < t.BidValidityDays) p.Add($"Hiệu lực HSDT {b.ValidityDays} ngày < yêu cầu {t.BidValidityDays} ngày");
+        return p;
+    }
+}

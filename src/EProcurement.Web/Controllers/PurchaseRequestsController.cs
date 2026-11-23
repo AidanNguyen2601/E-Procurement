@@ -54,6 +54,7 @@ public class PurchaseRequestsController : ProcControllerBase
         ViewBag.Rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
         ViewBag.Orders = await Db.PurchaseOrders.Include(p => p.Vendor).Where(p => p.PurchaseRequestId == id).ToListAsync();
         ViewBag.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Where(d => d.PurchaseRequestId == id).ToListAsync();
+        ViewBag.Tenders = await Db.Tenders.Include(t => t.AwardedVendor).Where(t => t.PurchaseRequestId == id).ToListAsync();
         ViewBag.CanApprove = CanApprove(pr);
         ViewBag.Threshold = Settings.PrDirectorThreshold;
         if (User.IsPurchasing() && pr.Status is PrStatus.Approved or PrStatus.Processing)
@@ -61,7 +62,7 @@ public class PurchaseRequestsController : ProcControllerBase
             var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
             ViewBag.References = refs;
             ViewBag.SuggestedMethod = ProcurementRules.Suggest(pr, refs.Any(r => r.CoversRequest), Settings);
-            ViewBag.MethodLocked = HasActiveDocuments((List<Rfq>)ViewBag.Rfqs, (List<PurchaseOrder>)ViewBag.Orders, (List<DirectAward>)ViewBag.DirectAwards);
+            ViewBag.MethodLocked = HasActiveDocuments((List<Rfq>)ViewBag.Rfqs, (List<PurchaseOrder>)ViewBag.Orders, (List<DirectAward>)ViewBag.DirectAwards, (List<Tender>)ViewBag.Tenders);
             ViewBag.CqMax = Settings.CompetitiveQuotationMax;
             ViewBag.DaMax = Settings.DirectAwardMax;
         }
@@ -83,8 +84,9 @@ public class PurchaseRequestsController : ProcControllerBase
         var rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
         var orders = await Db.PurchaseOrders.Where(p => p.PurchaseRequestId == id).ToListAsync();
         var awards = await Db.DirectAwards.Where(d => d.PurchaseRequestId == id).ToListAsync();
-        if (pr.Method != method && HasActiveDocuments(rfqs, orders, awards))
-            return Fail("Đề nghị đã có RFQ / tờ trình / PO đang xử lý. Hủy các chứng từ đó trước khi đổi hình thức.");
+        var tenders = await Db.Tenders.Where(t => t.PurchaseRequestId == id).ToListAsync();
+        if (pr.Method != method && HasActiveDocuments(rfqs, orders, awards, tenders))
+            return Fail("Đề nghị đã có RFQ / tờ trình / gói thầu / PO đang xử lý. Hủy các chứng từ đó trước khi đổi hình thức.");
 
         var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
         var suggested = ProcurementRules.Suggest(pr, refs.Any(r => r.CoversRequest), Settings);
@@ -101,9 +103,9 @@ public class PurchaseRequestsController : ProcControllerBase
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static bool HasActiveDocuments(List<Rfq> rfqs, List<PurchaseOrder> orders, List<DirectAward> awards) =>
+    private static bool HasActiveDocuments(List<Rfq> rfqs, List<PurchaseOrder> orders, List<DirectAward> awards, List<Tender> tenders) =>
         rfqs.Any(r => r.Status != RfqStatus.Cancelled) || orders.Any(o => o.Status != PoStatus.Cancelled)
-        || awards.Any(a => a.Status != DirectAwardStatus.Cancelled);
+        || awards.Any(a => a.Status != DirectAwardStatus.Cancelled) || tenders.Any(t => t.Status != TenderStatus.Cancelled);
 
     public async Task<IActionResult> Create()
     {

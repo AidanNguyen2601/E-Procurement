@@ -247,6 +247,11 @@ public static class DbSeeder
                 "CONSTRAINT FK_PurchaseOrders_DirectAwards_DirectAwardId REFERENCES DirectAwards(Id)",
             "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseOrders_DirectAwardId') " +
                 "CREATE INDEX IX_PurchaseOrders_DirectAwardId ON PurchaseOrders(DirectAwardId)",
+            // Đấu thầu: PO đặt theo hợp đồng
+            "IF COL_LENGTH('PurchaseOrders','ContractId') IS NULL ALTER TABLE PurchaseOrders ADD ContractId int NULL " +
+                "CONSTRAINT FK_PurchaseOrders_Contracts_ContractId REFERENCES Contracts(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseOrders_ContractId') " +
+                "CREATE INDEX IX_PurchaseOrders_ContractId ON PurchaseOrders(ContractId)",
             // Hình thức lựa chọn NCC trên PR
             "IF COL_LENGTH('PurchaseRequests','Method') IS NULL ALTER TABLE PurchaseRequests ADD Method int NULL",
             "IF COL_LENGTH('PurchaseRequests','MethodReason') IS NULL ALTER TABLE PurchaseRequests ADD MethodReason nvarchar(1000) NULL",

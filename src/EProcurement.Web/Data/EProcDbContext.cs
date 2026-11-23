@@ -27,6 +27,16 @@ public class EProcDbContext : DbContext
     public DbSet<DirectAward> DirectAwards => Set<DirectAward>();
     public DbSet<DirectAwardLine> DirectAwardLines => Set<DirectAwardLine>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<Tender> Tenders => Set<Tender>();
+    public DbSet<TenderLine> TenderLines => Set<TenderLine>();
+    public DbSet<TenderBidder> TenderBidders => Set<TenderBidder>();
+    public DbSet<TenderBidLine> TenderBidLines => Set<TenderBidLine>();
+    public DbSet<TenderCommitteeMember> TenderCommitteeMembers => Set<TenderCommitteeMember>();
+    public DbSet<TenderScore> TenderScores => Set<TenderScore>();
+    public DbSet<TenderClarification> TenderClarifications => Set<TenderClarification>();
+    public DbSet<TenderComplaint> TenderComplaints => Set<TenderComplaint>();
+    public DbSet<Contract> Contracts => Set<Contract>();
+    public DbSet<ContractLine> ContractLines => Set<ContractLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +55,11 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<ApprovalHistory>().HasIndex(x => new { x.DocumentType, x.DocumentId });
         modelBuilder.Entity<DirectAward>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<Attachment>().HasIndex(x => new { x.DocumentType, x.DocumentId });
+        modelBuilder.Entity<Tender>().HasIndex(x => x.Number).IsUnique();
+        modelBuilder.Entity<TenderBidder>().HasIndex(x => new { x.TenderId, x.VendorId }).IsUnique();
+        modelBuilder.Entity<TenderCommitteeMember>().HasIndex(x => new { x.TenderId, x.UserId }).IsUnique();
+        modelBuilder.Entity<TenderScore>().HasIndex(x => new { x.TenderBidderId, x.MemberUserId }).IsUnique();
+        modelBuilder.Entity<Contract>().HasIndex(x => x.Number).IsUnique();
 
         // Chứng từ mua sắm không được xóa dây chuyền
         foreach (var fk in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))

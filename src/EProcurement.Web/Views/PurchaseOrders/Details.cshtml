@@ -6,7 +6,8 @@
     var eval = ViewBag.Evaluation as VendorEvaluation;
     decimal threshold = ViewBag.Threshold;
     var byAward = Model.DirectAward is { Status: DirectAwardStatus.Approved } && Model.Total <= Model.DirectAward.NegotiatedGrandTotal;
-    var needsDirector = !byAward && (Model.Total > threshold || Model.PriceDeviationReason != null);
+    var byContract = Model.Contract is { Status: ContractStatus.Active };
+    var needsDirector = !byAward && !byContract && (Model.Total > threshold || Model.PriceDeviationReason != null);
     var buyer = User.IsPurchasing();
     var canDecide = Model.Status == PoStatus.PendingApproval && (User.IsInRole(AppRoles.Director) || User.IsAdmin());
     var flow = new[] { PoStatus.Draft, PoStatus.PendingApproval, PoStatus.Approved, PoStatus.Issued, PoStatus.PartiallyReceived, PoStatus.Received };
@@ -69,6 +70,7 @@
                 @if (Model.Method.HasValue)
                 {
                     <dt class="col-sm-3">Hình thức</dt><dd class="col-sm-9"><b>@Model.Method.Value.GetDisplayName()</b>
+                        @if (Model.Contract != null) { <span> · hợp đồng <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId">@Model.Contract.Number</a>@(Model.Contract.IsFramework ? " (khung)" : "")</span> }
                         @if (Model.DirectAward != null) { <span> · tờ trình <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@Model.DirectAwardId">@Model.DirectAward.Number</a> (@Model.DirectAward.Reason.GetDisplayName())</span> }
                         @if (Model.ReferencePo != null) { <span> · căn cứ PO <a asp-action="Details" asp-route-id="@Model.ReferencePoId">@Model.ReferencePo.Number</a> (@Model.ReferencePo.OrderDate.ToDate())</span> }
                         @if (Model.PriceDeviationReason != null) { <div class="text-danger">Vượt giá tham chiếu: @Model.PriceDeviationReason</div> }</dd>

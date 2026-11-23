@@ -21,7 +21,7 @@ public class ReferencePoCandidate
 public static class ProcurementRules
 {
     /// <summary>Hình thức được hỗ trợ đầy đủ trên hệ thống (các hình thức khác sẽ bổ sung sau)</summary>
-    public static readonly ProcurementMethod[] Supported = { ProcurementMethod.DirectPurchase, ProcurementMethod.DirectAward, ProcurementMethod.CompetitiveQuotation };
+    public static readonly ProcurementMethod[] Supported = { ProcurementMethod.DirectPurchase, ProcurementMethod.DirectAward, ProcurementMethod.CompetitiveQuotation, ProcurementMethod.OpenTender };
 
     /// <summary>Gợi ý: có PO tham chiếu hợp lệ → mua sắm trực tiếp; dự toán ≤ hạn mức → chào hàng cạnh tranh; còn lại → đấu thầu rộng rãi</summary>
     public static ProcurementMethod Suggest(PurchaseRequest pr, bool hasDirectPurchaseReference, ProcurementSettings s)

@@ -55,7 +55,9 @@ public enum DocType
     [Display(Name = "Đề nghị mua hàng")] PR = 1,
     [Display(Name = "Đơn mua hàng")] PO = 2,
     [Display(Name = "Yêu cầu báo giá")] RFQ = 3,
-    [Display(Name = "Tờ trình chỉ định thầu")] DirectAward = 4
+    [Display(Name = "Tờ trình chỉ định thầu")] DirectAward = 4,
+    [Display(Name = "Gói thầu")] Tender = 5,
+    [Display(Name = "Hợp đồng")] Contract = 6
 }
 
 /// <summary>Hình thức lựa chọn nhà cung cấp (xếp theo mức độ cạnh tranh tăng dần)</summary>
@@ -90,4 +92,36 @@ public enum DirectAwardStatus
     [Display(Name = "Chờ Giám đốc duyệt")] PendingApproval = 2,
     [Display(Name = "Đã duyệt")] Approved = 3,
     [Display(Name = "Đã hủy")] Cancelled = 4
+}
+
+public enum TenderStatus
+{
+    [Display(Name = "Nháp – lập KH & HSMT")] Draft = 1,
+    [Display(Name = "Chờ duyệt KH & HSMT")] PendingPlanApproval = 2,
+    [Display(Name = "Đang mời thầu")] Published = 3,
+    [Display(Name = "Đã mở thầu – đang đánh giá")] Opened = 4,
+    [Display(Name = "Chờ duyệt kết quả")] PendingResultApproval = 5,
+    [Display(Name = "Đã có kết quả")] Awarded = 6,
+    [Display(Name = "Đã ký hợp đồng")] Contracted = 7,
+    [Display(Name = "Đã hủy")] Cancelled = 8
+}
+
+/// <summary>Phương thức nộp hồ sơ dự thầu</summary>
+public enum EnvelopeMethod
+{
+    [Display(Name = "Một giai đoạn một túi hồ sơ")] OneEnvelope = 1,
+    [Display(Name = "Một giai đoạn hai túi hồ sơ (kỹ thuật trước, tài chính sau)")] TwoEnvelope = 2
+}
+
+public enum TenderEvaluationMethod
+{
+    [Display(Name = "Giá đánh giá thấp nhất (trong các HSDT đạt kỹ thuật)")] LowestEvaluatedPrice = 1,
+    [Display(Name = "Kết hợp kỹ thuật và giá (chấm điểm)")] Combined = 2
+}
+
+public enum ContractStatus
+{
+    [Display(Name = "Đang thực hiện")] Active = 1,
+    [Display(Name = "Đã hoàn thành")] Completed = 2,
+    [Display(Name = "Đã chấm dứt")] Terminated = 3
 }

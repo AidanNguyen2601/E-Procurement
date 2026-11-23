@@ -426,6 +426,9 @@ public class PurchaseOrder
     /// <summary>Chỉ định thầu: tờ trình đã được Giám đốc duyệt</summary>
     [Display(Name = "Tờ trình chỉ định")] public int? DirectAwardId { get; set; }
     public DirectAward? DirectAward { get; set; }
+    /// <summary>Đấu thầu: PO đặt hàng theo hợp đồng đã ký</summary>
+    [Display(Name = "Hợp đồng")] public int? ContractId { get; set; }
+    public Contract? Contract { get; set; }
 
     [DataType(DataType.Date)][Display(Name = "Ngày đặt hàng")] public DateTime OrderDate { get; set; } = DateTime.Today;
     [DataType(DataType.Date)][Display(Name = "Ngày giao hàng")] public DateTime DeliveryDate { get; set; } = DateTime.Today.AddDays(7);

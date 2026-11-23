@@ -27,11 +27,15 @@ public class HomeController : ProcControllerBase
         if (User.IsAdmin()) vm.MyPendingApprovals = await prQ.CountAsync(p => p.Status == PrStatus.Submitted || p.Status == PrStatus.PendingDirector)
                                                      + await Db.PurchaseOrders.CountAsync(p => p.Status == PoStatus.PendingApproval)
                                                      + await Db.Rfqs.CountAsync(r => r.Status == RfqStatus.PendingApproval)
-                                                     + await Db.DirectAwards.CountAsync(d => d.Status == DirectAwardStatus.PendingApproval);
+                                                     + await Db.DirectAwards.CountAsync(d => d.Status == DirectAwardStatus.PendingApproval)
+                                                     + await Db.Tenders.CountAsync(t => t.Status == TenderStatus.PendingPlanApproval || t.Status == TenderStatus.PendingResultApproval)
+                                                     + await Db.TenderComplaints.CountAsync(c => c.ResolvedAt == null && c.Tender!.Status == TenderStatus.Awarded);
         else if (User.IsInRole(AppRoles.Director)) vm.MyPendingApprovals = await prQ.CountAsync(p => p.Status == PrStatus.PendingDirector)
                                                      + await Db.PurchaseOrders.CountAsync(p => p.Status == PoStatus.PendingApproval)
                                                      + await Db.Rfqs.CountAsync(r => r.Status == RfqStatus.PendingApproval)
-                                                     + await Db.DirectAwards.CountAsync(d => d.Status == DirectAwardStatus.PendingApproval);
+                                                     + await Db.DirectAwards.CountAsync(d => d.Status == DirectAwardStatus.PendingApproval)
+                                                     + await Db.Tenders.CountAsync(t => t.Status == TenderStatus.PendingPlanApproval || t.Status == TenderStatus.PendingResultApproval)
+                                                     + await Db.TenderComplaints.CountAsync(c => c.ResolvedAt == null && c.Tender!.Status == TenderStatus.Awarded);
         else if (User.IsInRole(AppRoles.Approver)) vm.MyPendingApprovals = await prQ.CountAsync(p => p.Status == PrStatus.Submitted && p.Department == dept && p.RequesterId != Me);
 
         vm.PrWaitingPurchase = await prQ.CountAsync(p => p.Status == PrStatus.Approved);

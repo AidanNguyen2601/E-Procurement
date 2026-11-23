@@ -39,6 +39,15 @@ public class ApprovalsController : ProcControllerBase
         if (User.IsAdmin() || User.IsInRole(AppRoles.Director))
             vm.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Include(d => d.Buyer).Include(d => d.PurchaseRequest)
                 .Where(d => d.Status == DirectAwardStatus.PendingApproval).OrderBy(d => d.SubmittedAt).ToListAsync();
+        if (User.IsAdmin() || User.IsInRole(AppRoles.Director))
+        {
+            var tenders = await Db.Tenders.Include(t => t.PurchaseRequest).Include(t => t.Buyer).Include(t => t.AwardedVendor).Include(t => t.Committee)
+                .Where(t => t.Status == TenderStatus.PendingPlanApproval || t.Status == TenderStatus.PendingResultApproval).OrderBy(t => t.CreatedAt).ToListAsync();
+            vm.TenderPlans = tenders.Where(t => t.Status == TenderStatus.PendingPlanApproval).ToList();
+            vm.TenderResults = tenders.Where(t => t.Status == TenderStatus.PendingResultApproval).ToList();
+            vm.Complaints = await Db.TenderComplaints.Include(c => c.Tender).Include(c => c.Vendor)
+                .Where(c => c.ResolvedAt == null && c.Tender!.Status == TenderStatus.Awarded).OrderBy(c => c.ReceivedAt).ToListAsync();
+        }
 
         ViewBag.PrThreshold = Settings.PrDirectorThreshold;
         return View(vm);

@@ -1,0 +1,40 @@
+@model BidScreeningViewModel
+@{
+    var t = Model.Tender!;
+    ViewData["Title"] = $"Đánh giá hợp lệ & năng lực – {t.Number}";
+}
+<div class="alert alert-info py-2 small">
+    <b>Bước 1 – Hợp lệ:</b> đủ thành phần HSDT, có đơn dự thầu hợp lệ, bảo đảm dự thầu đúng yêu cầu (@t.BidSecurityAmount.ToMoney() đ), hiệu lực HSDT ≥ @t.BidValidityDays ngày.<br />
+    <b>Bước 2 – Năng lực, kinh nghiệm:</b> <span class="pre">@t.QualificationCriteria</span><br />
+    HSDT không hợp lệ / không đạt năng lực bị loại, không chấm kỹ thuật (bắt buộc ghi lý do).
+</div>
+<form asp-action="Screen" method="post">
+    <input type="hidden" asp-for="TenderId" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0 align-middle">
+        <thead><tr><th>Nhà thầu</th><th>Kiểm tra tự động</th><th style="width:170px">Hợp lệ</th><th>Lý do</th><th style="width:170px">Năng lực</th><th>Lý do</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < Model.Lines.Count; i++)
+        {
+            var l = Model.Lines[i];
+            var b = t.Bidders.FirstOrDefault(x => x.Id == l.TenderBidderId); if (b == null) { continue; }
+            var auto = TenderEvaluation.SecurityProblems(t, b);
+            <tr>
+                <td>@l.VendorName<input type="hidden" asp-for="Lines[i].TenderBidderId" /><input type="hidden" asp-for="Lines[i].VendorName" />
+                    <div class="small text-muted">BĐDT @b.BidSecurityAmount.ToMoney() · @b.BidSecurityRef · đến @b.BidSecurityExpiry.ToDate() · hiệu lực @b.ValidityDays ngày</div></td>
+                <td class="small">@if (auto.Any()) { <span class="text-danger">@string.Join("; ", auto)</span> } else { <span class="text-success">Bảo đảm & hiệu lực đạt</span> }</td>
+                <td class="text-nowrap">
+                    <label class="me-2"><input type="radio" name="Lines[@i].Valid" value="true" class="form-check-input" checked="@(l.Valid == true)" /> Hợp lệ</label>
+                    <label><input type="radio" name="Lines[@i].Valid" value="false" class="form-check-input" checked="@(l.Valid == false)" /> Không</label></td>
+                <td><input asp-for="Lines[i].ValidNote" class="form-control form-control-sm" value="@(l.ValidNote ?? (auto.Any() ? string.Join("; ", auto) : null))" /></td>
+                <td class="text-nowrap">
+                    <label class="me-2"><input type="radio" name="Lines[@i].Qualified" value="true" class="form-check-input" checked="@(l.Qualified == true)" /> Đạt</label>
+                    <label><input type="radio" name="Lines[@i].Qualified" value="false" class="form-check-input" checked="@(l.Qualified == false)" /> Không</label></td>
+                <td><input asp-for="Lines[i].QualifiedNote" class="form-control form-control-sm" /></td>
+            </tr>
+        }
+        </tbody>
+    </table></div></div>
+    <button class="btn btn-primary">Lưu đánh giá</button>
+    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">Quay lại</a>
+</form>
