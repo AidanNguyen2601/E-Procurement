@@ -142,6 +142,6 @@
                 @foreach (var s in ships) { <div class="mt-1">Báo giao @s.CreatedAt.ToDateTime(): xuất @s.ShipDate.ToDate(), dự kiến @s.ExpectedDate.ToDate() @s.Reference <span class="text-muted">@s.Note · @s.VendorUser?.FullName</span></div> }
             </div></div>
         }
-        <div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div>
+        <div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.PO, id = Model.Id })</div></div>
     </div>
 </div>

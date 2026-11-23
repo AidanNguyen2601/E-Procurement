@@ -31,5 +31,5 @@
     }
     @if (mine && Model.Status is PlanStatus.Draft or PlanStatus.Returned) { <a asp-action="Edit" asp-route-year="@Model.Year" class="btn btn-sm btn-outline-primary">Sửa kế hoạch</a> }
 </div>
-<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.Plan, id = Model.Id })</div></div></div>
 </div>

@@ -395,6 +395,7 @@ public class RfqsController : ProcControllerBase
     /// <summary>Giám đốc duyệt / trả lại kết quả lựa chọn NCC</summary>
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.RFQ)]
     public async Task<IActionResult> DecideResult(int id, bool approve, string? comment, string? returnUrl)
     {
         var r = await LoadRfqAsync(id, track: true);

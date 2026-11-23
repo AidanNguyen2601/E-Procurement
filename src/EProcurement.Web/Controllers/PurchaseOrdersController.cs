@@ -232,6 +232,7 @@ public class PurchaseOrdersController : ProcControllerBase
 
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.PO)]
     public async Task<IActionResult> Decide(int id, bool approve, string? comment, string? returnUrl)
     {
         var po = await Db.PurchaseOrders.FindAsync(id);

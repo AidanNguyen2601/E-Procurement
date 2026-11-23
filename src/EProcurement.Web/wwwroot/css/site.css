@@ -92,3 +92,22 @@ dl.info dt { color: #64748b; font-weight: 500; }
 .portal-nav .nav-link, .portal-nav .navbar-text { color: #cfd0f3; }
 .portal-nav .nav-link.active, .portal-nav .nav-link:hover { color: #fff; }
 .portal-nav .navbar-toggler { border-color: rgba(255,255,255,.3); filter: invert(1); }
+
+/* Ký xác nhận */
+.sign-password { max-width: 140px; }
+
+/* Điện thoại: menu trái trượt, thanh trên gọn */
+.nav-toggle { display: none; }
+.nav-backdrop { display: none; }
+@media (max-width: 991.98px) {
+  .sidebar { position: fixed; left: -260px; z-index: 1045; transition: left .2s ease; width: 250px; }
+  body.nav-open .sidebar { left: 0; }
+  body.nav-open .nav-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1040; }
+  .nav-toggle { display: inline-flex; }
+  .topbar { padding: 10px 16px; gap: 8px; }
+  .topbar .page-title { font-size: 1.05rem; }
+  .topbar .btn-primary span, .topbar .dropdown-toggle small { display: none; }
+  .content { padding: 16px; }
+  .table { font-size: .9rem; }
+  .sign-password { max-width: 110px; }
+}

@@ -235,6 +235,7 @@ public class PurchaseRequestsController : ProcControllerBase
 
     /// <summary>Duyệt / từ chối (cấp trưởng bộ phận hoặc Giám đốc tùy trạng thái)</summary>
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.PR)]
     public async Task<IActionResult> Decide(int id, bool approve, string? comment, string? returnUrl)
     {
         var pr = await Db.PurchaseRequests.FindAsync(id);

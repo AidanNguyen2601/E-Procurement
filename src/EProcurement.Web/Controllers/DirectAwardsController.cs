@@ -220,6 +220,7 @@ public class DirectAwardsController : ProcControllerBase
     /// <summary>Giám đốc duyệt → sinh PO nháp theo giá thương thảo; trả lại → về Nháp để bổ sung</summary>
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.DirectAward)]
     public async Task<IActionResult> Decide(int id, bool approve, string? comment, string? returnUrl)
     {
         var d = await Db.DirectAwards.Include(x => x.Lines).Include(x => x.Vendor).FirstOrDefaultAsync(x => x.Id == id);

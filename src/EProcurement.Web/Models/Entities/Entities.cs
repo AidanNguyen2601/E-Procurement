@@ -1018,3 +1018,26 @@ public class ProcurementPlanLine
     public int? PurchaseRequestId { get; set; }
     public PurchaseRequest? PurchaseRequest { get; set; }
 }
+
+// =====================================================================
+//  KÝ XÁC NHẬN PHÊ DUYỆT (chữ ký điện tử nội bộ)
+// =====================================================================
+/// <summary>
+/// Chữ ký phê duyệt: người duyệt xác thực lại bằng mật khẩu; lưu mã băm nội dung chứng từ tại thời điểm ký và
+/// giá trị chữ ký được bảo vệ bằng khóa của hệ thống → phát hiện chữ ký giả mạo và nội dung bị sửa sau khi ký.
+/// </summary>
+public class DocumentSignature
+{
+    public int Id { get; set; }
+    public DocType DocumentType { get; set; }
+    public int DocumentId { get; set; }
+    [Required, StringLength(200)] public string Action { get; set; } = string.Empty;
+    public int UserId { get; set; }
+    public AppUser? User { get; set; }
+    public DateTime SignedAt { get; set; } = DateTime.Now;
+    [Required, StringLength(64)] public string ContentHash { get; set; } = string.Empty;
+    [Required] public string SignatureValue { get; set; } = string.Empty;
+    [StringLength(50)] public string Method { get; set; } = "Mật khẩu";
+    [StringLength(50)] public string? IpAddress { get; set; }
+    [StringLength(300)] public string? UserAgent { get; set; }
+}

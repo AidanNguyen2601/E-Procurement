@@ -36,6 +36,9 @@ public abstract class ProcControllerBase : Controller
 
     private readonly List<ApprovalHistory> _logged = new();
 
+    /// <summary>Action đã lưu ít nhất một bước nghiệp vụ (dùng để chỉ ký khi quyết định thực sự được ghi nhận)</summary>
+    public bool HasSavedLog => _logged.Any(h => h.Id > 0);
+
     /// <summary>Sau mỗi action: các dòng nhật ký đã lưu thành công → sinh thông báo cho người liên quan</summary>
     public override async Task OnActionExecutionAsync(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext context, Microsoft.AspNetCore.Mvc.Filters.ActionExecutionDelegate next)
     {

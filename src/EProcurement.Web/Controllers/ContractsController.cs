@@ -262,6 +262,7 @@ public class ContractsController : ProcControllerBase
 
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.Contract)]
     public async Task<IActionResult> DecideAmendment(int id, int amendmentId, bool approve, string? comment)
     {
         var c = await Db.Contracts.FindAsync(id);

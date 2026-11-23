@@ -72,5 +72,5 @@
         </ul></div>
     }
 </div>
-<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.Invoice, id = Model.Id })</div></div></div>
 </div>

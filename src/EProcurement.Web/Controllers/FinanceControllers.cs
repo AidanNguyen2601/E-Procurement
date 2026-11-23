@@ -166,6 +166,7 @@ public class InvoicesController : ProcControllerBase
 
     /// <summary>Giám đốc chấp nhận hóa đơn lệch (có lý do) hoặc kế toán / Giám đốc từ chối</summary>
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.Invoice)]
     public async Task<IActionResult> Decide(int id, bool accept, string? reason)
     {
         var inv = await Db.Invoices.FindAsync(id);
@@ -239,6 +240,7 @@ public class PaymentsController : ProcControllerBase
 
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.Payment)]
     public async Task<IActionResult> Decide(int id, bool approve, string? comment)
     {
         var p = await Db.Payments.Include(x => x.Invoice).FirstOrDefaultAsync(x => x.Id == id);

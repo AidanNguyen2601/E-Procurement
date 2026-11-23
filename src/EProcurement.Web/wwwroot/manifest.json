@@ -1,0 +1,11 @@
+{
+  "name": "E-Procurement",
+  "short_name": "eProcurement",
+  "description": "Mua sắm điện tử – đề nghị, phê duyệt, đấu thầu, đơn hàng, thanh toán",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f5fb",
+  "theme_color": "#1e1b4b",
+  "icons": [ { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" } ]
+}

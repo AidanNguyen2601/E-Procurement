@@ -56,6 +56,7 @@ public class EProcDbContext : DbContext
     public DbSet<ApiClient> ApiClients => Set<ApiClient>();
     public DbSet<ProcurementPlan> ProcurementPlans => Set<ProcurementPlan>();
     public DbSet<ProcurementPlanLine> ProcurementPlanLines => Set<ProcurementPlanLine>();
+    public DbSet<DocumentSignature> DocumentSignatures => Set<DocumentSignature>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +91,7 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<PoShipment>().HasIndex(x => x.PurchaseOrderId);
         modelBuilder.Entity<Invoice>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<ApiClient>().HasIndex(x => x.KeyHash).IsUnique();
+        modelBuilder.Entity<DocumentSignature>().HasIndex(x => new { x.DocumentType, x.DocumentId });
         modelBuilder.Entity<ProcurementPlan>().HasIndex(x => new { x.Year, x.Department }).IsUnique();
         modelBuilder.Entity<ProcurementPlan>().HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById);
         modelBuilder.Entity<ProcurementPlan>().HasOne(x => x.ApprovedBy).WithMany().HasForeignKey(x => x.ApprovedById);

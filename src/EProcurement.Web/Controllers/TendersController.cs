@@ -220,6 +220,7 @@ public class TendersController : ProcControllerBase
     /// <summary>Giám đốc duyệt KH & HSMT → phát hành, đăng tải thông báo mời thầu</summary>
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.Tender)]
     public async Task<IActionResult> DecidePlan(int id, bool approve, string? comment, string? returnUrl)
     {
         var t = await Db.Tenders.Include(x => x.Committee).FirstOrDefaultAsync(x => x.Id == id);
@@ -551,6 +552,7 @@ public class TendersController : ProcControllerBase
 
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.Tender)]
     public async Task<IActionResult> DecideResult(int id, bool approve, string? comment, string? returnUrl)
     {
         var t = await Db.Tenders.FirstOrDefaultAsync(x => x.Id == id);

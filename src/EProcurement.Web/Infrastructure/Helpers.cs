@@ -17,6 +17,8 @@ public class ProcurementSettings
     public string BudgetControl { get; set; } = "Warn";
     /// <summary>Cảnh báo khi ngân sách đã dùng từ mức này (%)</summary>
     public int BudgetWarnPercent { get; set; } = 90;
+    /// <summary>Quyết định phê duyệt phải ký xác nhận bằng mật khẩu (chữ ký điện tử nội bộ)</summary>
+    public bool RequireSignature { get; set; } = true;
     /// <summary>Số NCC tối thiểu mời báo giá cho mỗi RFQ</summary>
     public int MinVendorsPerRfq { get; set; } = 3;
     /// <summary>Số báo giá hợp lệ (đủ dòng, đạt kỹ thuật) tối thiểu; ít hơn → kết quả phải trình Giám đốc duyệt</summary>

@@ -65,3 +65,25 @@ document.addEventListener('submit', function (e) {
     });
     recalc();
 })();
+
+// Ký xác nhận quyết định: tự thêm ô mật khẩu vào mọi form duyệt / từ chối (máy chủ kiểm tra bắt buộc)
+(function () {
+    if (document.body.dataset.sign !== '1') return;
+    document.querySelectorAll('form').forEach(f => {
+        const action = (f.getAttribute('action') || '').split('?')[0];
+        if (!/\/(Decide|DecidePlan|DecideResult|DecideAmendment)(\/\d+)?$/.test(action) || f.querySelector('[name=signPassword]')) return;
+        const input = document.createElement('input');
+        input.type = 'password'; input.name = 'signPassword'; input.required = true; input.autocomplete = 'current-password';
+        input.className = 'form-control form-control-sm sign-password'; input.placeholder = 'Mật khẩu ký'; input.title = 'Nhập mật khẩu để ký xác nhận quyết định';
+        const btn = f.querySelector('button');
+        btn ? btn.before(input) : f.appendChild(input);
+    });
+})();
+
+// Menu trái dạng trượt trên điện thoại
+(function () {
+    const t = document.querySelector('[data-nav-toggle]');
+    if (!t) return;
+    t.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    document.querySelector('.nav-backdrop')?.addEventListener('click', () => document.body.classList.remove('nav-open'));
+})();

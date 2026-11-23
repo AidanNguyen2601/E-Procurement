@@ -98,5 +98,5 @@
         </table></div></div>
         <partial name="_Attachments" model="attachments" />
     </div>
-    <div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.DirectAward, id = Model.Id })</div></div></div>
 </div>

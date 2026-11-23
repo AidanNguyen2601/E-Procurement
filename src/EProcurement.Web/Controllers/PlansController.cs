@@ -100,6 +100,7 @@ public class PlansController : ProcControllerBase
 
     [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     [HttpPost, ValidateAntiForgeryToken]
+    [RequireSignature(DocType.Plan)]
     public async Task<IActionResult> Decide(int id, bool approve, string? comment)
     {
         var p = await Db.ProcurementPlans.FindAsync(id);

@@ -1,3 +1,4 @@
+@inject Microsoft.Extensions.Options.IOptions<ProcurementSettings> ProcOptions
 @{
     var ctrl = ViewContext.RouteData.Values["controller"]?.ToString();
     var act = ViewContext.RouteData.Values["action"]?.ToString();
@@ -13,11 +14,15 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1e1b4b" />
+    <link rel="manifest" href="~/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="~/icon.svg" />
     <title>@ViewData["Title"] - E-Procurement</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
+<body data-sign="@(ProcOptions.Value.RequireSignature ? "1" : "0")">
+<div class="nav-backdrop"></div>
 <div class="app">
     <aside class="sidebar">
         <a class="brand" asp-controller="Home" asp-action="Index">e<span>Procurement</span></a>
@@ -85,6 +90,7 @@
     </aside>
     <div class="main">
         <header class="topbar">
+            <button type="button" class="btn btn-light nav-toggle" data-nav-toggle aria-label="Mở menu">@Icon.Svg("menu", 18)</button>
             <h1 class="page-title d-flex align-items-center gap-2">@if (pageIcon != null) { <span class="text-primary d-inline-flex">@Icon.Svg(pageIcon, 20)</span> }@ViewData["Title"]</h1>
             <div class="d-flex align-items-center gap-2">
                 <a class="btn btn-primary btn-sm" asp-controller="PurchaseRequests" asp-action="Create">@Icon.Svg("plus", 14)<span>Đề nghị mua hàng</span></a>
