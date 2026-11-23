@@ -24,6 +24,9 @@ public class EProcDbContext : DbContext
     public DbSet<GoodsReceiptLine> GoodsReceiptLines => Set<GoodsReceiptLine>();
     public DbSet<VendorEvaluation> VendorEvaluations => Set<VendorEvaluation>();
     public DbSet<ApprovalHistory> ApprovalHistories => Set<ApprovalHistory>();
+    public DbSet<DirectAward> DirectAwards => Set<DirectAward>();
+    public DbSet<DirectAwardLine> DirectAwardLines => Set<DirectAwardLine>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +43,8 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<PurchaseOrder>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<GoodsReceipt>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<ApprovalHistory>().HasIndex(x => new { x.DocumentType, x.DocumentId });
+        modelBuilder.Entity<DirectAward>().HasIndex(x => x.Number).IsUnique();
+        modelBuilder.Entity<Attachment>().HasIndex(x => new { x.DocumentType, x.DocumentId });
 
         // Chứng từ mua sắm không được xóa dây chuyền
         foreach (var fk in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))

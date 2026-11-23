@@ -1,0 +1,78 @@
+@model PurchaseRequest
+@*  Chọn hình thức lựa chọn NCC – chỉ hiện cho bộ phận mua hàng khi PR đã duyệt  *@
+@{
+    if (ViewBag.SuggestedMethod is not ProcurementMethod suggested) { return; }
+    var refs = (List<ReferencePoCandidate>)ViewBag.References;
+    bool locked = ViewBag.MethodLocked;
+    decimal cqMax = ViewBag.CqMax;
+    var valid = refs.Where(r => r.CoversRequest).ToList();
+    var current = Model.Method ?? suggested;
+    string Why(ProcurementMethod m) => m switch
+    {
+        ProcurementMethod.DirectPurchase => valid.Count > 0
+            ? $"Có {valid.Count} PO đã nhận đủ chứa toàn bộ mặt hàng và còn khối lượng: mua lại theo giá cũ."
+            : "Không có PO tham chiếu hợp lệ cho toàn bộ mặt hàng.",
+        ProcurementMethod.CompetitiveQuotation => $"Dự toán ≤ {cqMax.ToShortMoney()}: mời tối thiểu nhiều NCC báo giá.",
+        ProcurementMethod.DirectAward => $"Chỉ khi độc quyền, khẩn cấp, cần tương thích hoặc giá trị ≤ {((decimal)ViewBag.DaMax).ToShortMoney()}. Lập tờ trình + thương thảo, luôn cần Giám đốc duyệt.",
+        _ => $"Dự toán vượt {cqMax.ToShortMoney()}: nên tổ chức đấu thầu rộng rãi."
+    };
+}
+<div class="card mb-3 @(Model.Method == null ? "border-primary" : "")">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Hình thức lựa chọn nhà cung cấp</span>
+        <span class="small">Hệ thống gợi ý: <b>@suggested.GetDisplayName()</b></span>
+    </div>
+    <div class="card-body">
+        @if (locked)
+        {
+            <div class="small text-muted mb-2">Đã có RFQ / PO đang xử lý – muốn đổi hình thức cần hủy các chứng từ đó trước.</div>
+        }
+        <form asp-action="SetMethod" asp-route-id="@Model.Id" method="post">
+            <div class="row g-2">
+                @foreach (var m in Enum.GetValues<ProcurementMethod>())
+                {
+                    var supported = ProcurementRules.Supported.Contains(m);
+                    var disabled = !supported || locked || (m == ProcurementMethod.DirectPurchase && valid.Count == 0);
+                    <div class="col-md-6">
+                        <label class="border rounded p-2 d-block h-100 @(disabled ? "text-muted" : "")">
+                            <input type="radio" name="method" value="@m" class="form-check-input me-1" checked="@(m == current)" disabled="@disabled" />
+                            <b>@m.GetDisplayName()</b>
+                            @if (m == suggested) { <span class="badge bg-success ms-1">Gợi ý</span> }
+                            @if (!supported) { <span class="badge bg-light text-dark border ms-1">Sắp có</span> }
+                            @if (supported) { <div class="small text-muted">@Why(m)</div> }
+                        </label>
+                    </div>
+                }
+            </div>
+            @if (!locked)
+            {
+                <div class="d-flex gap-2 mt-2">
+                    <input name="reason" class="form-control" value="@Model.MethodReason"
+                           placeholder="Lý do (bắt buộc với Chỉ định thầu, hoặc khi chọn hình thức kém cạnh tranh hơn gợi ý)" />
+                    <button class="btn btn-primary text-nowrap">@(Model.Method == null ? "Xác nhận hình thức" : "Cập nhật")</button>
+                </div>
+            }
+        </form>
+
+        @if (refs.Count > 0)
+        {
+            <details class="mt-3" open="@(Model.Method == ProcurementMethod.DirectPurchase)">
+                <summary class="small">PO có thể làm căn cứ mua sắm trực tiếp (@refs.Count)</summary>
+                <table class="table table-sm small mt-2 mb-0">
+                    <thead><tr><th>PO</th><th>NCC</th><th>Ngày đặt</th><th>Đánh giá</th></tr></thead>
+                    <tbody>
+                    @foreach (var r in refs)
+                    {
+                        <tr class="@(r.CoversRequest ? "" : "text-muted")">
+                            <td><a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@r.Po.Id">@r.Po.Number</a></td>
+                            <td>@r.Po.Vendor?.Name</td>
+                            <td>@r.Po.OrderDate.ToDate()</td>
+                            <td>@if (r.CoversRequest) { <span class="text-success">Đủ điều kiện</span> } else { @string.Join(" ", r.Problems) }</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </details>
+        }
+    </div>
+</div>

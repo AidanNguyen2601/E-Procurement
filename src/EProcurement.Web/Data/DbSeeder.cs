@@ -14,6 +14,7 @@ public static class DbSeeder
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>();
 
         await db.Database.EnsureCreatedAsync();
+        await UpgradeSchemaAsync(db);
         if (await db.Users.AnyAsync()) return;
 
         var today = DateTime.Today;
@@ -229,5 +230,81 @@ public static class DbSeeder
             new VendorEvaluation { VendorId = vHoangLong.Id, PurchaseOrderId = po5.Id, EvaluatorId = buyer.Id, Quality = 4, Delivery = 3, Price = 4, Service = 4, Comment = "Giao trễ 2 ngày." });
 
         await db.SaveChangesAsync();
+        await UpgradeSchemaAsync(db); // gắn hình thức cho chứng từ mẫu
+    }
+
+    /// <summary>
+    /// Bổ sung cột mới cho database đã tạo từ phiên bản trước (dự án dùng EnsureCreated, không dùng migration).
+    /// Mỗi lệnh chỉ chạy khi cột chưa tồn tại nên gọi lại nhiều lần vẫn an toàn.
+    /// </summary>
+    private static async Task UpgradeSchemaAsync(EProcDbContext db)
+    {
+        await CreateMissingTablesAsync(db);
+        string[] statements =
+        {
+            // Chỉ định thầu: PO sinh từ tờ trình đã duyệt
+            "IF COL_LENGTH('PurchaseOrders','DirectAwardId') IS NULL ALTER TABLE PurchaseOrders ADD DirectAwardId int NULL " +
+                "CONSTRAINT FK_PurchaseOrders_DirectAwards_DirectAwardId REFERENCES DirectAwards(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseOrders_DirectAwardId') " +
+                "CREATE INDEX IX_PurchaseOrders_DirectAwardId ON PurchaseOrders(DirectAwardId)",
+            // Hình thức lựa chọn NCC trên PR
+            "IF COL_LENGTH('PurchaseRequests','Method') IS NULL ALTER TABLE PurchaseRequests ADD Method int NULL",
+            "IF COL_LENGTH('PurchaseRequests','MethodReason') IS NULL ALTER TABLE PurchaseRequests ADD MethodReason nvarchar(1000) NULL",
+            // Hình thức + căn cứ mua sắm trực tiếp trên PO
+            "IF COL_LENGTH('PurchaseOrders','Method') IS NULL ALTER TABLE PurchaseOrders ADD Method int NULL",
+            "IF COL_LENGTH('PurchaseOrders','PriceDeviationReason') IS NULL ALTER TABLE PurchaseOrders ADD PriceDeviationReason nvarchar(1000) NULL",
+            "IF COL_LENGTH('PurchaseOrders','ReferencePoId') IS NULL ALTER TABLE PurchaseOrders ADD ReferencePoId int NULL " +
+                "CONSTRAINT FK_PurchaseOrders_PurchaseOrders_ReferencePoId REFERENCES PurchaseOrders(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseOrders_ReferencePoId') " +
+                "CREATE INDEX IX_PurchaseOrders_ReferencePoId ON PurchaseOrders(ReferencePoId)",
+            // Chào hàng cạnh tranh: phương pháp đánh giá, niêm phong, đề xuất & duyệt kết quả
+            "IF COL_LENGTH('Rfqs','EvaluationMethod') IS NULL ALTER TABLE Rfqs ADD EvaluationMethod int NOT NULL CONSTRAINT DF_Rfqs_EvaluationMethod DEFAULT 1",
+            "IF COL_LENGTH('Rfqs','PriceWeight') IS NULL ALTER TABLE Rfqs ADD PriceWeight int NOT NULL CONSTRAINT DF_Rfqs_PriceWeight DEFAULT 70",
+            "IF COL_LENGTH('Rfqs','TechnicalWeight') IS NULL ALTER TABLE Rfqs ADD TechnicalWeight int NOT NULL CONSTRAINT DF_Rfqs_TechnicalWeight DEFAULT 20",
+            "IF COL_LENGTH('Rfqs','DeliveryWeight') IS NULL ALTER TABLE Rfqs ADD DeliveryWeight int NOT NULL CONSTRAINT DF_Rfqs_DeliveryWeight DEFAULT 10",
+            "IF COL_LENGTH('Rfqs','OpenedAt') IS NULL ALTER TABLE Rfqs ADD OpenedAt datetime2 NULL",
+            "IF COL_LENGTH('Rfqs','ResultApprovalReason') IS NULL ALTER TABLE Rfqs ADD ResultApprovalReason nvarchar(1000) NULL",
+            "IF COL_LENGTH('Rfqs','ProposedVendorId') IS NULL ALTER TABLE Rfqs ADD ProposedVendorId int NULL " +
+                "CONSTRAINT FK_Rfqs_Vendors_ProposedVendorId REFERENCES Vendors(Id)",
+            "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Rfqs_ProposedVendorId') CREATE INDEX IX_Rfqs_ProposedVendorId ON Rfqs(ProposedVendorId)",
+            "IF COL_LENGTH('RfqVendors','TechnicalPass') IS NULL ALTER TABLE RfqVendors ADD TechnicalPass bit NULL",
+            "IF COL_LENGTH('RfqVendors','TechnicalScore') IS NULL ALTER TABLE RfqVendors ADD TechnicalScore int NULL",
+            "IF COL_LENGTH('RfqVendors','TechnicalNote') IS NULL ALTER TABLE RfqVendors ADD TechnicalNote nvarchar(500) NULL",
+            // RFQ đã chọn NCC từ trước: coi như đã mở và các báo giá đã đạt kỹ thuật
+            "UPDATE Rfqs SET OpenedAt = ISNULL(OpenedAt, Deadline) WHERE Status = 3 AND OpenedAt IS NULL",
+            "UPDATE rv SET TechnicalPass = 1 FROM RfqVendors rv JOIN Rfqs r ON r.Id = rv.RfqId WHERE r.Status = 3 AND rv.Responded = 1 AND rv.TechnicalPass IS NULL",
+            // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
+            "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
+            "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"
+        };
+        foreach (var sql in statements) await db.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    /// <summary>
+    /// Tạo các bảng mới (có trong model nhưng chưa có trong database cũ) bằng chính script EF sinh ra,
+    /// kèm các index của những bảng đó. Bảng đã tồn tại không bị đụng tới.
+    /// </summary>
+    private static async Task CreateMissingTablesAsync(EProcDbContext db)
+    {
+        var existing = (await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM sys.tables").ToListAsync())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var created = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var batches = System.Text.RegularExpressions.Regex.Split(db.Database.GenerateCreateScript(), @"^\s*GO\s*$",
+            System.Text.RegularExpressions.RegexOptions.Multiline);
+        foreach (var raw in batches)
+        {
+            var sql = raw.Trim();
+            if (sql.Length == 0) continue;
+            var table = System.Text.RegularExpressions.Regex.Match(sql, @"^CREATE TABLE \[(\w+)\]");
+            if (table.Success)
+            {
+                if (existing.Contains(table.Groups[1].Value)) continue;
+                await db.Database.ExecuteSqlRawAsync(sql);
+                created.Add(table.Groups[1].Value);
+                continue;
+            }
+            var index = System.Text.RegularExpressions.Regex.Match(sql, @"^CREATE (UNIQUE )?INDEX \[\w+\] ON \[(\w+)\]");
+            if (index.Success && created.Contains(index.Groups[2].Value)) await db.Database.ExecuteSqlRawAsync(sql);
+        }
     }
 }

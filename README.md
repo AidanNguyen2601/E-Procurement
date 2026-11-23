@@ -32,7 +32,14 @@ Ngưỡng duyệt cấu hình trong `appsettings.json`:
   "PrDirectorThreshold": 50000000,   // PR vượt mức này cần thêm Giám đốc duyệt
   "PoApprovalThreshold": 100000000,  // PO vượt mức này cần Giám đốc duyệt trước khi gửi NCC
   "MinVendorsPerRfq": 3,             // số NCC tối thiểu mời báo giá
-  "DefaultDeliveryAddress": "Kho công ty – Tầng 1, tòa nhà văn phòng"
+  "MinValidQuotes": 3,               // số báo giá hợp lệ tối thiểu; ít hơn → kết quả RFQ phải trình Giám đốc duyệt
+  "DefaultDeliveryAddress": "Kho công ty – Tầng 1, tòa nhà văn phòng",
+  "CompetitiveQuotationMax": 5000000000,   // dự toán ≤ mức này gợi ý Chào hàng cạnh tranh, vượt → Đấu thầu rộng rãi
+  "DirectPurchaseMonths": 12,              // Mua sắm trực tiếp: PO tham chiếu đặt trong vòng N tháng
+  "DirectPurchaseMaxQuantityPercent": 130, // Mua sắm trực tiếp: tổng khối lượng ≤ % khối lượng PO tham chiếu
+  "DirectAwardMax": 100000000,             // Chỉ định thầu: giá trị sau thương thảo tối đa (vượt chỉ khi khẩn cấp)
+  "DirectAwardSplitWindowDays": 90,        // Chỉ định thầu: cộng dồn tờ trình cùng NCC / nhóm hàng trong N ngày để cảnh báo chia nhỏ gói
+  "MaxAttachmentMb": 10                    // Dung lượng tối đa mỗi file đính kèm
 }
 ```
 Trong Docker: `Procurement__PoApprovalThreshold: "200000000"` trong phần `environment`.

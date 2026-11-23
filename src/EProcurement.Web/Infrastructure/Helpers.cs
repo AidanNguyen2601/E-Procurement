@@ -15,8 +15,24 @@ public class ProcurementSettings
     public decimal PoApprovalThreshold { get; set; } = 100_000_000;
     /// <summary>Số NCC tối thiểu mời báo giá cho mỗi RFQ</summary>
     public int MinVendorsPerRfq { get; set; } = 3;
+    /// <summary>Số báo giá hợp lệ (đủ dòng, đạt kỹ thuật) tối thiểu; ít hơn → kết quả phải trình Giám đốc duyệt</summary>
+    public int MinValidQuotes { get; set; } = 3;
     /// <summary>Địa chỉ giao hàng mặc định trên PO</summary>
     public string DefaultDeliveryAddress { get; set; } = "Kho công ty – Tầng 1, tòa nhà văn phòng";
+
+    // ----- Hình thức lựa chọn NCC -----
+    /// <summary>Dự toán ≤ mức này: chào hàng cạnh tranh; vượt: đấu thầu rộng rãi</summary>
+    public decimal CompetitiveQuotationMax { get; set; } = 5_000_000_000;
+    /// <summary>Mua sắm trực tiếp: PO tham chiếu phải đặt trong vòng N tháng</summary>
+    public int DirectPurchaseMonths { get; set; } = 12;
+    /// <summary>Mua sắm trực tiếp: tổng khối lượng mua thêm không vượt % khối lượng PO tham chiếu</summary>
+    public decimal DirectPurchaseMaxQuantityPercent { get; set; } = 130;
+    /// <summary>Chỉ định thầu: giá trị sau thương thảo (trước VAT) tối đa; vượt chỉ được khi khẩn cấp</summary>
+    public decimal DirectAwardMax { get; set; } = 100_000_000;
+    /// <summary>Chỉ định thầu: cửa sổ (ngày) cộng dồn các tờ trình cùng NCC / cùng nhóm hàng để phát hiện chia nhỏ gói</summary>
+    public int DirectAwardSplitWindowDays { get; set; } = 90;
+    /// <summary>Dung lượng tối đa mỗi file đính kèm (MB)</summary>
+    public int MaxAttachmentMb { get; set; } = 10;
 }
 
 public static class FormatExtensions

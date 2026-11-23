@@ -25,9 +25,13 @@ public class HomeController : ProcControllerBase
         var dept = User.GetDepartment();
         var prQ = Db.PurchaseRequests.AsQueryable();
         if (User.IsAdmin()) vm.MyPendingApprovals = await prQ.CountAsync(p => p.Status == PrStatus.Submitted || p.Status == PrStatus.PendingDirector)
-                                                     + await Db.PurchaseOrders.CountAsync(p => p.Status == PoStatus.PendingApproval);
+                                                     + await Db.PurchaseOrders.CountAsync(p => p.Status == PoStatus.PendingApproval)
+                                                     + await Db.Rfqs.CountAsync(r => r.Status == RfqStatus.PendingApproval)
+                                                     + await Db.DirectAwards.CountAsync(d => d.Status == DirectAwardStatus.PendingApproval);
         else if (User.IsInRole(AppRoles.Director)) vm.MyPendingApprovals = await prQ.CountAsync(p => p.Status == PrStatus.PendingDirector)
-                                                     + await Db.PurchaseOrders.CountAsync(p => p.Status == PoStatus.PendingApproval);
+                                                     + await Db.PurchaseOrders.CountAsync(p => p.Status == PoStatus.PendingApproval)
+                                                     + await Db.Rfqs.CountAsync(r => r.Status == RfqStatus.PendingApproval)
+                                                     + await Db.DirectAwards.CountAsync(d => d.Status == DirectAwardStatus.PendingApproval);
         else if (User.IsInRole(AppRoles.Approver)) vm.MyPendingApprovals = await prQ.CountAsync(p => p.Status == PrStatus.Submitted && p.Department == dept && p.RequesterId != Me);
 
         vm.PrWaitingPurchase = await prQ.CountAsync(p => p.Status == PrStatus.Approved);

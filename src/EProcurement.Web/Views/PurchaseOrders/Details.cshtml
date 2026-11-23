@@ -5,6 +5,8 @@
     var receipts = (List<GoodsReceipt>)ViewBag.Receipts;
     var eval = ViewBag.Evaluation as VendorEvaluation;
     decimal threshold = ViewBag.Threshold;
+    var byAward = Model.DirectAward is { Status: DirectAwardStatus.Approved } && Model.Total <= Model.DirectAward.NegotiatedGrandTotal;
+    var needsDirector = !byAward && (Model.Total > threshold || Model.PriceDeviationReason != null);
     var buyer = User.IsPurchasing();
     var canDecide = Model.Status == PoStatus.PendingApproval && (User.IsInRole(AppRoles.Director) || User.IsAdmin());
     var flow = new[] { PoStatus.Draft, PoStatus.PendingApproval, PoStatus.Approved, PoStatus.Issued, PoStatus.PartiallyReceived, PoStatus.Received };
@@ -12,7 +14,7 @@
 }
 <div class="card mb-3"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
     <div class="flow">
-        @foreach (var s in flow.Where(s => s != PoStatus.PendingApproval || Model.Total > threshold))
+        @foreach (var s in flow.Where(s => s != PoStatus.PendingApproval || needsDirector))
         {
             var cls = Model.Status == PoStatus.Cancelled ? "" : (int)s < (int)Model.Status ? "done" : s == Model.Status ? "current" : "";
             <span class="step @cls">@s.GetDisplayName()</span>
@@ -25,7 +27,7 @@
     @if (buyer && Model.Status == PoStatus.Draft)
     {
         <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa</a>
-        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">@(Model.Total > threshold ? "Trình Giám đốc duyệt" : "Duyệt đơn hàng")</button></form>
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">@(needsDirector ? "Trình Giám đốc duyệt" : "Duyệt đơn hàng")</button></form>
     }
     @if (buyer && Model.Status == PoStatus.Approved)
     {
@@ -46,7 +48,8 @@
 @if (canDecide)
 {
     <div class="card mb-3 border-warning"><div class="card-body">
-        <div class="fw-semibold mb-2">Phê duyệt Giám đốc – giá trị @Model.Total.ToMoney() đ vượt ngưỡng @threshold.ToMoney() đ</div>
+        <div class="fw-semibold mb-2">Phê duyệt Giám đốc – giá trị @Model.Total.ToMoney() đ@(Model.Total > threshold ? $" vượt ngưỡng {threshold.ToMoney()} đ" : "")</div>
+        @if (Model.PriceDeviationReason != null) { <div class="small mb-2 text-danger">Mua sắm trực tiếp có đơn giá cao hơn PO tham chiếu @Model.ReferencePo?.Number: @Model.PriceDeviationReason</div> }
         <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
             <input name="comment" class="form-control" placeholder="Ý kiến (bắt buộc khi trả lại)" />
             <button name="approve" value="true" class="btn btn-success text-nowrap">Duyệt</button>
@@ -63,6 +66,13 @@
                     @if (Model.PurchaseRequest != null) { <span>PR <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId">@Model.PurchaseRequest.Number</a></span> }
                     @if (Model.Rfq != null) { <span> · RFQ <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@Model.RfqId">@Model.Rfq.Number</a></span> }
                     @if (Model.PurchaseRequest == null && Model.Rfq == null) { <span>Lập trực tiếp</span> }</dd>
+                @if (Model.Method.HasValue)
+                {
+                    <dt class="col-sm-3">Hình thức</dt><dd class="col-sm-9"><b>@Model.Method.Value.GetDisplayName()</b>
+                        @if (Model.DirectAward != null) { <span> · tờ trình <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@Model.DirectAwardId">@Model.DirectAward.Number</a> (@Model.DirectAward.Reason.GetDisplayName())</span> }
+                        @if (Model.ReferencePo != null) { <span> · căn cứ PO <a asp-action="Details" asp-route-id="@Model.ReferencePoId">@Model.ReferencePo.Number</a> (@Model.ReferencePo.OrderDate.ToDate())</span> }
+                        @if (Model.PriceDeviationReason != null) { <div class="text-danger">Vượt giá tham chiếu: @Model.PriceDeviationReason</div> }</dd>
+                }
                 <dt class="col-sm-3">Ngày đặt / giao</dt><dd class="col-sm-9">@Model.OrderDate.ToDate() → <b class="@(Model.IsLate ? "text-danger" : "")">@Model.DeliveryDate.ToDate()</b> @if (Model.IsLate) { <span class="text-danger">(trễ hạn)</span> }</dd>
                 <dt class="col-sm-3">Giao tại</dt><dd class="col-sm-9">@Model.DeliveryAddress</dd>
                 <dt class="col-sm-3">Thanh toán</dt><dd class="col-sm-9">@Model.PaymentTerms</dd>

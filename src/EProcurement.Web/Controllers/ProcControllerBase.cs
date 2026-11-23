@@ -30,6 +30,13 @@ public abstract class ProcControllerBase : Controller
         Db.ApprovalHistories.Include(h => h.User).Where(h => h.DocumentType == type && h.DocumentId == id)
             .OrderBy(h => h.CreatedAt).ToListAsync();
 
+    /// <summary>Danh sách file đính kèm (không nạp nội dung) cho partial _Attachments</summary>
+    protected async Task<AttachmentPanel> AttachmentPanelAsync(DocType type, int id, bool canEdit) =>
+        new(type, id, canEdit,
+            await Db.Attachments.AsNoTracking().Where(a => a.DocumentType == type && a.DocumentId == id).OrderBy(a => a.UploadedAt)
+                .Select(a => new AttachmentInfo(a.Id, a.FileName, a.Size, a.Note, a.UploadedBy!.FullName, a.UploadedAt)).ToListAsync(),
+            Request.Path + Request.QueryString);
+
     /// <summary>Danh mục hàng hóa (JSON) cho bộ soạn dòng chứng từ</summary>
     protected async Task LoadItemsJsonAsync()
     {

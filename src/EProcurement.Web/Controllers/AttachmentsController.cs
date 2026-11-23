@@ -1,0 +1,78 @@
+using EProcurement.Web.Data;
+using EProcurement.Web.Infrastructure;
+using EProcurement.Web.Models.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+namespace EProcurement.Web.Controllers;
+
+/// <summary>File đính kèm chứng từ (lưu trong database). Hiện dùng cho tờ trình chỉ định thầu.</summary>
+[Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+public class AttachmentsController : ProcControllerBase
+{
+    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+        { ".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx", ".msg", ".eml", ".txt", ".zip" };
+
+    public AttachmentsController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }
+
+    public async Task<IActionResult> Download(int id)
+    {
+        var a = await Db.Attachments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (a == null) return NotFound();
+        return File(a.Data, a.ContentType, a.FileName);
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequestSizeLimit(64 * 1024 * 1024)]
+    public async Task<IActionResult> Upload(DocType documentType, int documentId, IFormFile? file, string? note, string? returnUrl)
+    {
+        var back = Back(returnUrl);
+        if (!await CanEditAsync(documentType, documentId)) { TempData["Error"] = "Chứng từ không còn ở trạng thái cho phép đính kèm."; return back; }
+        if (file == null || file.Length == 0) { TempData["Error"] = "Chọn file cần đính kèm."; return back; }
+        if (file.Length > Settings.MaxAttachmentMb * 1024L * 1024L) { TempData["Error"] = $"File vượt quá {Settings.MaxAttachmentMb} MB."; return back; }
+        var ext = Path.GetExtension(file.FileName);
+        if (!AllowedExtensions.Contains(ext)) { TempData["Error"] = $"Không hỗ trợ định dạng {ext}. Cho phép: {string.Join(", ", AllowedExtensions)}."; return back; }
+
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        var name = Path.GetFileName(file.FileName);
+        Db.Attachments.Add(new Attachment
+        {
+            DocumentType = documentType, DocumentId = documentId, FileName = name.Length > 260 ? name[^260..] : name,
+            ContentType = string.IsNullOrEmpty(file.ContentType) ? "application/octet-stream" : file.ContentType,
+            Size = file.Length, Data = ms.ToArray(), Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
+            UploadedById = Me, UploadedAt = DateTime.Now
+        });
+        Log(documentType, documentId, "Đính kèm file", name);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã đính kèm {name}.";
+        return back;
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, string? returnUrl)
+    {
+        var a = await Db.Attachments.FirstOrDefaultAsync(x => x.Id == id);
+        if (a == null) return NotFound();
+        if (!await CanEditAsync(a.DocumentType, a.DocumentId)) { TempData["Error"] = "Chứng từ đã trình duyệt, không xóa file được."; return Back(returnUrl); }
+        Db.Attachments.Remove(a);
+        Log(a.DocumentType, a.DocumentId, "Xóa file đính kèm", a.FileName);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"Đã xóa {a.FileName}.";
+        return Back(returnUrl);
+    }
+
+    /// <summary>Chỉ đính kèm / xóa khi chứng từ còn đang soạn</summary>
+    private async Task<bool> CanEditAsync(DocType type, int id) => type switch
+    {
+        DocType.DirectAward => await Db.DirectAwards.AnyAsync(d => d.Id == id && d.Status == DirectAwardStatus.Draft),
+        _ => false
+    };
+
+    private IActionResult Back(string? returnUrl) =>
+        !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction("Index", "Home");
+}

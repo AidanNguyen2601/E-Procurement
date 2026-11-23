@@ -2,6 +2,7 @@ using EProcurement.Web.Data;
 using EProcurement.Web.Infrastructure;
 using EProcurement.Web.Models.Entities;
 using EProcurement.Web.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -52,10 +53,57 @@ public class PurchaseRequestsController : ProcControllerBase
         ViewBag.History = await HistoryAsync(DocType.PR, id);
         ViewBag.Rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
         ViewBag.Orders = await Db.PurchaseOrders.Include(p => p.Vendor).Where(p => p.PurchaseRequestId == id).ToListAsync();
+        ViewBag.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Where(d => d.PurchaseRequestId == id).ToListAsync();
         ViewBag.CanApprove = CanApprove(pr);
         ViewBag.Threshold = Settings.PrDirectorThreshold;
+        if (User.IsPurchasing() && pr.Status is PrStatus.Approved or PrStatus.Processing)
+        {
+            var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
+            ViewBag.References = refs;
+            ViewBag.SuggestedMethod = ProcurementRules.Suggest(pr, refs.Any(r => r.CoversRequest), Settings);
+            ViewBag.MethodLocked = HasActiveDocuments((List<Rfq>)ViewBag.Rfqs, (List<PurchaseOrder>)ViewBag.Orders, (List<DirectAward>)ViewBag.DirectAwards);
+            ViewBag.CqMax = Settings.CompetitiveQuotationMax;
+            ViewBag.DaMax = Settings.DirectAwardMax;
+        }
         return View(pr);
     }
+
+    /// <summary>Mua hàng chọn hình thức lựa chọn NCC cho PR đã duyệt</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetMethod(int id, ProcurementMethod method, string? reason)
+    {
+        var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == id);
+        if (pr == null) return NotFound();
+        if (pr.Status is not (PrStatus.Approved or PrStatus.Processing)) return BadRequest();
+        IActionResult Fail(string msg) { TempData["Error"] = msg; return RedirectToAction(nameof(Details), new { id }); }
+
+        if (!ProcurementRules.Supported.Contains(method))
+            return Fail($"Hình thức \"{method.GetDisplayName()}\" chưa được hỗ trợ trên hệ thống.");
+        var rfqs = await Db.Rfqs.Where(r => r.PurchaseRequestId == id).ToListAsync();
+        var orders = await Db.PurchaseOrders.Where(p => p.PurchaseRequestId == id).ToListAsync();
+        var awards = await Db.DirectAwards.Where(d => d.PurchaseRequestId == id).ToListAsync();
+        if (pr.Method != method && HasActiveDocuments(rfqs, orders, awards))
+            return Fail("Đề nghị đã có RFQ / tờ trình / PO đang xử lý. Hủy các chứng từ đó trước khi đổi hình thức.");
+
+        var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
+        var suggested = ProcurementRules.Suggest(pr, refs.Any(r => r.CoversRequest), Settings);
+        if (method == ProcurementMethod.DirectPurchase && !refs.Any(r => r.CoversRequest))
+            return Fail($"Không có PO tham chiếu hợp lệ (đã nhận đủ trong {Settings.DirectPurchaseMonths} tháng, cùng mặt hàng, còn đủ khối lượng) để mua sắm trực tiếp.");
+        if (ProcurementRules.NeedsReason(method, suggested) && string.IsNullOrWhiteSpace(reason))
+            return Fail($"Hệ thống gợi ý \"{suggested.GetDisplayName()}\". Nhập lý do khi chọn \"{method.GetDisplayName()}\".");
+
+        pr.Method = method;
+        pr.MethodReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+        Log(DocType.PR, id, $"Chọn hình thức: {method.GetDisplayName()}" + (method != suggested ? $" (gợi ý: {suggested.GetDisplayName()})" : ""), pr.MethodReason);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = $"{pr.Number}: hình thức lựa chọn NCC là {method.GetDisplayName()}.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    private static bool HasActiveDocuments(List<Rfq> rfqs, List<PurchaseOrder> orders, List<DirectAward> awards) =>
+        rfqs.Any(r => r.Status != RfqStatus.Cancelled) || orders.Any(o => o.Status != PoStatus.Cancelled)
+        || awards.Any(a => a.Status != DirectAwardStatus.Cancelled);
 
     public async Task<IActionResult> Create()
     {

@@ -30,6 +30,60 @@
 
 @if (User.IsInRole(AppRoles.Director) || User.IsAdmin())
 {
+    <div class="card mb-4"><div class="card-header">Tờ trình chỉ định thầu (@Model.DirectAwards.Count)</div>
+    <div class="card-body p-0"><table class="table mb-0">
+        <thead><tr><th>Số</th><th>Nội dung</th><th>NCC chỉ định</th><th>Căn cứ</th><th class="money">Giá trị gồm VAT</th><th style="min-width:320px">Quyết định</th></tr></thead>
+        <tbody>
+        @foreach (var d in Model.DirectAwards)
+        {
+            <tr>
+                <td><a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@d.Id" class="fw-semibold">@d.Number</a></td>
+                <td>@d.Title<br /><small class="text-muted">@d.PurchaseRequest?.Number · @d.Buyer?.FullName</small>
+                    @if (!string.IsNullOrEmpty(d.SplitWarning)) { <div class="small text-danger">⚠ @d.SplitWarning</div> }</td>
+                <td class="fw-semibold">@d.Vendor?.Name</td>
+                <td class="small">@d.Reason.GetDisplayName()</td>
+                <td class="money fw-bold">@d.NegotiatedGrandTotal.ToMoney()<br /><small class="text-success fw-normal">giảm @d.SavingPercent.ToString("0.#")%</small></td>
+                <td>
+                    <form asp-controller="DirectAwards" asp-action="Decide" asp-route-id="@d.Id" method="post" class="d-flex gap-1">
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <input name="comment" class="form-control form-control-sm" placeholder="Ý kiến (bắt buộc khi trả lại)" />
+                        <button name="approve" value="true" class="btn btn-sm btn-success">Duyệt</button>
+                        <button name="approve" value="false" class="btn btn-sm btn-outline-danger">Trả lại</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        @if (!Model.DirectAwards.Any()) { <tr><td colspan="6" class="text-muted p-3">Không có tờ trình nào chờ duyệt.</td></tr> }
+        </tbody>
+    </table></div></div>
+
+    <div class="card mb-4"><div class="card-header">Kết quả chào hàng cạnh tranh cần duyệt (@Model.Rfqs.Count)</div>
+    <div class="card-body p-0"><table class="table mb-0">
+        <thead><tr><th>Số RFQ</th><th>Nội dung</th><th>NCC đề xuất</th><th>Lý do chọn</th><th>Cần duyệt vì</th><th style="min-width:320px">Quyết định</th></tr></thead>
+        <tbody>
+        @foreach (var r in Model.Rfqs)
+        {
+            <tr>
+                <td><a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.Id" class="fw-semibold">@r.Number</a><br />
+                    <a asp-controller="Rfqs" asp-action="Compare" asp-route-id="@r.Id" class="small">Xem xếp hạng</a></td>
+                <td>@r.Title<br /><small class="text-muted">@r.PurchaseRequest?.Number · @r.Buyer?.FullName</small></td>
+                <td class="fw-semibold">@r.ProposedVendor?.Name<br /><small class="text-muted">@r.Vendors.FirstOrDefault(v => v.VendorId == r.ProposedVendorId)?.GrandTotal.ToMoney() đ</small></td>
+                <td class="small">@r.AwardReason</td>
+                <td class="small text-danger">@r.ResultApprovalReason</td>
+                <td>
+                    <form asp-controller="Rfqs" asp-action="DecideResult" asp-route-id="@r.Id" method="post" class="d-flex gap-1">
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <input name="comment" class="form-control form-control-sm" placeholder="Ý kiến (bắt buộc khi trả lại)" />
+                        <button name="approve" value="true" class="btn btn-sm btn-success">Duyệt</button>
+                        <button name="approve" value="false" class="btn btn-sm btn-outline-danger">Trả lại</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        @if (!Model.Rfqs.Any()) { <tr><td colspan="6" class="text-muted p-3">Không có kết quả nào chờ duyệt.</td></tr> }
+        </tbody>
+    </table></div></div>
+
     <div class="card"><div class="card-header">Đơn mua hàng vượt ngưỡng (@Model.Orders.Count)</div>
     <div class="card-body p-0"><table class="table mb-0">
         <thead><tr><th>Số PO</th><th>Nhà cung cấp</th><th>Từ PR</th><th>Người lập</th><th class="money">Tổng giá trị</th><th style="min-width:320px">Quyết định</th></tr></thead>

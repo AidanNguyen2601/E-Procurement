@@ -34,7 +34,9 @@ public enum RfqStatus
     [Display(Name = "Nháp")] Draft = 1,
     [Display(Name = "Đang nhận báo giá")] Open = 2,
     [Display(Name = "Đã chọn NCC")] Awarded = 3,
-    [Display(Name = "Đã hủy")] Cancelled = 4
+    [Display(Name = "Đã hủy")] Cancelled = 4,
+    [Display(Name = "Đã mở báo giá – đang đánh giá")] Opened = 5,
+    [Display(Name = "Chờ duyệt kết quả")] PendingApproval = 6
 }
 
 public enum PoStatus
@@ -52,5 +54,40 @@ public enum DocType
 {
     [Display(Name = "Đề nghị mua hàng")] PR = 1,
     [Display(Name = "Đơn mua hàng")] PO = 2,
-    [Display(Name = "Yêu cầu báo giá")] RFQ = 3
+    [Display(Name = "Yêu cầu báo giá")] RFQ = 3,
+    [Display(Name = "Tờ trình chỉ định thầu")] DirectAward = 4
+}
+
+/// <summary>Hình thức lựa chọn nhà cung cấp (xếp theo mức độ cạnh tranh tăng dần)</summary>
+public enum ProcurementMethod
+{
+    [Display(Name = "Mua sắm trực tiếp")] DirectPurchase = 1,
+    [Display(Name = "Chỉ định thầu")] DirectAward = 2,
+    [Display(Name = "Chào hàng cạnh tranh")] CompetitiveQuotation = 3,
+    [Display(Name = "Đấu thầu rộng rãi")] OpenTender = 4
+}
+
+/// <summary>Phương pháp đánh giá báo giá trong chào hàng cạnh tranh</summary>
+public enum EvaluationMethod
+{
+    [Display(Name = "Giá thấp nhất (trong các báo giá đạt kỹ thuật)")] LowestPrice = 1,
+    [Display(Name = "Chấm điểm có trọng số (giá – kỹ thuật – tiến độ)")] WeightedScore = 2
+}
+
+/// <summary>Căn cứ chỉ định thầu</summary>
+public enum DirectAwardReason
+{
+    [Display(Name = "Độc quyền – chỉ một NCC đáp ứng")] SoleSource = 1,
+    [Display(Name = "Khẩn cấp (sự cố, thiên tai, an toàn)")] Emergency = 2,
+    [Display(Name = "Giá trị nhỏ, dưới hạn mức chỉ định")] UnderThreshold = 3,
+    [Display(Name = "Tương thích / đồng bộ với thiết bị sẵn có")] Compatibility = 4,
+    [Display(Name = "Lý do khác")] Other = 5
+}
+
+public enum DirectAwardStatus
+{
+    [Display(Name = "Nháp – đang thương thảo")] Draft = 1,
+    [Display(Name = "Chờ Giám đốc duyệt")] PendingApproval = 2,
+    [Display(Name = "Đã duyệt")] Approved = 3,
+    [Display(Name = "Đã hủy")] Cancelled = 4
 }

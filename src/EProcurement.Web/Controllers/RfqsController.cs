@@ -10,7 +10,8 @@ using Microsoft.Extensions.Options;
 namespace EProcurement.Web.Controllers;
 
 /// <summary>
-/// Yêu cầu báo giá (RFQ): mời nhiều NCC → nhập báo giá từng NCC → so sánh → chọn NCC → sinh PO.
+/// Chào hàng cạnh tranh (RFQ): mời ≥ N NCC → nhận báo giá trong hạn (niêm phong) → mở báo giá
+/// → đánh giá kỹ thuật → so sánh, xếp hạng → đề xuất NCC → (nếu cần) Giám đốc duyệt kết quả → sinh PO → thông báo kết quả.
 /// </summary>
 [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
 public class RfqsController : ProcControllerBase
@@ -19,7 +20,7 @@ public class RfqsController : ProcControllerBase
 
     public async Task<IActionResult> Index(RfqStatus? status)
     {
-        var q = Db.Rfqs.Include(r => r.Buyer).Include(r => r.Vendors).Include(r => r.AwardedVendor).Include(r => r.PurchaseRequest).AsNoTracking();
+        var q = Db.Rfqs.Include(r => r.Buyer).Include(r => r.Vendors).Include(r => r.AwardedVendor).Include(r => r.ProposedVendor).Include(r => r.PurchaseRequest).AsNoTracking();
         if (status.HasValue) q = q.Where(r => r.Status == status);
         ViewBag.Status = status;
         return View(await q.OrderByDescending(r => r.CreatedAt).ToListAsync());
@@ -47,6 +48,11 @@ public class RfqsController : ProcControllerBase
                 TempData["Error"] = "Chỉ lập RFQ cho đề nghị đã được duyệt.";
                 return RedirectToAction("Details", "PurchaseRequests", new { id = prId });
             }
+            if (pr.Method != ProcurementMethod.CompetitiveQuotation)
+            {
+                TempData["Error"] = "Chọn hình thức \"Chào hàng cạnh tranh\" cho đề nghị trước khi lập RFQ.";
+                return RedirectToAction("Details", "PurchaseRequests", new { id = prId });
+            }
             vm.PurchaseRequest = pr;
             vm.Title = pr.Title;
             vm.Lines = pr.Lines.OrderBy(l => l.SortOrder)
@@ -68,6 +74,10 @@ public class RfqsController : ProcControllerBase
         if (vm.VendorIds.Count < Settings.MinVendorsPerRfq)
             ModelState.AddModelError(nameof(vm.VendorIds), $"Cần mời tối thiểu {Settings.MinVendorsPerRfq} nhà cung cấp để đảm bảo cạnh tranh.");
         if (vm.Deadline < DateTime.Today) ModelState.AddModelError(nameof(vm.Deadline), "Hạn nộp báo giá không được ở quá khứ");
+        if (vm.EvaluationMethod == EvaluationMethod.WeightedScore && vm.PriceWeight + vm.TechnicalWeight + vm.DeliveryWeight != 100)
+            ModelState.AddModelError(nameof(vm.PriceWeight), "Tổng trọng số giá + kỹ thuật + tiến độ phải bằng 100%.");
+        if (vm.PurchaseRequestId.HasValue && !await Db.PurchaseRequests.AnyAsync(p => p.Id == vm.PurchaseRequestId && p.Method == ProcurementMethod.CompetitiveQuotation))
+            ModelState.AddModelError(string.Empty, "Đề nghị chưa chọn hình thức \"Chào hàng cạnh tranh\".");
         var invalid = await Db.Vendors.Where(v => vm.VendorIds.Contains(v.Id) && v.Status != VendorStatus.Approved).Select(v => v.Name).ToListAsync();
         if (invalid.Count > 0) ModelState.AddModelError(nameof(vm.VendorIds), "NCC chưa được phê duyệt: " + string.Join(", ", invalid));
         if (!ModelState.IsValid)
@@ -83,7 +93,8 @@ public class RfqsController : ProcControllerBase
         {
             Number = await DocNumbers.NextAsync(Db.Rfqs.Select(r => r.Number), "RFQ"), Title = vm.Title, PurchaseRequestId = vm.PurchaseRequestId,
             BuyerId = Me, Deadline = vm.Deadline, Requirements = vm.Requirements, IssueDate = DateTime.Today,
-            Status = publish ? RfqStatus.Open : RfqStatus.Draft, CreatedAt = DateTime.Now
+            Status = publish ? RfqStatus.Open : RfqStatus.Draft, CreatedAt = DateTime.Now,
+            EvaluationMethod = vm.EvaluationMethod, PriceWeight = vm.PriceWeight, TechnicalWeight = vm.TechnicalWeight, DeliveryWeight = vm.DeliveryWeight
         };
         var s = 1;
         foreach (var l in vm.Lines)
@@ -114,12 +125,114 @@ public class RfqsController : ProcControllerBase
         var r = await Db.Rfqs.FindAsync(id);
         if (r == null) return NotFound();
         if (r.Status != RfqStatus.Draft) return BadRequest();
+        if (r.Deadline < DateTime.Today)
+        {
+            TempData["Error"] = "Hạn nộp báo giá đã qua. Gia hạn trước khi phát hành.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
         r.Status = RfqStatus.Open;
         r.IssueDate = DateTime.Today;
-        Log(DocType.RFQ, id, "Phát hành RFQ");
+        Log(DocType.RFQ, id, "Phát hành RFQ", $"Hạn nộp báo giá {r.Deadline.ToDate()}");
         await Db.SaveChangesAsync();
         TempData["Success"] = $"Đã phát hành {r.Number}. In thư mời gửi NCC từ trang chi tiết.";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Gia hạn nộp báo giá (bắt buộc lý do; chỉ khi chưa mở báo giá)</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExtendDeadline(int id, DateTime newDeadline, string? reason)
+    {
+        var r = await Db.Rfqs.FindAsync(id);
+        if (r == null) return NotFound();
+        if (r.Status is not (RfqStatus.Draft or RfqStatus.Open)) return BadRequest();
+        if (newDeadline.Date <= r.Deadline || newDeadline.Date < DateTime.Today)
+            TempData["Error"] = "Hạn mới phải sau hạn hiện tại và không ở quá khứ.";
+        else if (string.IsNullOrWhiteSpace(reason))
+            TempData["Error"] = "Nhập lý do gia hạn.";
+        else
+        {
+            Log(DocType.RFQ, id, $"Gia hạn nộp báo giá {r.Deadline.ToDate()} → {newDeadline.ToDate()}", reason);
+            r.Deadline = newDeadline.Date;
+            await Db.SaveChangesAsync();
+            TempData["Success"] = $"Đã gia hạn {r.Number} đến {r.Deadline.ToDate()}. Thông báo lại cho các NCC được mời.";
+        }
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>Mở báo giá: sau hạn nộp (hoặc khi tất cả NCC đã gửi). Từ đây giá chào được công khai và không sửa được nữa.</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> OpenQuotes(int id)
+    {
+        var r = await LoadRfqAsync(id, track: true);
+        if (r == null) return NotFound();
+        if (!RfqEvaluation.CanOpen(r))
+        {
+            TempData["Error"] = r.Vendors.Any(v => v.Responded)
+                ? $"Chưa đến lúc mở: hạn nộp là hết ngày {r.Deadline.ToDate()} và vẫn còn NCC chưa gửi báo giá."
+                : "Chưa có báo giá nào. Gia hạn hoặc hủy RFQ.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        r.Status = RfqStatus.Opened;
+        r.OpenedAt = DateTime.Now;
+        var summary = string.Join("; ", r.Vendors.Where(v => v.Responded).OrderBy(v => v.GrandTotal)
+            .Select(v => $"{v.Vendor?.Name}: {v.GrandTotal.ToMoney()} đ (gồm VAT)"));
+        var missing = r.Vendors.Count(v => !v.Responded);
+        Log(DocType.RFQ, id, $"Mở báo giá – {r.Vendors.Count(v => v.Responded)} báo giá" + (missing > 0 ? $", {missing} NCC không nộp" : ""), summary);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = "Đã mở báo giá. Tiếp theo: đánh giá kỹ thuật từng báo giá.";
+        return RedirectToAction(nameof(Evaluate), new { id });
+    }
+
+    /// <summary>Đánh giá kỹ thuật: đạt / không đạt (+ điểm khi chấm điểm có trọng số)</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    public async Task<IActionResult> Evaluate(int id)
+    {
+        var r = await LoadRfqAsync(id);
+        if (r == null) return NotFound();
+        if (r.Status != RfqStatus.Opened)
+        {
+            TempData["Error"] = "Chỉ đánh giá kỹ thuật sau khi mở báo giá và trước khi đề xuất kết quả.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        return View(new TechnicalEvaluationViewModel
+        {
+            RfqId = id, Rfq = r,
+            Lines = r.Vendors.Where(v => v.Responded).OrderBy(v => v.Vendor!.Name).Select(v => new TechnicalEvaluationLine
+                { RfqVendorId = v.Id, VendorName = v.Vendor!.Name, Pass = v.TechnicalPass, Score = v.TechnicalScore, Note = v.TechnicalNote }).ToList()
+        });
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Evaluate(TechnicalEvaluationViewModel vm)
+    {
+        var r = await LoadRfqAsync(vm.RfqId, track: true);
+        if (r == null) return NotFound();
+        if (r.Status != RfqStatus.Opened) return BadRequest();
+        foreach (var l in vm.Lines)
+        {
+            if (l.Pass == null) ModelState.AddModelError(string.Empty, $"{l.VendorName}: chọn Đạt hoặc Không đạt.");
+            if (l.Pass == false && string.IsNullOrWhiteSpace(l.Note)) ModelState.AddModelError(string.Empty, $"{l.VendorName}: nhập lý do không đạt kỹ thuật.");
+            if (l.Pass == true && r.EvaluationMethod == EvaluationMethod.WeightedScore && l.Score == null)
+                ModelState.AddModelError(string.Empty, $"{l.VendorName}: nhập điểm kỹ thuật (0–100).");
+        }
+        if (!ModelState.IsValid) { vm.Rfq = r; return View(vm); }
+
+        foreach (var l in vm.Lines)
+        {
+            var rv = r.Vendors.FirstOrDefault(v => v.Id == l.RfqVendorId && v.Responded);
+            if (rv == null) continue;
+            rv.TechnicalPass = l.Pass;
+            rv.TechnicalScore = l.Pass == true ? l.Score : null;
+            rv.TechnicalNote = string.IsNullOrWhiteSpace(l.Note) ? null : l.Note.Trim();
+        }
+        var failed = r.Vendors.Where(v => v.TechnicalPass == false).Select(v => v.Vendor?.Name).ToList();
+        Log(DocType.RFQ, r.Id, "Đánh giá kỹ thuật", failed.Count == 0 ? "Tất cả báo giá đạt kỹ thuật" : "Không đạt: " + string.Join(", ", failed));
+        await Db.SaveChangesAsync();
+        TempData["Success"] = "Đã lưu đánh giá kỹ thuật. Xem bảng so sánh & xếp hạng để đề xuất NCC.";
+        return RedirectToAction(nameof(Compare), new { id = r.Id });
     }
 
     /// <summary>Thư mời báo giá (in / gửi NCC)</summary>
@@ -147,7 +260,8 @@ public class RfqsController : ProcControllerBase
         }
         return View(new QuoteEntryViewModel
         {
-            RfqVendorId = rv.Id, RfqVendor = rv, LeadTimeDays = rv.LeadTimeDays, PaymentTerms = rv.PaymentTerms ?? rv.Vendor?.PaymentTerms,
+            RfqVendorId = rv.Id, RfqVendor = rv, LeadTimeDays = rv.LeadTimeDays,
+            ReceivedDate = rv.RespondedAt?.Date ?? (DateTime.Today > rv.Rfq.Deadline ? rv.Rfq.Deadline : DateTime.Today), PaymentTerms = rv.PaymentTerms ?? rv.Vendor?.PaymentTerms,
             Warranty = rv.Warranty, VatPercent = Math.Round(rv.VatPercent, 0), Note = rv.Note,
             Lines = rv.Rfq.Lines.OrderBy(l => l.SortOrder).Select(l => new QuoteEntryLine
             {
@@ -167,6 +281,10 @@ public class RfqsController : ProcControllerBase
         if (rv == null) return NotFound();
         if (rv.Rfq!.Status != RfqStatus.Open) return BadRequest();
         if (vm.Lines.All(l => l.UnitPrice <= 0)) ModelState.AddModelError(string.Empty, "Nhập đơn giá cho ít nhất một dòng.");
+        if (vm.ReceivedDate.Date > rv.Rfq.Deadline)
+            ModelState.AddModelError(nameof(vm.ReceivedDate), $"Báo giá gửi sau hạn {rv.Rfq.Deadline.ToDate()} – không được chấp nhận.");
+        if (vm.ReceivedDate.Date > DateTime.Today || vm.ReceivedDate.Date < rv.Rfq.IssueDate)
+            ModelState.AddModelError(nameof(vm.ReceivedDate), "Ngày gửi báo giá phải từ ngày phát hành RFQ đến hôm nay.");
         if (!ModelState.IsValid)
         {
             vm.RfqVendor = await Db.RfqVendors.Include(x => x.Vendor).Include(x => x.Rfq).FirstOrDefaultAsync(x => x.Id == vm.RfqVendorId);
@@ -183,7 +301,7 @@ public class RfqsController : ProcControllerBase
         }
         rv.TotalAmount = rv.QuoteLines.Sum(q => q.Amount);
         rv.Responded = true;
-        rv.RespondedAt = DateTime.Now;
+        rv.RespondedAt = vm.ReceivedDate.Date;
         rv.LeadTimeDays = vm.LeadTimeDays; rv.PaymentTerms = vm.PaymentTerms; rv.Warranty = vm.Warranty;
         rv.VatPercent = vm.VatPercent; rv.Note = vm.Note;
         await Db.SaveChangesAsync();
@@ -191,20 +309,26 @@ public class RfqsController : ProcControllerBase
         return RedirectToAction(nameof(Details), new { id = rv.RfqId });
     }
 
-    /// <summary>Bảng so sánh báo giá</summary>
+    /// <summary>Bảng so sánh & xếp hạng báo giá – chỉ xem được sau khi mở báo giá (niêm phong)</summary>
     public async Task<IActionResult> Compare(int id)
     {
         var r = await LoadRfqAsync(id);
         if (r == null) return NotFound();
-        var vm = new ComparisonViewModel { Rfq = r, Responded = r.Vendors.Where(v => v.Responded).OrderBy(v => v.TotalAmount).ToList() };
+        if (!RfqEvaluation.IsUnsealed(r))
+        {
+            TempData["Error"] = "Báo giá đang niêm phong – chỉ so sánh được sau khi mở báo giá.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        var vm = new ComparisonViewModel { Rfq = r, MinValidQuotes = Settings.MinValidQuotes, Scores = RfqEvaluation.Evaluate(r) };
+        vm.Responded = vm.Scores.Select(s => s.Quote).ToList();
+        var validIds = vm.Scores.Where(s => s.Valid).Select(s => s.Quote.Id).ToHashSet();
         foreach (var line in r.Lines)
         {
-            var prices = vm.Responded.SelectMany(v => v.QuoteLines).Where(q => q.RfqLineId == line.Id && q.UnitPrice > 0).Select(q => q.UnitPrice).ToList();
+            var prices = vm.Responded.Where(v => validIds.Contains(v.Id)).SelectMany(v => v.QuoteLines)
+                .Where(q => q.RfqLineId == line.Id && q.UnitPrice > 0).Select(q => q.UnitPrice).ToList();
             if (prices.Count > 0) vm.LowestByLine[line.Id] = prices.Min();
         }
-        // Chỉ xét NCC báo giá đủ tất cả các dòng cho "giá tổng thấp nhất"
-        vm.LowestTotalVendorId = vm.Responded.Where(v => v.QuoteLines.Count(q => q.UnitPrice > 0) == r.Lines.Count)
-            .OrderBy(v => v.TotalAmount).ThenByDescending(v => v.Vendor?.Rating ?? 0).FirstOrDefault()?.VendorId;
+        vm.LowestTotalVendorId = vm.Scores.FirstOrDefault(s => s.Rank == 1)?.Quote.VendorId;
         if (r.PurchaseRequestId.HasValue)
             vm.ReferenceTotal = (await Db.PurchaseRequests.FindAsync(r.PurchaseRequestId))?.EstimatedTotal ?? 0;
         else
@@ -212,34 +336,115 @@ public class RfqsController : ProcControllerBase
         return View(vm);
     }
 
-    /// <summary>Chọn NCC trúng → đóng RFQ → sinh PO nháp theo giá đã báo</summary>
+    /// <summary>
+    /// Đề xuất NCC trúng. Chỉ chọn trong các báo giá hợp lệ (đủ dòng, đạt kỹ thuật).
+    /// Không chọn hạng 1 hoặc số báo giá hợp lệ ít hơn mức tối thiểu → trình Giám đốc duyệt kết quả;
+    /// ngược lại kết quả được duyệt ngay và sinh PO nháp.
+    /// </summary>
     [Authorize(Roles = AppRoles.Purchasing)]
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Award(int id, int vendorId, string? reason)
     {
         var r = await LoadRfqAsync(id, track: true);
         if (r == null) return NotFound();
-        if (r.Status != RfqStatus.Open) return BadRequest();
-        var rv = r.Vendors.FirstOrDefault(v => v.VendorId == vendorId && v.Responded);
-        if (rv == null) return BadRequest();
-        if (string.IsNullOrWhiteSpace(reason))
+        if (r.Status != RfqStatus.Opened) return BadRequest();
+        IActionResult Fail(string msg) { TempData["Error"] = msg; return RedirectToAction(nameof(Compare), new { id }); }
+        if (string.IsNullOrWhiteSpace(reason)) return Fail("Nhập lý do chọn nhà cung cấp.");
+        if (!RfqEvaluation.AllTechnicallyEvaluated(r)) return Fail("Đánh giá kỹ thuật tất cả báo giá trước khi đề xuất kết quả.");
+        var scores = RfqEvaluation.Evaluate(r);
+        var chosen = scores.FirstOrDefault(s => s.Quote.VendorId == vendorId);
+        if (chosen == null || !chosen.Valid) return Fail("Chỉ chọn được báo giá hợp lệ (chào đủ các dòng và đạt kỹ thuật).");
+
+        var approvalReasons = new List<string>();
+        if (chosen.Rank != 1) approvalReasons.Add($"Không chọn NCC xếp hạng 1 (chọn hạng {chosen.Rank})");
+        var validCount = scores.Count(s => s.Valid);
+        if (validCount < Settings.MinValidQuotes) approvalReasons.Add($"Chỉ có {validCount}/{Settings.MinValidQuotes} báo giá hợp lệ");
+
+        r.ProposedVendorId = vendorId;
+        r.AwardReason = reason.Trim();
+        Log(DocType.RFQ, id, $"Đề xuất NCC trúng: {chosen.Quote.Vendor!.Name} (hạng {chosen.Rank}, {chosen.Quote.GrandTotal.ToMoney()} đ gồm VAT)", reason);
+
+        if (approvalReasons.Count > 0 && !User.IsAdmin())
         {
-            TempData["Error"] = "Nhập lý do chọn nhà cung cấp.";
-            return RedirectToAction(nameof(Compare), new { id });
+            r.Status = RfqStatus.PendingApproval;
+            r.ResultApprovalReason = string.Join("; ", approvalReasons);
+            Log(DocType.RFQ, id, "Trình Giám đốc duyệt kết quả", r.ResultApprovalReason);
+            await Db.SaveChangesAsync();
+            TempData["Success"] = $"Đã đề xuất {chosen.Quote.Vendor.Name}. Kết quả cần Giám đốc duyệt: {r.ResultApprovalReason}.";
+            return RedirectToAction(nameof(Details), new { id });
         }
-        var notLowest = r.Vendors.Where(v => v.Responded && v.QuoteLines.Count(q => q.UnitPrice > 0) == r.Lines.Count)
-            .Any(v => v.TotalAmount < rv.TotalAmount);
+        r.ResultApprovalReason = approvalReasons.Count > 0 ? string.Join("; ", approvalReasons) : null;
+        Log(DocType.RFQ, id, approvalReasons.Count > 0 ? "Quản trị duyệt kết quả" : "Duyệt kết quả (NCC hạng 1, đủ báo giá hợp lệ)");
+        var po = await FinalizeAwardAsync(r);
+        TempData["Success"] = $"Đã chọn {chosen.Quote.Vendor.Name} và tạo đơn mua hàng nháp {po.Number}. Kiểm tra rồi trình duyệt / gửi NCC.";
+        return RedirectToAction("Details", "PurchaseOrders", new { id = po.Id });
+    }
 
+    /// <summary>Giám đốc duyệt / trả lại kết quả lựa chọn NCC</summary>
+    [Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> DecideResult(int id, bool approve, string? comment, string? returnUrl)
+    {
+        var r = await LoadRfqAsync(id, track: true);
+        if (r == null) return NotFound();
+        if (r.Status != RfqStatus.PendingApproval || r.ProposedVendorId == null) return BadRequest();
+        if (!approve && string.IsNullOrWhiteSpace(comment))
+        {
+            TempData["Error"] = "Nhập lý do trả lại.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        IActionResult Back() => !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
+        if (!approve)
+        {
+            Log(DocType.RFQ, id, "Giám đốc trả lại kết quả", comment);
+            r.Status = RfqStatus.Opened;
+            r.ProposedVendorId = null;
+            r.ResultApprovalReason = null;
+            await Db.SaveChangesAsync();
+            TempData["Success"] = $"Đã trả lại kết quả {r.Number} để đánh giá lại.";
+            return Back();
+        }
+        Log(DocType.RFQ, id, "Giám đốc duyệt kết quả", comment);
+        var po = await FinalizeAwardAsync(r);
+        TempData["Success"] = $"Đã duyệt kết quả {r.Number}, tạo đơn mua hàng nháp {po.Number}.";
+        return Back();
+    }
+
+    /// <summary>Biên bản mở & đánh giá báo giá (in)</summary>
+    public async Task<IActionResult> Report(int id)
+    {
+        var r = await LoadRfqAsync(id);
+        if (r == null) return NotFound();
+        if (!RfqEvaluation.IsUnsealed(r)) return RedirectToAction(nameof(Details), new { id });
+        ViewBag.Scores = RfqEvaluation.Evaluate(r);
+        ViewBag.History = await HistoryAsync(DocType.RFQ, id);
+        ViewBag.MinValidQuotes = Settings.MinValidQuotes;
+        return View(r);
+    }
+
+    /// <summary>Thông báo kết quả lựa chọn NCC gửi từng NCC tham dự (in)</summary>
+    public async Task<IActionResult> ResultNotice(int id, int vendorId)
+    {
+        var r = await LoadRfqAsync(id);
+        if (r == null) return NotFound();
+        var rv = r.Vendors.FirstOrDefault(v => v.VendorId == vendorId && v.Responded);
+        if (r.Status != RfqStatus.Awarded || rv == null) return NotFound();
+        ViewBag.Quote = rv;
+        ViewBag.Score = RfqEvaluation.Evaluate(r).FirstOrDefault(s => s.Quote.VendorId == vendorId);
+        return View(r);
+    }
+
+    /// <summary>Chốt kết quả: RFQ → Đã chọn NCC, sinh PO nháp theo giá đã chào</summary>
+    private async Task<PurchaseOrder> FinalizeAwardAsync(Rfq r)
+    {
+        var rv = r.Vendors.First(v => v.VendorId == r.ProposedVendorId);
         r.Status = RfqStatus.Awarded;
-        r.AwardedVendorId = vendorId;
-        r.AwardReason = reason;
-        Log(DocType.RFQ, id, "Chọn NCC trúng: " + rv.Vendor!.Name + (notLowest ? " (không phải giá thấp nhất)" : ""), reason);
-
+        r.AwardedVendorId = rv.VendorId;
         var po = new PurchaseOrder
         {
             Number = await DocNumbers.NextAsync(Db.PurchaseOrders.Select(p => p.Number), "PO"),
-            VendorId = vendorId, RfqId = r.Id, PurchaseRequestId = r.PurchaseRequestId, BuyerId = Me,
-            DeliveryDate = DateTime.Today.AddDays(rv.LeadTimeDays ?? 7), PaymentTerms = rv.PaymentTerms ?? rv.Vendor.PaymentTerms,
+            VendorId = rv.VendorId, RfqId = r.Id, PurchaseRequestId = r.PurchaseRequestId, BuyerId = r.BuyerId, Method = ProcurementMethod.CompetitiveQuotation,
+            DeliveryDate = DateTime.Today.AddDays(rv.LeadTimeDays ?? 7), PaymentTerms = rv.PaymentTerms ?? rv.Vendor?.PaymentTerms,
             DeliveryAddress = Settings.DefaultDeliveryAddress, VatPercent = rv.VatPercent,
             Notes = string.IsNullOrEmpty(rv.Warranty) ? null : "Bảo hành: " + rv.Warranty, CreatedAt = DateTime.Now
         };
@@ -255,9 +460,7 @@ public class RfqsController : ProcControllerBase
         await Db.SaveChangesAsync();
         Log(DocType.PO, po.Id, $"Tạo từ {r.Number}");
         await Db.SaveChangesAsync();
-
-        TempData["Success"] = $"Đã chọn {rv.Vendor.Name} và tạo đơn mua hàng nháp {po.Number}. Kiểm tra rồi trình duyệt / gửi NCC.";
-        return RedirectToAction("Details", "PurchaseOrders", new { id = po.Id });
+        return po;
     }
 
     [Authorize(Roles = AppRoles.Purchasing)]
@@ -276,7 +479,7 @@ public class RfqsController : ProcControllerBase
 
     private async Task<Rfq?> LoadRfqAsync(int id, bool track = false)
     {
-        var q = Db.Rfqs.Include(r => r.Buyer).Include(r => r.PurchaseRequest).Include(r => r.AwardedVendor)
+        var q = Db.Rfqs.Include(r => r.Buyer).Include(r => r.PurchaseRequest).Include(r => r.AwardedVendor).Include(r => r.ProposedVendor)
             .Include(r => r.Lines).ThenInclude(l => l.Item)
             .Include(r => r.Vendors).ThenInclude(v => v.Vendor)
             .Include(r => r.Vendors).ThenInclude(v => v.QuoteLines);

@@ -1,0 +1,59 @@
+@model List<ReferencePoCandidate>
+@{
+    var pr = (PurchaseRequest)ViewBag.PurchaseRequest;
+    int months = ViewBag.Months;
+    decimal maxPercent = ViewBag.MaxPercent;
+    ViewData["Title"] = $"Mua sắm trực tiếp – {pr.Number}";
+    var valid = Model.Where(c => c.CoversRequest).ToList();
+}
+<div class="alert alert-info py-2">
+    Chọn PO làm căn cứ mua sắm trực tiếp cho đề nghị <b>@pr.Number</b> – @pr.Title.
+    Điều kiện: đã nhận đủ hàng, đặt trong <b>@months tháng</b>, NCC còn được phê duyệt, chứa toàn bộ mặt hàng của đề nghị
+    và tổng khối lượng mua trực tiếp không vượt <b>@maxPercent.ToString("0")%</b> khối lượng của PO đó.
+</div>
+
+@if (valid.Count == 0)
+{
+    <div class="alert alert-warning">
+        Không có PO nào đủ điều kiện. Quay lại đề nghị và chọn hình thức <b>Chào hàng cạnh tranh</b>.
+        <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@pr.Id" class="alert-link">Về đề nghị @pr.Number</a>
+    </div>
+}
+
+@foreach (var c in Model)
+{
+    <div class="card mb-3 @(c.CoversRequest ? "border-success" : "opacity-75")">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><b>@c.Po.Number</b> · @c.Po.Vendor?.Name <span class="stars">@c.Po.Vendor?.Rating.Stars()</span> · đặt ngày @c.Po.OrderDate.ToDate()</span>
+            @if (c.CoversRequest)
+            {
+                <a class="btn btn-sm btn-success" asp-action="Create" asp-route-prId="@pr.Id" asp-route-refPoId="@c.Po.Id">Chọn làm căn cứ</a>
+            }
+            else { <span class="badge bg-secondary">Không đủ điều kiện</span> }
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Hàng hóa đề nghị</th><th class="money">SL cần</th><th class="money">Còn được mua</th><th class="money">Đơn giá tham chiếu</th><th class="money">Đơn giá dự toán</th></tr></thead>
+                <tbody>
+                @foreach (var l in pr.Lines.OrderBy(x => x.SortOrder))
+                {
+                    var has = l.ItemId.HasValue && c.RemainingByItem.ContainsKey(l.ItemId.Value);
+                    <tr>
+                        <td>@l.Description</td>
+                        <td class="money">@l.Quantity.ToQty()</td>
+                        @if (has)
+                        {
+                            var rem = c.RemainingByItem[l.ItemId!.Value];
+                            <td class="money @(rem < l.Quantity ? "text-danger" : "")">@rem.ToQty()</td>
+                            <td class="money">@c.PriceByItem[l.ItemId.Value].ToMoney()</td>
+                        }
+                        else { <td colspan="2" class="text-danger text-end">Không có trong PO này</td> }
+                        <td class="money">@l.EstimatedPrice.ToMoney()</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+<a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@pr.Id" class="btn btn-light">Quay lại</a>

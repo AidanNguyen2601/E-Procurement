@@ -8,7 +8,10 @@
     <div asp-validation-summary="All" class="text-danger"></div>
     <div class="card mb-3"><div class="card-body row g-3">
         <div class="col-12 small text-muted">@Model.RfqVendor?.Rfq?.Number – @Model.RfqVendor?.Rfq?.Title. Nhập theo báo giá chính thức NCC gửi (email / văn bản); để trống đơn giá nếu NCC không chào dòng đó.</div>
+        <div class="col-md-3"><label asp-for="ReceivedDate" class="form-label"></label><input asp-for="ReceivedDate" class="form-control" />
+            <div class="small text-muted">Hạn nộp: hết ngày @Model.RfqVendor?.Rfq?.Deadline.ToDate()</div><span asp-validation-for="ReceivedDate" class="text-danger small"></span></div>
         <div class="col-md-2"><label asp-for="LeadTimeDays" class="form-label"></label><input asp-for="LeadTimeDays" class="form-control" /></div>
+        <div class="col-md-7"></div>
         <div class="col-md-4"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" /></div>
         <div class="col-md-3"><label asp-for="Warranty" class="form-label"></label><input asp-for="Warranty" class="form-control" /></div>
         <div class="col-md-3"><label asp-for="VatPercent" class="form-label"></label><select asp-for="VatPercent" class="form-select"><option value="0">0%</option><option value="5">5%</option><option value="8">8%</option><option value="10">10%</option></select></div>

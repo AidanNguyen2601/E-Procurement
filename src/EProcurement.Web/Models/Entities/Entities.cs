@@ -240,6 +240,13 @@ public class PurchaseRequest
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime? SubmittedAt { get; set; }
 
+    [Display(Name = "Hình thức lựa chọn NCC")]
+    public ProcurementMethod? Method { get; set; }
+
+    [StringLength(1000)]
+    [Display(Name = "Lý do chọn hình thức")]
+    public string? MethodReason { get; set; }
+
     public ICollection<PurchaseRequestLine> Lines { get; set; } = new List<PurchaseRequestLine>();
 
     public void Recalculate()
@@ -310,6 +317,22 @@ public class Rfq
     [Display(Name = "Lý do chọn")]
     public string? AwardReason { get; set; }
 
+    // ----- Đánh giá -----
+    [Display(Name = "Phương pháp đánh giá")]
+    public EvaluationMethod EvaluationMethod { get; set; } = EvaluationMethod.LowestPrice;
+    [Range(0, 100)][Display(Name = "Trọng số giá (%)")] public int PriceWeight { get; set; } = 70;
+    [Range(0, 100)][Display(Name = "Trọng số kỹ thuật (%)")] public int TechnicalWeight { get; set; } = 20;
+    [Range(0, 100)][Display(Name = "Trọng số tiến độ (%)")] public int DeliveryWeight { get; set; } = 10;
+
+    /// <summary>Thời điểm mở báo giá. Trước khi mở, giá chào được niêm phong (không xem / so sánh được)</summary>
+    [Display(Name = "Mở báo giá lúc")] public DateTime? OpenedAt { get; set; }
+
+    /// <summary>NCC được đề xuất trúng, đang chờ duyệt kết quả</summary>
+    [Display(Name = "NCC đề xuất")] public int? ProposedVendorId { get; set; }
+    public Vendor? ProposedVendor { get; set; }
+    /// <summary>Lý do kết quả phải trình duyệt (không chọn hạng 1, thiếu báo giá hợp lệ…)</summary>
+    [StringLength(1000)][Display(Name = "Lý do trình duyệt")] public string? ResultApprovalReason { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     public ICollection<RfqLine> Lines { get; set; } = new List<RfqLine>();
@@ -346,6 +369,14 @@ public class RfqVendor
     [Column(TypeName = "decimal(5,2)")][Display(Name = "VAT (%)")] public decimal VatPercent { get; set; } = 10;
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Tổng trước thuế")] public decimal TotalAmount { get; set; }
     [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+
+    // ----- Đánh giá kỹ thuật (sau khi mở báo giá) -----
+    /// <summary>null = chưa đánh giá; false = loại, không xét giá</summary>
+    [Display(Name = "Đạt kỹ thuật")] public bool? TechnicalPass { get; set; }
+    [Range(0, 100)][Display(Name = "Điểm kỹ thuật")] public int? TechnicalScore { get; set; }
+    [StringLength(500)][Display(Name = "Nhận xét kỹ thuật")] public string? TechnicalNote { get; set; }
+
+    [NotMapped] public decimal GrandTotal => Math.Round(TotalAmount * (1 + VatPercent / 100m), 0);
 
     public ICollection<VendorQuoteLine> QuoteLines { get; set; } = new List<VendorQuoteLine>();
 }
@@ -385,6 +416,16 @@ public class PurchaseOrder
 
     [Display(Name = "Người lập")] public int BuyerId { get; set; }
     public AppUser? Buyer { get; set; }
+
+    [Display(Name = "Hình thức")] public ProcurementMethod? Method { get; set; }
+    /// <summary>Mua sắm trực tiếp: PO gốc (đã nhận đủ) làm căn cứ giá và khối lượng</summary>
+    [Display(Name = "PO tham chiếu")] public int? ReferencePoId { get; set; }
+    public PurchaseOrder? ReferencePo { get; set; }
+    /// <summary>Mua sắm trực tiếp: lý do khi đơn giá cao hơn PO tham chiếu (bắt buộc Giám đốc duyệt)</summary>
+    [StringLength(1000)][Display(Name = "Lý do vượt giá tham chiếu")] public string? PriceDeviationReason { get; set; }
+    /// <summary>Chỉ định thầu: tờ trình đã được Giám đốc duyệt</summary>
+    [Display(Name = "Tờ trình chỉ định")] public int? DirectAwardId { get; set; }
+    public DirectAward? DirectAward { get; set; }
 
     [DataType(DataType.Date)][Display(Name = "Ngày đặt hàng")] public DateTime OrderDate { get; set; } = DateTime.Today;
     [DataType(DataType.Date)][Display(Name = "Ngày giao hàng")] public DateTime DeliveryDate { get; set; } = DateTime.Today.AddDays(7);
@@ -431,6 +472,93 @@ public class PurchaseOrderLine
     public int SortOrder { get; set; }
 
     [NotMapped] public decimal RemainingQuantity => Math.Max(0, Quantity - ReceivedQuantity);
+}
+
+// =====================================================================
+//  CHỈ ĐỊNH THẦU
+// =====================================================================
+/// <summary>Tờ trình chỉ định thầu: chọn 1 NCC không qua cạnh tranh, có căn cứ + thương thảo giá, luôn cần Giám đốc duyệt</summary>
+public class DirectAward
+{
+    public int Id { get; set; }
+    [Required, StringLength(30)][Display(Name = "Số tờ trình")] public string Number { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Nhập tiêu đề"), StringLength(200)][Display(Name = "Tiêu đề")] public string Title { get; set; } = string.Empty;
+
+    [Display(Name = "Từ đề nghị")] public int PurchaseRequestId { get; set; }
+    public PurchaseRequest? PurchaseRequest { get; set; }
+    [Display(Name = "Nhà cung cấp được chỉ định")] public int VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+    [Display(Name = "Người lập")] public int BuyerId { get; set; }
+    public AppUser? Buyer { get; set; }
+
+    [Display(Name = "Căn cứ chỉ định")] public DirectAwardReason Reason { get; set; } = DirectAwardReason.SoleSource;
+    [Required(ErrorMessage = "Thuyết minh lý do chỉ định"), StringLength(2000)][Display(Name = "Thuyết minh")] public string Justification { get; set; } = string.Empty;
+    [Display(Name = "Trạng thái")] public DirectAwardStatus Status { get; set; } = DirectAwardStatus.Draft;
+
+    // ----- Thương thảo -----
+    [DataType(DataType.Date)][Display(Name = "Ngày thương thảo")] public DateTime? NegotiationDate { get; set; }
+    [StringLength(2000)][Display(Name = "Nội dung thương thảo")] public string? NegotiationNote { get; set; }
+    [Range(0, 365)][Display(Name = "Thời gian giao (ngày)")] public int? LeadTimeDays { get; set; }
+    [StringLength(200)][Display(Name = "Điều khoản thanh toán")] public string? PaymentTerms { get; set; }
+    [StringLength(200)][Display(Name = "Bảo hành")] public string? Warranty { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "VAT (%)")] public decimal VatPercent { get; set; } = 10;
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Giá NCC chào (trước VAT)")] public decimal ProposedTotal { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Giá sau thương thảo (trước VAT)")] public decimal NegotiatedTotal { get; set; }
+
+    /// <summary>Cảnh báo nghi chia nhỏ gói để né hạn mức (ghi lại lúc trình duyệt)</summary>
+    [StringLength(1000)][Display(Name = "Cảnh báo chia nhỏ gói")] public string? SplitWarning { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+
+    public ICollection<DirectAwardLine> Lines { get; set; } = new List<DirectAwardLine>();
+
+    [NotMapped] public decimal NegotiatedGrandTotal => Math.Round(NegotiatedTotal * (1 + VatPercent / 100m), 0);
+    [NotMapped] public decimal SavingPercent => ProposedTotal == 0 ? 0 : Math.Round((ProposedTotal - NegotiatedTotal) * 100 / ProposedTotal, 1);
+
+    public void Recalculate()
+    {
+        ProposedTotal = Lines.Sum(l => Math.Round(l.Quantity * l.ProposedPrice, 0));
+        NegotiatedTotal = Lines.Sum(l => Math.Round(l.Quantity * l.NegotiatedPrice, 0));
+    }
+}
+
+public class DirectAwardLine
+{
+    public int Id { get; set; }
+    public int DirectAwardId { get; set; }
+    public DirectAward? DirectAward { get; set; }
+    public int? ItemId { get; set; }
+    public Item? Item { get; set; }
+    [Required, StringLength(300)] public string Description { get; set; } = string.Empty;
+    [StringLength(30)] public string? Unit { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal Quantity { get; set; } = 1;
+    /// <summary>Đơn giá dự toán trên PR</summary>
+    [Column(TypeName = "decimal(18,0)")] public decimal EstimatedPrice { get; set; }
+    /// <summary>Đơn giá NCC chào ban đầu</summary>
+    [Column(TypeName = "decimal(18,0)")] public decimal ProposedPrice { get; set; }
+    /// <summary>Đơn giá sau thương thảo (≤ giá chào)</summary>
+    [Column(TypeName = "decimal(18,0)")] public decimal NegotiatedPrice { get; set; }
+    public int SortOrder { get; set; }
+}
+
+// =====================================================================
+//  FILE ĐÍNH KÈM (dùng chung cho mọi chứng từ)
+// =====================================================================
+public class Attachment
+{
+    public int Id { get; set; }
+    public DocType DocumentType { get; set; }
+    public int DocumentId { get; set; }
+    [Required, StringLength(260)] public string FileName { get; set; } = string.Empty;
+    [Required, StringLength(100)] public string ContentType { get; set; } = "application/octet-stream";
+    public long Size { get; set; }
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+    [StringLength(300)] public string? Note { get; set; }
+    public int UploadedById { get; set; }
+    public AppUser? UploadedBy { get; set; }
+    public DateTime UploadedAt { get; set; } = DateTime.Now;
 }
 
 // =====================================================================

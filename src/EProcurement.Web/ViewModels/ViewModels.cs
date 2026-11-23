@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using EProcurement.Web.Models.Entities;
+using EProcurement.Web.Infrastructure;
 
 namespace EProcurement.Web.ViewModels;
 
@@ -76,6 +77,9 @@ public class PoFormViewModel
     [StringLength(200)][Display(Name = "Điều khoản thanh toán")] public string? PaymentTerms { get; set; }
     [Range(0, 100)][Display(Name = "VAT (%)")] public decimal VatPercent { get; set; } = 10;
     [StringLength(2000)][Display(Name = "Ghi chú / điều khoản khác")] public string? Notes { get; set; }
+    /// <summary>Mua sắm trực tiếp: PO tham chiếu (chỉ dùng khi tạo mới; khi sửa lấy theo PO đã lưu)</summary>
+    public int? ReferencePoId { get; set; }
+    [StringLength(1000)][Display(Name = "Lý do đơn giá cao hơn PO tham chiếu")] public string? PriceDeviationReason { get; set; }
     public List<LineInput> Lines { get; set; } = new();
 }
 
@@ -86,6 +90,10 @@ public class RfqCreateViewModel
     [Required(ErrorMessage = "Nhập tiêu đề"), StringLength(200)][Display(Name = "Tiêu đề")] public string Title { get; set; } = string.Empty;
     [DataType(DataType.Date)][Display(Name = "Hạn nộp báo giá")] public DateTime Deadline { get; set; } = DateTime.Today.AddDays(7);
     [StringLength(2000)][Display(Name = "Yêu cầu / điều kiện")] public string? Requirements { get; set; } = "Hàng mới 100%, có CO/CQ. Giá đã bao gồm vận chuyển đến kho. Ghi rõ thời gian giao hàng và bảo hành.";
+    [Display(Name = "Phương pháp đánh giá")] public EvaluationMethod EvaluationMethod { get; set; } = EvaluationMethod.LowestPrice;
+    [Range(0, 100)][Display(Name = "Trọng số giá (%)")] public int PriceWeight { get; set; } = 70;
+    [Range(0, 100)][Display(Name = "Trọng số kỹ thuật (%)")] public int TechnicalWeight { get; set; } = 20;
+    [Range(0, 100)][Display(Name = "Trọng số tiến độ (%)")] public int DeliveryWeight { get; set; } = 10;
     [Display(Name = "Mời nhà cung cấp")] public List<int> VendorIds { get; set; } = new();
     public List<LineInput> Lines { get; set; } = new();
     public List<Vendor> SuggestedVendors { get; set; } = new();
@@ -96,6 +104,8 @@ public class QuoteEntryViewModel
 {
     public int RfqVendorId { get; set; }
     public RfqVendor? RfqVendor { get; set; }
+    /// <summary>Ngày NCC gửi báo giá (theo email / dấu bưu điện) – phải trong hạn nộp</summary>
+    [DataType(DataType.Date)][Display(Name = "Ngày NCC gửi báo giá")] public DateTime ReceivedDate { get; set; } = DateTime.Today;
     [Range(0, 365)][Display(Name = "Thời gian giao (ngày)")] public int? LeadTimeDays { get; set; }
     [StringLength(200)][Display(Name = "Điều khoản thanh toán")] public string? PaymentTerms { get; set; }
     [StringLength(200)][Display(Name = "Bảo hành")] public string? Warranty { get; set; }
@@ -122,6 +132,26 @@ public class ComparisonViewModel
     public Dictionary<int, decimal> LowestByLine { get; set; } = new();
     public int? LowestTotalVendorId { get; set; }
     public decimal ReferenceTotal { get; set; }
+    /// <summary>Kết quả đánh giá, xếp hạng (theo thứ tự hạng)</summary>
+    public List<QuoteScore> Scores { get; set; } = new();
+    public int MinValidQuotes { get; set; }
+}
+
+/// <summary>Đánh giá kỹ thuật các báo giá sau khi mở</summary>
+public class TechnicalEvaluationViewModel
+{
+    public int RfqId { get; set; }
+    public Rfq? Rfq { get; set; }
+    public List<TechnicalEvaluationLine> Lines { get; set; } = new();
+}
+
+public class TechnicalEvaluationLine
+{
+    public int RfqVendorId { get; set; }
+    public string VendorName { get; set; } = string.Empty;
+    public bool? Pass { get; set; }
+    [Range(0, 100, ErrorMessage = "Điểm kỹ thuật từ 0 đến 100")] public int? Score { get; set; }
+    [StringLength(500)] public string? Note { get; set; }
 }
 
 public class ReceiptFormViewModel
@@ -150,6 +180,8 @@ public class ApprovalInboxViewModel
 {
     public List<PurchaseRequest> Requests { get; set; } = new();
     public List<PurchaseOrder> Orders { get; set; } = new();
+    public List<Rfq> Rfqs { get; set; } = new();
+    public List<DirectAward> DirectAwards { get; set; } = new();
 }
 
 public class UserFormViewModel
@@ -166,3 +198,40 @@ public class UserFormViewModel
     [Required][Display(Name = "Vai trò")] public string Role { get; set; } = AppRoles.Requester;
     [Display(Name = "Kích hoạt")] public bool IsActive { get; set; } = true;
 }
+
+public class DirectAwardFormViewModel
+{
+    public int Id { get; set; }
+    [Display(Name = "Số tờ trình")] public string Number { get; set; } = string.Empty;
+    public int PurchaseRequestId { get; set; }
+    public PurchaseRequest? PurchaseRequest { get; set; }
+    [Required(ErrorMessage = "Nhập tiêu đề"), StringLength(200)][Display(Name = "Tiêu đề")] public string Title { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Chọn nhà cung cấp")][Display(Name = "Nhà cung cấp được chỉ định")] public int? VendorId { get; set; }
+    [Display(Name = "Căn cứ chỉ định")] public DirectAwardReason Reason { get; set; } = DirectAwardReason.SoleSource;
+    [Required(ErrorMessage = "Thuyết minh lý do chỉ định"), StringLength(2000)][Display(Name = "Thuyết minh (vì sao không thể / không cần cạnh tranh)")]
+    public string Justification { get; set; } = string.Empty;
+    [DataType(DataType.Date)][Display(Name = "Ngày thương thảo")] public DateTime? NegotiationDate { get; set; }
+    [StringLength(2000)][Display(Name = "Nội dung thương thảo")] public string? NegotiationNote { get; set; }
+    [Range(0, 365)][Display(Name = "Thời gian giao (ngày)")] public int? LeadTimeDays { get; set; }
+    [StringLength(200)][Display(Name = "Điều khoản thanh toán")] public string? PaymentTerms { get; set; }
+    [StringLength(200)][Display(Name = "Bảo hành")] public string? Warranty { get; set; }
+    [Range(0, 100)][Display(Name = "VAT (%)")] public decimal VatPercent { get; set; } = 10;
+    public List<DirectAwardLineInput> Lines { get; set; } = new();
+}
+
+public class DirectAwardLineInput
+{
+    public int? ItemId { get; set; }
+    [StringLength(300)] public string Description { get; set; } = string.Empty;
+    [StringLength(30)] public string? Unit { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal EstimatedPrice { get; set; }
+    [Range(0, 100_000_000_000)] public decimal ProposedPrice { get; set; }
+    [Range(0, 100_000_000_000)] public decimal NegotiatedPrice { get; set; }
+}
+
+/// <summary>File đính kèm hiển thị (không nạp nội dung file)</summary>
+public record AttachmentInfo(int Id, string FileName, long Size, string? Note, string UploadedBy, DateTime UploadedAt);
+
+/// <summary>Model cho partial _Attachments</summary>
+public record AttachmentPanel(DocType DocumentType, int DocumentId, bool CanEdit, List<AttachmentInfo> Files, string ReturnUrl);

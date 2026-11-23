@@ -1,0 +1,62 @@
+@model DirectAward
+@{
+    ViewData["Title"] = $"Tờ trình {Model.Number}";
+    var history = (List<ApprovalHistory>)ViewBag.History;
+    var files = (List<AttachmentInfo>)ViewBag.Files;
+    var approval = history.LastOrDefault(h => h.Action.StartsWith("Giám đốc duyệt"));
+}
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+
+<div class="card paper mb-4"><div class="card-body p-4">
+    <div class="text-center mb-3"><h4 class="mb-0">TỜ TRÌNH</h4><div>V/v phê duyệt chỉ định nhà cung cấp</div>
+        <div class="text-muted">Số: @Model.Number · Ngày: @(Model.SubmittedAt ?? Model.CreatedAt).ToDate()</div></div>
+    <p>Kính gửi: <b>Ban Giám đốc</b></p>
+    <p>Căn cứ đề nghị mua hàng số <b>@Model.PurchaseRequest?.Number</b> của @Model.PurchaseRequest?.Department
+        (@Model.PurchaseRequest?.Requester?.FullName) về việc <i>@Model.PurchaseRequest?.Title</i>, dự toán @Model.PurchaseRequest?.EstimatedTotal.ToMoney() đ,
+        bộ phận Mua hàng kính trình Ban Giám đốc phê duyệt chỉ định nhà cung cấp như sau:</p>
+    <ol>
+        <li><b>Nhà cung cấp được chỉ định:</b> @Model.Vendor?.Name – MST @Model.Vendor?.TaxCode – @Model.Vendor?.Address</li>
+        <li><b>Căn cứ chỉ định:</b> @Model.Reason.GetDisplayName()</li>
+        <li><b>Thuyết minh:</b><div class="pre">@Model.Justification</div></li>
+        <li><b>Giá trị đề nghị phê duyệt:</b> @Model.NegotiatedTotal.ToMoney() đ trước VAT; @Model.NegotiatedGrandTotal.ToMoney() đ gồm VAT @Model.VatPercent.ToString("0.##")%
+            (giá NCC chào ban đầu @Model.ProposedTotal.ToMoney() đ, giảm @Model.SavingPercent.ToString("0.#")% sau thương thảo).</li>
+        <li><b>Tiến độ / bảo hành / thanh toán:</b> @(Model.LeadTimeDays.HasValue ? Model.LeadTimeDays + " ngày" : "—") · @Model.Warranty · @Model.PaymentTerms</li>
+        @if (files.Any()) { <li><b>Tài liệu kèm theo:</b> @string.Join("; ", files.Select(f => f.FileName + (string.IsNullOrEmpty(f.Note) ? "" : $" ({f.Note})")))</li> }
+        @if (!string.IsNullOrEmpty(Model.SplitWarning)) { <li class="text-danger"><b>Lưu ý kiểm soát:</b> @Model.SplitWarning</li> }
+    </ol>
+    <div class="row text-center mt-4 small">
+        <div class="col">NGƯỜI LẬP<br /><br /><br /><br />@Model.Buyer?.FullName</div>
+        <div class="col">PHÊ DUYỆT CỦA BAN GIÁM ĐỐC<br />
+            @if (approval != null) { <span class="text-success">Đã duyệt @approval.CreatedAt.ToDateTime()</span><br /><br /><br />@approval.User?.FullName }
+            else { <br /><br /><br /><br /> }</div>
+    </div>
+</div></div>
+
+<div class="card paper" style="page-break-before:always"><div class="card-body p-4">
+    <div class="text-center mb-3"><h4 class="mb-0">BIÊN BẢN THƯƠNG THẢO</h4>
+        <div class="text-muted">Kèm tờ trình @Model.Number · Ngày thương thảo: @Model.NegotiationDate.ToDate()</div></div>
+    <p><b>Bên mua:</b> Bộ phận Mua hàng – đại diện @Model.Buyer?.FullName<br />
+       <b>Bên bán:</b> @Model.Vendor?.Name – đại diện @Model.Vendor?.ContactPerson</p>
+    <p>Hai bên thống nhất giá và điều kiện cung cấp như sau:</p>
+    <table class="table table-bordered table-sm">
+        <thead><tr><th class="text-center">STT</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL</th><th class="money">Giá chào</th><th class="money">Giá thống nhất</th><th class="money">Thành tiền</th></tr></thead>
+        <tbody>
+        @foreach (var l in Model.Lines)
+        {
+            <tr><td class="text-center">@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td>
+                <td class="money">@l.ProposedPrice.ToMoney()</td><td class="money">@l.NegotiatedPrice.ToMoney()</td><td class="money">@Math.Round(l.Quantity * l.NegotiatedPrice, 0).ToMoney()</td></tr>
+        }
+        </tbody>
+        <tfoot>
+            <tr class="fw-bold"><td colspan="6" class="text-end">Cộng (trước VAT)</td><td class="money">@Model.NegotiatedTotal.ToMoney()</td></tr>
+            <tr><td colspan="6" class="text-end">VAT @Model.VatPercent.ToString("0.##")%</td><td class="money">@((Model.NegotiatedGrandTotal - Model.NegotiatedTotal).ToMoney())</td></tr>
+            <tr class="fw-bold"><td colspan="6" class="text-end">Tổng cộng</td><td class="money">@Model.NegotiatedGrandTotal.ToMoney()</td></tr>
+        </tfoot>
+    </table>
+    <p>Thời gian giao hàng: @(Model.LeadTimeDays.HasValue ? Model.LeadTimeDays + " ngày kể từ ngày đặt hàng" : "—"). Bảo hành: @Model.Warranty. Thanh toán: @Model.PaymentTerms.</p>
+    @if (!string.IsNullOrEmpty(Model.NegotiationNote)) { <p><b>Nội dung khác:</b></p><div class="pre mb-3">@Model.NegotiationNote</div> }
+    <div class="row text-center mt-4 small">
+        <div class="col">ĐẠI DIỆN BÊN MUA<br /><br /><br /><br />@Model.Buyer?.FullName</div>
+        <div class="col">ĐẠI DIỆN BÊN BÁN<br /><br /><br /><br />@Model.Vendor?.ContactPerson</div>
+    </div>
+</div></div>
