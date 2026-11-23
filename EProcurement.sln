@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{18FA3E7A-432
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EProcurement.Web", "src\EProcurement.Web\EProcurement.Web.csproj", "{E09DA241-CD9E-44C9-89EB-17392EDBAB07}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{951997B3-73BD-4934-811E-B1C73E63E8FC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EProcurement.Tests", "tests\EProcurement.Tests\EProcurement.Tests.csproj", "{603C8C73-1B56-4ED0-ABDF-27A71638E40F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +24,13 @@ Global
 		{E09DA241-CD9E-44C9-89EB-17392EDBAB07}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E09DA241-CD9E-44C9-89EB-17392EDBAB07}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E09DA241-CD9E-44C9-89EB-17392EDBAB07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{603C8C73-1B56-4ED0-ABDF-27A71638E40F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{603C8C73-1B56-4ED0-ABDF-27A71638E40F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{603C8C73-1B56-4ED0-ABDF-27A71638E40F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{603C8C73-1B56-4ED0-ABDF-27A71638E40F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E09DA241-CD9E-44C9-89EB-17392EDBAB07} = {18FA3E7A-4324-461C-899F-B8DF32F4BCE4}
+		{603C8C73-1B56-4ED0-ABDF-27A71638E40F} = {951997B3-73BD-4934-811E-B1C73E63E8FC}
 	EndGlobalSection
 EndGlobal

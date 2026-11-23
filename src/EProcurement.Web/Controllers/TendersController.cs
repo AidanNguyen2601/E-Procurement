@@ -1,5 +1,6 @@
 using EProcurement.Web.Data;
 using EProcurement.Web.Infrastructure;
+using EProcurement.Web.Infrastructure.Reporting;
 using EProcurement.Web.Models.Entities;
 using EProcurement.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -629,6 +630,77 @@ public class TendersController : ProcControllerBase
         ViewBag.Results = TenderEvaluation.Evaluate(t);
         ViewBag.History = await HistoryAsync(DocType.Tender, id);
         return View(t);
+    }
+
+    /// <summary>
+    /// Xuất thông tin gói thầu để đăng tải (Hệ thống mạng đấu thầu quốc gia / báo cáo cơ quan quản lý): kế hoạch lựa chọn
+    /// nhà thầu, thông báo mời thầu, biên bản mở thầu, kết quả lựa chọn – mỗi phần một sheet Excel.
+    /// </summary>
+    [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
+    public async Task<IActionResult> ExportPublication(int id)
+    {
+        var t = await LoadAsync(id);
+        if (t == null) return NotFound();
+        var kv = new ReportColumn[] { new("Thông tin"), new("Nội dung") };
+        var plan = new ReportTable
+        {
+            Title = "Kế hoạch lựa chọn nhà thầu", Columns = { kv[0], kv[1] },
+            Rows = new List<object?[]>
+            {
+                new object?[] { "Số hiệu gói thầu", t.Number }, new object?[] { "Tên gói thầu", t.Title },
+                new object?[] { "Giá gói thầu (trước VAT, đồng)", t.PackageBudget }, new object?[] { "Hình thức lựa chọn nhà thầu", "Đấu thầu rộng rãi" },
+                new object?[] { "Phương thức lựa chọn nhà thầu", t.EnvelopeMethod.GetDisplayName() }, new object?[] { "Phương pháp đánh giá", t.EvaluationMethod.GetDisplayName() },
+                new object?[] { "Loại hợp đồng", t.ContractType }, new object?[] { "Thời gian thực hiện hợp đồng (ngày)", t.ContractDurationDays },
+                new object?[] { "Hợp đồng khung", t.IsFramework ? "Có" : "Không" }, new object?[] { "Đơn vị đề xuất", t.PurchaseRequest?.Department },
+                new object?[] { "Bên mời thầu – người phụ trách", t.Buyer?.FullName }
+            }
+        };
+        plan.Rows.ForEach(r => { if (r[1] is decimal d) r[1] = d.ToMoney(); else if (r[1] is int i) r[1] = i.ToString(); });
+        var notice = new ReportTable
+        {
+            Title = "Thông báo mời thầu", Columns = { kv[0], kv[1] },
+            Rows = new List<object?[]>
+            {
+                new object?[] { "Thời điểm phát hành HSMT", t.PublishedAt?.ToDateTime() }, new object?[] { "Thời điểm đóng thầu", t.ClosingAt.ToDateTime() },
+                new object?[] { "Bảo đảm dự thầu (đồng)", t.BidSecurityAmount.ToMoney() }, new object?[] { "Hiệu lực HSDT (ngày)", t.BidValidityDays.ToString() },
+                new object?[] { "Bảo đảm thực hiện hợp đồng (%)", t.PerformanceSecurityPercent.ToString("0.#") },
+                new object?[] { "Yêu cầu kỹ thuật", t.TechnicalRequirements }, new object?[] { "Tiêu chí năng lực, kinh nghiệm", t.QualificationCriteria },
+                new object?[] { "Số lần làm rõ / sửa đổi HSMT", $"{t.Clarifications.Count(c => !c.IsAmendment)} / {t.Clarifications.Count(c => c.IsAmendment)}" }
+            }
+        };
+        var scope = new ReportTable
+        {
+            Title = "Phạm vi cung cấp", Columns = { new("STT", ColumnKind.Number), new("Hàng hóa / dịch vụ"), new("ĐVT"), new("Khối lượng", ColumnKind.Number) },
+            Rows = t.Lines.OrderBy(l => l.SortOrder).Select((l, i) => new object?[] { i + 1, l.Description, l.Unit, l.Quantity }).ToList()
+        };
+        var tables = new List<ReportTable> { plan, notice, scope };
+        if (t.OpenedAt.HasValue)
+        {
+            var prices = TenderEvaluation.PricesVisible(t);
+            tables.Add(new ReportTable
+            {
+                Title = "Biên bản mở thầu", Note = $"Mở thầu lúc {t.OpenedAt.ToDateTime()}" + (prices ? "" : " – hồ sơ tài chính chưa mở"),
+                Columns = { new("Nhà thầu"), new("Mã số thuế"), new("Giá dự thầu (trước VAT)", ColumnKind.Money), new("Giảm giá (%)", ColumnKind.Percent),
+                            new("Bảo đảm dự thầu", ColumnKind.Money), new("Hiệu lực HSDT (ngày)", ColumnKind.Number), new("Tiến độ (ngày)", ColumnKind.Number) },
+                Rows = t.Bidders.Where(b => b.Submitted).OrderBy(b => b.Vendor?.Name).Select(b => new object?[]
+                    { b.Vendor?.Name, b.Vendor?.TaxCode, prices ? b.BidPrice : null, prices ? b.DiscountPercent : null, b.BidSecurityAmount, b.ValidityDays, b.LeadTimeDays }).ToList()
+            });
+        }
+        if (t.AwardedVendorId.HasValue)
+        {
+            var res = TenderEvaluation.Evaluate(t);
+            tables.Add(new ReportTable
+            {
+                Title = "Kết quả lựa chọn nhà thầu", Note = $"Nhà thầu trúng thầu: {t.AwardedVendor?.Name} – giá trúng thầu {t.AwardPrice?.ToMoney()} đ (trước VAT). {t.AwardReason}",
+                Columns = { new("Xếp hạng", ColumnKind.Number), new("Nhà thầu"), new("Mã số thuế"), new("Điểm kỹ thuật", ColumnKind.Number), new("Giá đánh giá (gồm VAT)", ColumnKind.Money), new("Lý do không được chọn") },
+                Rows = res.Select(r => new object?[] { r.Rank, r.Bid.Vendor?.Name, r.Bid.Vendor?.TaxCode, r.TechnicalAverage, r.TechnicalPass ? r.Bid.EvaluatedPrice : null,
+                    r.Rank == 1 ? "" : string.Join("; ", r.Issues.DefaultIfEmpty(r.Rank.HasValue ? "Không xếp hạng nhất" : "")) }).ToList()
+            });
+        }
+        var bytes = XlsxWriter.Write($"Gói thầu {t.Number} – {t.Title}", $"Dữ liệu đăng tải · xuất lúc {DateTime.Now:dd/MM/yyyy HH:mm}", tables);
+        Log(DocType.Tender, id, "Xuất dữ liệu đăng tải gói thầu");
+        await Db.SaveChangesAsync();
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"dang-tai-{t.Number}.xlsx");
     }
 
     /// <summary>Thông báo kết quả lựa chọn nhà thầu gửi từng nhà thầu</summary>

@@ -60,6 +60,7 @@
     {
         <form asp-action="OpenFinancial" asp-route-id="@Model.Id" method="post" data-confirm="Mở hồ sơ tài chính của các HSDT đạt kỹ thuật?"><button class="btn btn-primary">Mở hồ sơ tài chính</button></form>
     }
+    @if (buyer || director) { <a class="btn btn-outline-secondary" asp-action="ExportPublication" asp-route-id="@Model.Id">@Icon.Svg("external", 14) Xuất dữ liệu đăng tải</a> }
     @if (Model.OpenedAt.HasValue && (buyer || director || member != null)) { <a class="btn btn-outline-secondary" asp-action="Report" asp-route-id="@Model.Id" target="_blank">Biên bản mở thầu & báo cáo đánh giá</a> }
     @if (buyer && s == TenderStatus.Awarded) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Create" asp-route-tenderId="@Model.Id">Ký hợp đồng</a> }
     @if (contract != null) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Details" asp-route-id="@contract.Id">Hợp đồng @contract.Number</a> }
