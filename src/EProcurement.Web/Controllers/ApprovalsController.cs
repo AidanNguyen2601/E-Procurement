@@ -55,7 +55,7 @@ public class ApprovalsController : ProcControllerBase
                 .Where(c => c.ResolvedAt == null && c.Tender!.Status == TenderStatus.Awarded).OrderBy(c => c.ReceivedAt).ToListAsync();
         }
 
-        ViewBag.PrThreshold = Settings.PrDirectorThreshold;
+        ViewBag.PrThreshold = await Matrix.PrDirectorAsync(User.GetDepartment());
         return View(vm);
     }
 }

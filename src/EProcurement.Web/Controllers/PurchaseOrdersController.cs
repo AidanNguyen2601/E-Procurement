@@ -36,7 +36,7 @@ public class PurchaseOrdersController : ProcControllerBase
         ViewBag.History = await HistoryAsync(DocType.PO, id);
         ViewBag.Receipts = await Db.GoodsReceipts.Include(g => g.ReceivedBy).Include(g => g.Lines).Where(g => g.PurchaseOrderId == id).OrderBy(g => g.ReceiptDate).ToListAsync();
         ViewBag.Evaluation = await Db.VendorEvaluations.Include(e => e.Evaluator).FirstOrDefaultAsync(e => e.PurchaseOrderId == id);
-        ViewBag.Threshold = Settings.PoApprovalThreshold;
+        ViewBag.Threshold = await Matrix.PoDirectorAsync(po.PurchaseRequest?.Department);
         return View(po);
     }
 
@@ -192,6 +192,8 @@ public class PurchaseOrdersController : ProcControllerBase
         if (po == null) return NotFound();
         if (po.Status != PoStatus.Draft) return BadRequest();
         var award = po.DirectAwardId.HasValue ? await Db.DirectAwards.FindAsync(po.DirectAwardId) : null;
+        var poLimit = await Matrix.PoDirectorAsync(po.PurchaseRequestId == null ? null
+            : await Db.PurchaseRequests.Where(p => p.Id == po.PurchaseRequestId).Select(p => p.Department).FirstOrDefaultAsync());
         var contract = po.ContractId.HasValue ? await Db.Contracts.FindAsync(po.ContractId) : null;
         var contractUsed = contract == null ? 0 : await Db.PurchaseOrders
             .Where(p => p.ContractId == contract.Id && p.Id != po.Id && p.Status != PoStatus.Cancelled).SumAsync(p => (decimal?)p.SubTotal) ?? 0;
@@ -207,10 +209,10 @@ public class PurchaseOrdersController : ProcControllerBase
             po.Status = PoStatus.Approved;
             Log(DocType.PO, id, $"Duyệt theo tờ trình chỉ định {award.Number} đã được Giám đốc phê duyệt");
         }
-        else if (po.Total > Settings.PoApprovalThreshold && !User.IsAdmin())
+        else if (po.Total > poLimit && !User.IsAdmin())
         {
             po.Status = PoStatus.PendingApproval;
-            Log(DocType.PO, id, "Trình Giám đốc duyệt", $"Giá trị {po.Total.ToMoney()} vượt ngưỡng {Settings.PoApprovalThreshold.ToMoney()}");
+            Log(DocType.PO, id, "Trình Giám đốc duyệt", $"Giá trị {po.Total.ToMoney()} vượt ngưỡng {poLimit.ToMoney()}");
         }
         else if (po.PriceDeviationReason != null && !User.IsAdmin())
         {

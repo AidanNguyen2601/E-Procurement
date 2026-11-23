@@ -695,3 +695,34 @@ public class Budget
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
+
+// =====================================================================
+//  MA TRẬN PHÊ DUYỆT & ỦY QUYỀN
+// =====================================================================
+/// <summary>Hạn mức duyệt; Department = null là mức mặc định toàn công ty (ghi đè cấu hình appsettings)</summary>
+public class ApprovalLimit
+{
+    public int Id { get; set; }
+    [Display(Name = "Loại hạn mức")] public ApprovalLimitType Type { get; set; }
+    [StringLength(100)][Display(Name = "Phòng ban")] public string? Department { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Hạn mức (đ)")] public decimal Amount { get; set; }
+    [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>Ủy quyền phê duyệt tạm thời: người nhận có thêm vai trò duyệt của người ủy quyền trong khoảng thời gian</summary>
+public class ApprovalDelegation
+{
+    public int Id { get; set; }
+    [Display(Name = "Người ủy quyền")] public int FromUserId { get; set; }
+    public AppUser? FromUser { get; set; }
+    [Display(Name = "Người nhận ủy quyền")] public int ToUserId { get; set; }
+    public AppUser? ToUser { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Từ ngày")] public DateTime StartDate { get; set; } = DateTime.Today;
+    [DataType(DataType.Date)][Display(Name = "Đến ngày")] public DateTime EndDate { get; set; } = DateTime.Today.AddDays(7);
+    [Required(ErrorMessage = "Nhập lý do"), StringLength(500)][Display(Name = "Lý do")] public string Reason { get; set; } = string.Empty;
+    public int CreatedById { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime? RevokedAt { get; set; }
+    [NotMapped] public bool IsActive => RevokedAt == null && StartDate.Date <= DateTime.Today && EndDate.Date >= DateTime.Today;
+}

@@ -61,7 +61,7 @@ public class PurchaseRequestsController : ProcControllerBase
         ViewBag.DirectAwards = await Db.DirectAwards.Include(d => d.Vendor).Where(d => d.PurchaseRequestId == id).ToListAsync();
         ViewBag.Tenders = await Db.Tenders.Include(t => t.AwardedVendor).Where(t => t.PurchaseRequestId == id).ToListAsync();
         ViewBag.CanApprove = CanApprove(pr);
-        ViewBag.Threshold = Settings.PrDirectorThreshold;
+        ViewBag.Threshold = await Matrix.PrDirectorAsync(pr.Department);
         if (User.IsPurchasing() && pr.Status is PrStatus.Approved or PrStatus.Processing)
         {
             var refs = await ProcurementRules.FindReferencesAsync(Db, pr, Settings);
@@ -218,7 +218,7 @@ public class PurchaseRequestsController : ProcControllerBase
         }
         else if (User.IsInRole(AppRoles.Approver))
         {
-            pr.Status = pr.EstimatedTotal > Settings.PrDirectorThreshold ? PrStatus.PendingDirector : PrStatus.Approved;
+            pr.Status = pr.EstimatedTotal > await Matrix.PrDirectorAsync(pr.Department) ? PrStatus.PendingDirector : PrStatus.Approved;
             Log(DocType.PR, pr.Id, "Tự động duyệt cấp trưởng bộ phận (người đề nghị là trưởng bộ phận)");
         }
         else pr.Status = PrStatus.Submitted;
@@ -262,7 +262,7 @@ public class PurchaseRequestsController : ProcControllerBase
         }
         else if (pr.Status == PrStatus.Submitted)
         {
-            pr.Status = pr.EstimatedTotal > Settings.PrDirectorThreshold ? PrStatus.PendingDirector : PrStatus.Approved;
+            pr.Status = pr.EstimatedTotal > await Matrix.PrDirectorAsync(pr.Department) ? PrStatus.PendingDirector : PrStatus.Approved;
             Log(DocType.PR, id, "Trưởng bộ phận duyệt", comment);
         }
         else

@@ -243,8 +243,17 @@ public class NotificationService
     // ------------------------------------------------------------------ helpers
     private Task<List<int>> DirectorsAsync() => UsersAsync(u => u.Role == AppRoles.Director);
 
-    private Task<List<int>> UsersAsync(System.Linq.Expressions.Expression<Func<AppUser, bool>> where) =>
-        _db.Users.AsNoTracking().Where(u => u.IsActive).Where(where).Select(u => u.Id).ToListAsync();
+    /// <summary>Người dùng thỏa điều kiện + người đang nhận ủy quyền duyệt của họ</summary>
+    private async Task<List<int>> UsersAsync(System.Linq.Expressions.Expression<Func<AppUser, bool>> where)
+    {
+        var ids = await _db.Users.AsNoTracking().Where(u => u.IsActive).Where(where).Select(u => u.Id).ToListAsync();
+        if (ids.Count == 0) return ids;
+        var today = DateTime.Today;
+        var delegates = await _db.ApprovalDelegations.AsNoTracking()
+            .Where(d => ids.Contains(d.FromUserId) && d.RevokedAt == null && d.StartDate <= today && d.EndDate >= today && d.ToUser!.IsActive)
+            .Select(d => d.ToUserId).ToListAsync();
+        return ids.Concat(delegates).Distinct().ToList();
+    }
 
     /// <summary>Báo người lập / người đề nghị khi người khác thao tác (mỗi dòng nhật ký một lần)</summary>
     private void Owner(int ownerId, DocEvent e, string title, NotificationKind kind = NotificationKind.Info)

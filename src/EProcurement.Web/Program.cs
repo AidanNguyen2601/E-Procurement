@@ -48,6 +48,9 @@ builder.Services.AddScoped<EProcurement.Web.Infrastructure.CatalogService>();
 builder.Services.Configure<EProcurement.Web.Infrastructure.NotificationSettings>(builder.Configuration.GetSection("Notifications"));
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.NotificationService>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.BudgetService>();
+builder.Services.AddScoped<EProcurement.Web.Infrastructure.ApprovalMatrix>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, EProcurement.Web.Infrastructure.DelegationClaimsTransformation>();
 if (builder.Configuration.GetValue("Notifications:BackgroundEnabled", true)) builder.Services.AddHostedService<EProcurement.Web.Infrastructure.NotificationWorker>();
 
 var app = builder.Build();

@@ -23,8 +23,12 @@ public abstract class ProcControllerBase : Controller
 
     protected int Me => User.GetUserId();
 
+    private ApprovalMatrix? _matrix;
+    protected ApprovalMatrix Matrix => _matrix ??= HttpContext.RequestServices.GetRequiredService<ApprovalMatrix>();
+
     protected void Log(DocType type, int id, string action, string? comment = null)
     {
+        if (User.DelegationNote(action) is string note) comment = string.IsNullOrWhiteSpace(comment) ? note : comment + " " + note;
         var h = new ApprovalHistory { DocumentType = type, DocumentId = id, UserId = Me, Action = action, Comment = comment, CreatedAt = DateTime.Now };
         Db.ApprovalHistories.Add(h);
         _logged.Add(h);

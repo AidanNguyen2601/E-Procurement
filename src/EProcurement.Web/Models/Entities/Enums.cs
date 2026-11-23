@@ -145,3 +145,10 @@ public enum NotificationKind
     [Display(Name = "Nhắc hạn")] Reminder = 3,
     [Display(Name = "Cảnh báo")] Warning = 4
 }
+
+/// <summary>Loại hạn mức trong ma trận phê duyệt</summary>
+public enum ApprovalLimitType
+{
+    [Display(Name = "PR vượt mức này cần Giám đốc duyệt (sau trưởng bộ phận)")] PrDirector = 1,
+    [Display(Name = "PO vượt mức này (gồm VAT) cần Giám đốc duyệt")] PoDirector = 2
+}

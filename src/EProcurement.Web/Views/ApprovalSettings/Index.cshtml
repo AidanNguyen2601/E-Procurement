@@ -1,0 +1,67 @@
+@model EProcurement.Web.Controllers.ApprovalSettingsController.Page
+<div class="card mb-3"><div class="card-header">Hạn mức phê duyệt</div><div class="card-body">
+    <p class="small text-muted mb-2">Thứ tự áp dụng: hạn mức riêng của phòng ban → hạn mức mặc định toàn công ty → cấu hình hệ thống (appsettings).
+        Phòng ban của PO lấy theo đề nghị mua hàng.</p>
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Loại hạn mức</th><th>Phạm vi</th><th class="money">Hạn mức</th><th>Ghi chú</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var t in Enum.GetValues<ApprovalLimitType>())
+        {
+            var global = Model.Limits.FirstOrDefault(l => l.Type == t && l.Department == null);
+            <tr class="table-light"><td>@t.GetDisplayName()</td><td>Mặc định toàn công ty</td>
+                <td class="money">@((global?.Amount ?? Model.Defaults[t]).ToMoney())</td>
+                <td class="small text-muted">@(global == null ? "theo cấu hình hệ thống" : global.Note)</td>
+                <td class="text-end">@if (global != null && Model.IsAdmin) { <form asp-action="DeleteLimit" asp-route-id="@global.Id" method="post" class="d-inline"><button class="btn btn-sm btn-link text-danger">Bỏ</button></form> }</td></tr>
+            @foreach (var l in Model.Limits.Where(l => l.Type == t && l.Department != null))
+            {
+                <tr><td></td><td>@l.Department</td><td class="money">@l.Amount.ToMoney()</td><td class="small text-muted">@l.Note</td>
+                    <td class="text-end">@if (Model.IsAdmin) { <form asp-action="DeleteLimit" asp-route-id="@l.Id" method="post" class="d-inline" data-confirm="Xóa hạn mức riêng của @l.Department?"><button class="btn btn-sm btn-link text-danger">Xóa</button></form> }</td></tr>
+            }
+        }
+        </tbody>
+    </table>
+    @if (Model.IsAdmin)
+    {
+        <form asp-action="SaveLimit" method="post" class="row g-2 align-items-end">
+            <div class="col-md-4"><label class="form-label small mb-0">Loại hạn mức</label><select name="type" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<ApprovalLimitType>()"></select></div>
+            <div class="col-md-3"><label class="form-label small mb-0">Phạm vi</label><select name="department" class="form-select form-select-sm" asp-items="ViewBag.Departments"><option value="">Mặc định toàn công ty</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-0">Hạn mức (đ)</label><input name="amount" type="number" min="0" step="1000000" class="form-control form-control-sm" required /></div>
+            <div class="col-md-2"><label class="form-label small mb-0">Ghi chú</label><input name="note" maxlength="500" class="form-control form-control-sm" /></div>
+            <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Lưu</button></div>
+        </form>
+    }
+</div></div>
+
+<div class="card"><div class="card-header">Ủy quyền phê duyệt khi vắng mặt</div><div class="card-body">
+    <p class="small text-muted mb-2">Trong thời gian ủy quyền, người nhận duyệt thay ở cấp của người ủy quyền; nhật ký ghi rõ "thay mặt … theo ủy quyền".
+        Không ủy quyền cho nhân viên mua hàng; trưởng bộ phận chỉ ủy quyền trong phòng; tối đa 90 ngày mỗi lần.</p>
+    @if (Model.CanDelegate)
+    {
+        <form asp-action="Delegate" method="post" class="row g-2 align-items-end mb-3">
+            <div class="col-md-3"><label class="form-label small mb-0">Người ủy quyền</label><select name="fromUserId" class="form-select form-select-sm" asp-items="ViewBag.FromUsers"></select></div>
+            <div class="col-md-3"><label class="form-label small mb-0">Người nhận ủy quyền</label><select name="toUserId" class="form-select form-select-sm" asp-items="ViewBag.ToUsers"><option value="">-- Chọn --</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-0">Từ ngày</label><input name="startDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
+            <div class="col-md-2"><label class="form-label small mb-0">Đến ngày</label><input name="endDate" type="date" value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
+            <div class="col-md-2"><label class="form-label small mb-0">Lý do</label><input name="reason" maxlength="500" class="form-control form-control-sm" placeholder="Đi công tác…" required /></div>
+            <div class="col-12"><button class="btn btn-sm btn-primary">Ủy quyền</button></div>
+        </form>
+    }
+    <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>Người ủy quyền</th><th>Người nhận</th><th>Thời gian</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var d in Model.Delegations)
+        {
+            var state = d.RevokedAt != null ? ("Đã thu hồi", "bg-secondary-subtle text-secondary") : d.IsActive ? ("Đang hiệu lực", "bg-success-subtle text-success")
+                : d.StartDate > DateTime.Today ? ("Sắp hiệu lực", "bg-primary-subtle text-primary") : ("Hết hạn", "bg-light text-dark border");
+            <tr><td>@d.FromUser?.FullName <div class="small text-muted">@AppRoles.DisplayName(d.FromUser?.Role ?? "")</div></td>
+                <td>@d.ToUser?.FullName <div class="small text-muted">@d.ToUser?.Department</div></td>
+                <td class="small text-nowrap">@d.StartDate.ToDate() – @d.EndDate.ToDate()</td>
+                <td class="small">@d.Reason</td>
+                <td><span class="badge @state.Item2">@state.Item1</span></td>
+                <td class="text-end">@if (d.RevokedAt == null && d.EndDate >= DateTime.Today && (Model.IsAdmin || d.FromUserId == User.GetUserId()))
+                    { <form asp-action="Revoke" asp-route-id="@d.Id" method="post" data-confirm="Thu hồi ủy quyền này?"><button class="btn btn-sm btn-link text-danger">Thu hồi</button></form> }</td></tr>
+        }
+        @if (!Model.Delegations.Any()) { <tr><td colspan="6" class="text-muted">Chưa có ủy quyền.</td></tr> }
+        </tbody>
+    </table>
+</div></div>

@@ -6,7 +6,7 @@
     var purchasing = User.IsPurchasing();
     var director = User.IsInRole(AppRoles.Director);
     var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
-    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", _ => null };
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", _ => null };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -63,6 +63,7 @@
             {
                 <div class="nav-group">Hệ thống</div>
                 <a class="@Active("Users")" asp-controller="Users" asp-action="Index">@Icon.Svg("users")<span>Người dùng & phân quyền</span></a>
+                <a class="@Active("ApprovalSettings")" asp-controller="ApprovalSettings" asp-action="Index">@Icon.Svg("shield-check")<span>Hạn mức & ủy quyền</span></a>
                 <a class="@Active("SampleData")" asp-controller="SampleData" asp-action="Index">@Icon.Svg("database")<span>Dữ liệu mẫu</span></a>
             }
         </nav>
@@ -79,6 +80,9 @@
                         @User.GetFullName() <small class="text-muted">(@AppRoles.DisplayName(role) · @User.GetDepartment())</small>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
+                        @foreach (var from in User.DelegatedFrom()) { <li><span class="dropdown-item-text small text-success">Đang được ủy quyền duyệt thay: @from</span></li> }
+                        <li><a class="dropdown-item" asp-controller="Notifications" asp-action="Index">Thông báo</a></li>
+                        @if (!User.IsAdmin() && (User.IsInRole(AppRoles.Director) || User.IsInRole(AppRoles.Approver))) { <li><a class="dropdown-item" asp-controller="ApprovalSettings" asp-action="Index">Ủy quyền duyệt</a></li> }
                         <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a></li>
                         <li><hr class="dropdown-divider" /></li>
                         <li><form asp-controller="Account" asp-action="Logout" method="post"><button class="dropdown-item text-danger">Đăng xuất</button></form></li>

@@ -41,6 +41,8 @@ public class EProcDbContext : DbContext
     public DbSet<CatalogEntry> CatalogEntries => Set<CatalogEntry>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<ApprovalLimit> ApprovalLimits => Set<ApprovalLimit>();
+    public DbSet<ApprovalDelegation> ApprovalDelegations => Set<ApprovalDelegation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,6 +69,9 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<CatalogEntry>().HasIndex(x => new { x.Type, x.Name }).IsUnique();
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.ReadAt });
         modelBuilder.Entity<Budget>().HasIndex(x => new { x.Year, x.Department, x.CategoryId }).IsUnique();
+        modelBuilder.Entity<ApprovalDelegation>().HasIndex(x => new { x.ToUserId, x.StartDate, x.EndDate });
+        modelBuilder.Entity<ApprovalDelegation>().HasOne(x => x.FromUser).WithMany().HasForeignKey(x => x.FromUserId);
+        modelBuilder.Entity<ApprovalDelegation>().HasOne(x => x.ToUser).WithMany().HasForeignKey(x => x.ToUserId);
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.Key }).IsUnique().HasFilter("[Key] IS NOT NULL");
 
         // Chứng từ mua sắm không được xóa dây chuyền
