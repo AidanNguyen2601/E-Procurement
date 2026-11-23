@@ -23,7 +23,20 @@ Hệ thống mua sắm điện tử cơ bản, số hóa quy trình từ đề n
 | Đơn mua hàng (PO) | Lập từ RFQ, từ PR hoặc trực tiếp; chặn đặt hàng NCC chưa duyệt / danh sách đen; duyệt theo ngưỡng; gửi NCC; in đơn đặt hàng; hủy (khi chưa nhận hàng); cảnh báo trễ hạn |
 | Nhận hàng (GRN) | Nhận nhiều đợt, số lượng đạt / không đạt, không cho nhận vượt số đặt; tự cập nhật trạng thái PO (nhận một phần / đủ) và hoàn tất PR; in phiếu nhận |
 | Đánh giá NCC | 4 tiêu chí (chất lượng, tiến độ, giá, dịch vụ) sau khi nhận đủ → cập nhật điểm trung bình NCC |
-| Người dùng | 5 vai trò: Người đề nghị, Trưởng bộ phận, Ban Giám đốc, Nhân viên mua hàng, Quản trị; gán phòng ban |
+| Người dùng | 6 vai trò: Người đề nghị, Trưởng bộ phận, Ban Giám đốc, Nhân viên mua hàng, Kế toán, Quản trị; gán phòng ban (theo danh mục) |
+| Chỉ định thầu / Đấu thầu rộng rãi / Hợp đồng | Tờ trình chỉ định (căn cứ, chứng minh, cảnh báo chia nhỏ gói); gói thầu 1 túi / 2 túi, tổ chuyên gia, làm rõ – sửa đổi HSMT, kiến nghị; hợp đồng, hợp đồng khung đặt hàng nhiều đợt; xuất dữ liệu đăng tải gói thầu |
+| Báo cáo | 10 báo cáo chuẩn (chi tiêu, hình thức, tiến độ PR, giao hàng, NCC, cạnh tranh, hợp đồng, ngân sách, phân tích giá, cảnh báo rủi ro) – lọc, in, Excel; báo cáo động xuất SQL / thiết kế |
+
+### Tính năng theo lộ trình mở rộng
+
+| Giai đoạn | Tính năng |
+|---|---|
+| 1. Vận hành | **Thông báo** trong hệ thống + email (SMTP), nhắc hạn tự động · **Ngân sách** phòng ban × nhóm hàng × năm, kiểm soát khi gửi / duyệt PR · **Hạn mức duyệt** theo phòng ban, **ủy quyền** duyệt khi vắng mặt |
+| 2. Cổng NCC (`/PortalAccount/Login`) | NCC tự đăng ký, hồ sơ pháp lý (xác minh, cảnh báo hết hạn) · **báo giá / HSDT online niêm phong** (mã hóa đến khi mở, biên nhận SHA-256) · xác nhận PO, báo giao hàng, gửi hóa đơn · khóa tài khoản khi sai mật khẩu nhiều lần |
+| 3. Mua hàng → thanh toán | **Hóa đơn & đối chiếu 3 bên** PO – phiếu nhận – hóa đơn · đề nghị thanh toán (phạt chậm giao, khấu trừ tạm ứng) · hợp đồng nâng cao (phụ lục, lịch thanh toán, bảo lãnh) · **REST API** `/api/v1` cho ERP (API key) |
+| 4. Tối ưu & tuân thủ | **Kế hoạch mua sắm năm** + gom nhu cầu · **mua theo hợp đồng khung** (catalog) · phân tích giá & cảnh báo rủi ro · **ký xác nhận** quyết định phê duyệt (mật khẩu + mã băm nội dung) · giao diện điện thoại, cài như ứng dụng |
+
+Trang quản trị: Danh mục dùng chung, Hạn mức & ủy quyền, Tích hợp ERP (API key + tài liệu endpoint), Dữ liệu mẫu (nạp / gỡ bộ dữ liệu 15 tháng).
 
 Ngưỡng duyệt cấu hình trong `appsettings.json`:
 
@@ -43,9 +56,19 @@ Ngưỡng duyệt cấu hình trong `appsettings.json`:
   "TenderMinBiddingDays": 10,              // Đấu thầu: từ phát hành HSMT đến đóng thầu tối thiểu N ngày
   "TenderAmendmentMinDays": 3,             // Đấu thầu: sửa đổi HSMT sát hạn hơn N ngày thì bắt buộc gia hạn đóng thầu
   "TenderMinCommittee": 3,                 // Đấu thầu: số thành viên tổ chuyên gia tối thiểu
-  "TenderComplaintDays": 5                 // Đấu thầu: thời gian nhà thầu kiến nghị kết quả trước khi ký hợp đồng
+  "TenderComplaintDays": 5,                // Đấu thầu: thời gian nhà thầu kiến nghị kết quả trước khi ký hợp đồng
+  "BudgetControl": "Warn",                 // Off / Warn (duyệt vượt phải ghi lý do) / Block (chặn)
+  "BudgetWarnPercent": 90,                 // cảnh báo khi ngân sách đã dùng từ mức này
+  "RequireSignature": true                 // quyết định duyệt / từ chối phải nhập lại mật khẩu (ký xác nhận)
+},
+"Notifications": {
+  "IntervalMinutes": 30,                   // chu kỳ quét nhắc hạn + gửi email
+  "StaleApprovalDays": 2, "ExpiryWarningDays": 30,
+  "BaseUrl": "http://localhost:8110",      // link trong email
+  "Email": { "Enabled": false, "Host": "", "Port": 587, "EnableSsl": true, "UserName": "", "Password": "", "From": "eprocurement@company.local" }
 }
 ```
+Hạn mức duyệt theo phòng ban (ghi đè `PrDirectorThreshold` / `PoApprovalThreshold`) cấu hình trên trang **Hạn mức & ủy quyền**.
 Trong Docker: `Procurement__PoApprovalThreshold: "200000000"` trong phần `environment`.
 
 ## 2. Cấu trúc (MVC)
@@ -94,6 +117,17 @@ Số chứng từ tự sinh: `PR-2026-0001`, `RFQ-…`, `PO-…`, `GRN-…`. M�
 - Khóa ngoại `ON DELETE NO ACTION` — chứng từ không xóa, chỉ hủy.
 - Tên trùng với HRM/CRM được tách: project `eproc`, container `eproc-web` / `eproc-sqlserver`, DB `EPROC_DB`, port 8110 / 1436.
 
-## 5. Hướng mở rộng
+- Báo giá / HSDT online được mã hóa bằng ASP.NET Data Protection; khóa lưu ở volume `/app/keys` (`DataProtection__KeysPath`) – **phải sao lưu volume này**, mất khóa thì không mở được hồ sơ đang niêm phong.
+- REST API: header `X-Api-Key`, tối đa 120 request / phút / key; tài liệu trên trang Tích hợp ERP.
 
-Cổng NCC tự nộp báo giá (vendor portal), đấu thầu kín / mở theo thời điểm, ngân sách theo phòng ban, hợp đồng khung, đối chiếu 3 bên PO – GRN – hóa đơn, email thông báo duyệt, đính kèm file báo giá, tích hợp kế toán / ERP và kho.
+## 5. Kiểm thử
+
+```
+dotnet test tests/EProcurement.Tests
+```
+35 test cho quy tắc nghiệp vụ: gợi ý hình thức, đánh giá báo giá / thầu, đối chiếu 3 bên, phạt & khấu trừ tạm ứng, ngân sách, hạn mức duyệt, khóa tài khoản, mã băm niêm phong.
+
+## 6. Việc còn lại
+
+- Chuyển `EnsureCreated` + script nâng cấp (`DbSeeder.UpgradeSchemaAsync`) sang EF Migrations (cần `dotnet tool install --global dotnet-ef`, tạo migration gốc khớp schema hiện tại rồi đánh dấu đã áp dụng trên database đang chạy).
+- Chữ ký số CA (USB token / ký số từ xa) thay cho ký xác nhận bằng mật khẩu; kết nối trực tiếp Hệ thống mạng đấu thầu quốc gia (hiện xuất file dữ liệu đăng tải).
