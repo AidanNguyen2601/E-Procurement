@@ -41,6 +41,10 @@ public class ReportFilter
     public DateTime From { get; set; } = new(DateTime.Today.Year, 1, 1);
     public DateTime To { get; set; } = DateTime.Today;
     public string? Department { get; set; }
+    /// <summary>Đơn vị được chọn và các đơn vị cấp dưới (theo cơ cấu tổ chức); null → chỉ <see cref="Department"/></summary>
+    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever] public List<string>? Departments { get; set; }
+    /// <summary>Tập phòng ban dùng để lọc</summary>
+    public List<string> Depts => Departments ?? (string.IsNullOrEmpty(Department) ? new() : new() { Department });
     public int? CategoryId { get; set; }
     public int? VendorId { get; set; }
     /// <summary>Ngày kết thúc dạng [To, To+1) để so sánh DateTime có giờ</summary>
@@ -49,7 +53,7 @@ public class ReportFilter
     public string Describe(IDictionary<int, string> categories, IDictionary<int, string> vendors)
     {
         var parts = new List<string> { $"Từ {From.ToDate()} đến {To.ToDate()}" };
-        if (!string.IsNullOrEmpty(Department)) parts.Add("Phòng ban: " + Department);
+        if (!string.IsNullOrEmpty(Department)) parts.Add("Phòng ban: " + Department + (Departments is { Count: > 1 } ? $" (gồm {Departments.Count - 1} đơn vị cấp dưới)" : ""));
         if (CategoryId.HasValue && categories.TryGetValue(CategoryId.Value, out var c)) parts.Add("Nhóm hàng: " + c);
         if (VendorId.HasValue && vendors.TryGetValue(VendorId.Value, out var v)) parts.Add("NCC: " + v);
         return string.Join(" · ", parts);

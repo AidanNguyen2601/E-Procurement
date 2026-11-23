@@ -48,6 +48,7 @@ public class EProcDbContext : DbContext
     public DbSet<PriceRecord> PriceRecords => Set<PriceRecord>();
     public DbSet<StandardPriceList> StandardPriceLists => Set<StandardPriceList>();
     public DbSet<StandardPriceLine> StandardPriceLines => Set<StandardPriceLine>();
+    public DbSet<OrgUnit> OrgUnits => Set<OrgUnit>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ContractLine> ContractLines => Set<ContractLine>();
     public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
@@ -111,6 +112,9 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<StandardPriceList>().HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById);
         modelBuilder.Entity<StandardPriceList>().HasOne(x => x.DecidedBy).WithMany().HasForeignKey(x => x.DecidedById);
         modelBuilder.Entity<StandardPriceLine>().HasIndex(x => new { x.ListId, x.ItemId }).IsUnique();
+        modelBuilder.Entity<OrgUnit>().HasIndex(x => x.Code).IsUnique();
+        modelBuilder.Entity<OrgUnit>().HasIndex(x => x.Name).IsUnique();
+        modelBuilder.Entity<OrgUnit>().HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId);
         modelBuilder.Entity<Contract>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<CatalogEntry>().HasIndex(x => new { x.Type, x.Name }).IsUnique();
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.ReadAt });

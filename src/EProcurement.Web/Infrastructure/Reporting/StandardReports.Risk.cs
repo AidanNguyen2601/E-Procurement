@@ -18,7 +18,7 @@ public partial class StandardReports
                         && l.PurchaseOrder.OrderDate >= f.From && l.PurchaseOrder.OrderDate < f.ToExclusive);
         if (f.VendorId.HasValue) q = q.Where(l => l.PurchaseOrder!.VendorId == f.VendorId);
         if (f.CategoryId.HasValue) q = q.Where(l => l.Item!.CategoryId == f.CategoryId);
-        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(l => l.PurchaseOrder!.PurchaseRequest != null && l.PurchaseOrder.PurchaseRequest.Department == f.Department);
+        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(l => l.PurchaseOrder!.PurchaseRequest != null && f.Depts.Contains(l.PurchaseOrder.PurchaseRequest.Department));
         var lines = await q.Select(l => new
         {
             l.ItemId, Item = l.Item!.Code + " – " + l.Item.Name, l.Item.ReferencePrice, l.Quantity, l.UnitPrice, l.PurchaseOrder!.Number,

@@ -52,9 +52,13 @@ public class ReportsController : ProcControllerBase
     {
         var (cats, vendors) = await LookupsAsync();
         ViewBag.FilterText = f.Describe(cats, vendors);
-        var depts = await Db.CatalogEntries.Where(e => e.Type == CatalogType.Department).OrderBy(e => e.SortOrder).ThenBy(e => e.Name).Select(e => e.Name).ToListAsync();
-        depts.AddRange((await Db.PurchaseRequests.Select(p => p.Department).Distinct().ToListAsync()).Except(depts, StringComparer.OrdinalIgnoreCase).OrderBy(d => d));
-        ViewBag.Departments = new SelectList(depts, f.Department);
+        // Phòng ban theo cây tổ chức (thụt lề theo cấp; chọn khối / chi nhánh = gộp cả cấp dưới)
+        var tree = OrgUnits.Flatten(await Db.OrgUnits.AsNoTracking().ToListAsync());
+        var items = tree.Select(n => new SelectListItem(new string(' ', n.Depth * 3) + n.Unit.Name + (n.Unit.IsActive ? "" : " (ngừng)"), n.Unit.Name, n.Unit.Name == f.Department)).ToList();
+        items.AddRange((await Db.PurchaseRequests.Select(p => p.Department).Distinct().ToListAsync())
+            .Where(d => tree.All(n => !string.Equals(n.Unit.Name, d, StringComparison.OrdinalIgnoreCase))).OrderBy(d => d)
+            .Select(d => new SelectListItem(d, d, d == f.Department)));
+        ViewBag.Departments = items;
         ViewBag.Categories = new SelectList(cats.OrderBy(c => c.Value), "Key", "Value", f.CategoryId);
         ViewBag.Vendors = new SelectList(vendors.OrderBy(v => v.Value), "Key", "Value", f.VendorId);
     }

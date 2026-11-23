@@ -180,3 +180,21 @@ dl.info dt { color: #64748b; font-weight: 500; }
   /* Ẩn hẳn */
   body.nav-hidden .sidebar { display: none; }
 }
+
+/* Bootstrap 5.1 chưa có các lớp *-subtle / *-emphasis (từ 5.3) – bổ sung để badge, nền nhạt hiển thị đúng */
+.bg-primary-subtle { background-color: #e0e7ff !important; }
+.bg-secondary-subtle { background-color: #e2e8f0 !important; }
+.bg-success-subtle { background-color: #dcfce7 !important; }
+.bg-info-subtle { background-color: #e0f2fe !important; }
+.bg-warning-subtle { background-color: #fef3c7 !important; }
+.bg-danger-subtle { background-color: #fee2e2 !important; }
+.text-primary-emphasis { color: #3730a3 !important; }
+.text-secondary-emphasis { color: #334155 !important; }
+.text-success-emphasis { color: #166534 !important; }
+.text-info-emphasis { color: #075985 !important; }
+.text-warning-emphasis { color: #92400e !important; }
+.text-danger-emphasis { color: #991b1b !important; }
+.border-primary-subtle { border-color: #c7d2fe !important; }
+.border-warning-subtle { border-color: #fde68a !important; }
+.border-danger-subtle { border-color: #fecaca !important; }
+.border-success-subtle { border-color: #bbf7d0 !important; }

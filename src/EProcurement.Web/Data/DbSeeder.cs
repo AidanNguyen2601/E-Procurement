@@ -331,6 +331,7 @@ public static class DbSeeder
         await EProcurement.Web.Infrastructure.Packages.EnsureLegacyAsync(db);
         await EProcurement.Web.Infrastructure.StandardPrices.SyncReferenceAsync(db); // bảng giá tiêu chuẩn tới ngày hiệu lực // PR đã chọn hình thức trước khi có gói → sinh gói + KHLCNT tương ứng
         await EProcurement.Web.Infrastructure.Catalogs.EnsureAsync(db); // danh mục dùng chung: nạp mặc định + giá trị đang dùng
+        await EProcurement.Web.Infrastructure.OrgUnits.EnsureAsync(db); // cơ cấu tổ chức: khởi tạo từ phòng ban đang dùng, đồng bộ danh mục Phòng ban
     }
 
     /// <summary>

@@ -117,7 +117,8 @@ public class CatalogsController : Controller
         return RedirectToAction(nameof(Index), new { type = e.Type });
     }
 
-    private bool CanEdit(CatalogInfo info) => !info.AdminOnly || User.IsAdmin();
+    // Phòng ban quản lý tại Cơ cấu tổ chức (danh mục tự đồng bộ theo cây đơn vị)
+    private bool CanEdit(CatalogInfo info) => info.Type != CatalogType.Department && (!info.AdminOnly || User.IsAdmin());
 
     /// <summary>Số bản ghi danh mục / dữ liệu gốc đang dùng mỗi giá trị (chứng từ đã lập giữ nguyên văn bản, không tính)</summary>
     private async Task<Dictionary<string, int>> UsageAsync(CatalogType t)

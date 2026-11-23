@@ -1,0 +1,58 @@
+@model OrgUnit
+@{
+    var parents = (List<SelectListItem>)ViewBag.Parents;
+    var isRoot = Model.Id != 0 && Model.ParentId == null;
+}
+<form asp-action="Save" method="post" class="card"><div class="card-body">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">Tên đơn vị *</label>
+            <input asp-for="Name" class="form-control" maxlength="100" required />
+            <span asp-validation-for="Name" class="text-danger small"></span>
+            @if (Model.Id != 0) { <div class="form-text">Đổi tên sẽ cập nhật theo người dùng, đề nghị mua hàng, ngân sách, kế hoạch và hạn mức duyệt đang dùng tên cũ.</div> }
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Mã đơn vị</label>
+            <input asp-for="Code" class="form-control text-uppercase" maxlength="30" placeholder="Để trống: tự tạo từ tên" />
+            <span asp-validation-for="Code" class="text-danger small"></span>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Loại đơn vị</label>
+            <select asp-for="Type" asp-items="Html.GetEnumSelectList<OrgUnitType>()" class="form-select"></select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Đơn vị cấp trên</label>
+            @if (isRoot)
+            {
+                <input class="form-control" value="(Đơn vị gốc)" disabled />
+            }
+            else
+            {
+                <select name="ParentId" class="form-select" required>
+                    <option value="">-- Chọn --</option>
+                    @foreach (var p in parents) { <option value="@p.Value" selected="@p.Selected">@p.Text</option> }
+                </select>
+            }
+            <span asp-validation-for="ParentId" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Trưởng đơn vị</label>
+            <select asp-for="ManagerId" asp-items="(SelectList)ViewBag.Managers" class="form-select"><option value="">-- Chưa chỉ định --</option></select>
+            <div class="form-text">Thông tin quản lý; người duyệt đề nghị vẫn là Trưởng bộ phận cùng phòng ban.</div>
+        </div>
+        <div class="col-md-3"><label class="form-label">Trung tâm chi phí</label><input asp-for="CostCenter" class="form-control" maxlength="30" /></div>
+        <div class="col-md-3"><label class="form-label">Điện thoại</label><input asp-for="Phone" class="form-control" maxlength="20" /></div>
+        <div class="col-md-2"><label class="form-label">Thứ tự</label><input asp-for="SortOrder" type="number" class="form-control" /></div>
+        <div class="col-md-4 d-flex align-items-end"><div class="form-check mb-2">
+            <input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hoạt động</label>
+        </div></div>
+        <div class="col-md-6"><label class="form-label">Địa chỉ</label><input asp-for="Address" class="form-control" maxlength="300" /></div>
+        <div class="col-md-6"><label class="form-label">Chức năng, nhiệm vụ / ghi chú</label><input asp-for="Note" class="form-control" maxlength="500" /></div>
+    </div>
+</div>
+<div class="card-footer d-flex gap-2">
+    <button class="btn btn-primary">Lưu</button>
+    <a asp-action="@(Model.Id == 0 ? "Index" : "Details")" asp-route-id="@(Model.Id == 0 ? null : Model.Id)" class="btn btn-light">Hủy</a>
+</div></form>

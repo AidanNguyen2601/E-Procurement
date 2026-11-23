@@ -36,6 +36,7 @@ public static class SampleDataSeeder
         await new Builder(db, hasher).RunAsync();
         await tx.CommitAsync();
         await Catalogs.EnsureAsync(db); // bổ sung phòng ban mới vào danh mục
+        await OrgUnits.EnsureAsync(db); // phòng ban mẫu → đơn vị trong cơ cấu tổ chức
         await Packages.EnsureLegacyAsync(db); // gói mua sắm + KHLCNT cho các đề nghị mẫu đã chọn hình thức
     }
 

@@ -30,7 +30,11 @@ public partial class StandardReports
     private readonly ProcurementSettings _settings;
     public StandardReports(EProcDbContext db, Microsoft.Extensions.Options.IOptions<ProcurementSettings> settings) { _db = db; _settings = settings.Value; }
 
-    public Task<ReportResult> BuildAsync(string key, ReportFilter f) => key switch
+    public async Task<ReportResult> BuildAsync(string key, ReportFilter f)
+    {
+        // Lọc theo một khối / chi nhánh: gộp cả các đơn vị cấp dưới trong cơ cấu tổ chức
+        if (!string.IsNullOrEmpty(f.Department) && f.Departments == null) f.Departments = await OrgUnits.SubtreeNamesAsync(_db, f.Department);
+        return await (key switch
     {
         "spend" => SpendAsync(f),
         "methods" => MethodsAsync(f),
@@ -46,7 +50,8 @@ public partial class StandardReports
         "price-vs-standard" => PriceVsStandardAsync(f),
         "prequal" => PrequalAsync(f),
         _ => throw new KeyNotFoundException(key)
-    };
+        });
+    }
 
     // ------------------------------------------------------------------ 8. Ngân sách – thực hiện (theo năm của ngày kết thúc kỳ lọc)
     private async Task<ReportResult> BudgetAsync(ReportFilter f)
@@ -54,7 +59,7 @@ public partial class StandardReports
         var r = New("budget");
         var year = f.To.Year;
         var rows = await new BudgetService(_db).StatusAsync(year);
-        if (!string.IsNullOrEmpty(f.Department)) rows = rows.Where(x => x.Budget.Department == f.Department).ToList();
+        if (!string.IsNullOrEmpty(f.Department)) rows = rows.Where(x => f.Depts.Contains(x.Budget.Department)).ToList();
         if (f.CategoryId.HasValue) rows = rows.Where(x => x.Budget.CategoryId == f.CategoryId).ToList();
         var total = rows.Sum(x => x.Budget.Amount); var used = rows.Sum(x => x.Used);
         r.Description = $"Năm {year} (theo ngày kết thúc kỳ lọc). " + r.Description;
@@ -95,7 +100,7 @@ public partial class StandardReports
                         && l.PurchaseOrder.OrderDate >= f.From && l.PurchaseOrder.OrderDate < f.ToExclusive);
         if (f.VendorId.HasValue) q = q.Where(l => l.PurchaseOrder!.VendorId == f.VendorId);
         if (f.CategoryId.HasValue) q = q.Where(l => l.Item != null && l.Item.CategoryId == f.CategoryId);
-        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(l => l.PurchaseOrder!.PurchaseRequest != null && l.PurchaseOrder.PurchaseRequest.Department == f.Department);
+        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(l => l.PurchaseOrder!.PurchaseRequest != null && f.Depts.Contains(l.PurchaseOrder.PurchaseRequest.Department));
         return await q.Select(l => new SpendLine(l.PurchaseOrderId, l.PurchaseOrder!.Number, l.PurchaseOrder.OrderDate, l.PurchaseOrder.VendorId,
                 l.PurchaseOrder.Vendor != null ? l.PurchaseOrder.Vendor.Name : "—",
                 l.PurchaseOrder.PurchaseRequest != null ? l.PurchaseOrder.PurchaseRequest.Department : "(Không qua đề nghị)",
@@ -210,7 +215,7 @@ public partial class StandardReports
     {
         var r = New("requests");
         var q = _db.PurchaseRequests.AsNoTracking().Where(p => p.RequestDate >= f.From && p.RequestDate < f.ToExclusive);
-        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(p => p.Department == f.Department);
+        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(p => f.Depts.Contains(p.Department));
         var prs = await q.Select(p => new { p.Id, p.Department, p.Status, p.EstimatedTotal, p.SubmittedAt }).ToListAsync();
         var ids = prs.Select(p => p.Id).ToList();
         var approvals = await _db.ApprovalHistories.AsNoTracking()
@@ -258,7 +263,7 @@ public partial class StandardReports
         var q = _db.PurchaseOrders.AsNoTracking().Where(p => p.Status >= PoStatus.Issued && p.Status != PoStatus.Cancelled
                                                              && p.OrderDate >= f.From && p.OrderDate < f.ToExclusive);
         if (f.VendorId.HasValue) q = q.Where(p => p.VendorId == f.VendorId);
-        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(p => p.PurchaseRequest != null && p.PurchaseRequest.Department == f.Department);
+        if (!string.IsNullOrEmpty(f.Department)) q = q.Where(p => p.PurchaseRequest != null && f.Depts.Contains(p.PurchaseRequest.Department));
         var pos = await q.Select(p => new { p.Id, p.Number, Vendor = p.Vendor != null ? p.Vendor.Name : "—", p.DeliveryDate, p.Status, p.SubTotal }).ToListAsync();
         var ids = pos.Select(p => p.Id).ToList();
         var receipts = await _db.GoodsReceipts.AsNoTracking().Where(g => ids.Contains(g.PurchaseOrderId))
@@ -345,7 +350,7 @@ public partial class StandardReports
         var rfqs = await _db.Rfqs.AsNoTracking().Include(x => x.AwardedVendor).Include(x => x.Lines).Include(x => x.Vendors).ThenInclude(v => v.QuoteLines).Include(x => x.Vendors).ThenInclude(v => v.Vendor)
             .Include(x => x.PurchaseRequest)
             .Where(x => x.Status == RfqStatus.Awarded && x.IssueDate >= f.From && x.IssueDate < f.ToExclusive).AsSplitQuery().ToListAsync();
-        if (!string.IsNullOrEmpty(f.Department)) rfqs = rfqs.Where(x => x.PurchaseRequest?.Department == f.Department).ToList();
+        if (!string.IsNullOrEmpty(f.Department)) rfqs = rfqs.Where(x => f.Depts.Contains(x.PurchaseRequest?.Department ?? "")).ToList();
         var rfqRows = rfqs.Select(x =>
         {
             var scores = RfqEvaluation.Evaluate(x);
@@ -358,10 +363,10 @@ public partial class StandardReports
         }).ToList();
         var tenders = await _db.Tenders.AsNoTracking().Include(t => t.Bidders).Include(t => t.AwardedVendor).Include(t => t.PurchaseRequest)
             .Where(t => t.PublishedAt >= f.From && t.PublishedAt < f.ToExclusive && t.Status != TenderStatus.Cancelled).ToListAsync();
-        if (!string.IsNullOrEmpty(f.Department)) tenders = tenders.Where(t => t.PurchaseRequest?.Department == f.Department).ToList();
+        if (!string.IsNullOrEmpty(f.Department)) tenders = tenders.Where(t => f.Depts.Contains(t.PurchaseRequest?.Department ?? "")).ToList();
         var awards = await _db.DirectAwards.AsNoTracking().Include(d => d.PurchaseRequest).Include(d => d.Vendor)
             .Where(d => d.Status == DirectAwardStatus.Approved && d.ApprovedAt >= f.From && d.ApprovedAt < f.ToExclusive).ToListAsync();
-        if (!string.IsNullOrEmpty(f.Department)) awards = awards.Where(d => d.PurchaseRequest?.Department == f.Department).ToList();
+        if (!string.IsNullOrEmpty(f.Department)) awards = awards.Where(d => f.Depts.Contains(d.PurchaseRequest?.Department ?? "")).ToList();
 
         var avgResp = rfqRows.Count == 0 ? 0 : Math.Round((decimal)rfqRows.Average(x => (int)x[3]!), 1);
         var notLowest = rfqRows.Count(x => (string?)x[7] == "Không");

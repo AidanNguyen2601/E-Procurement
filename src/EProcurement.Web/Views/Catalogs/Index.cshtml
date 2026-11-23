@@ -50,6 +50,10 @@
                     else { <span class="badge bg-light text-dark border">Gợi ý khi nhập – vẫn nhập tự do được</span> }
                     @if (info.AdminOnly) { <span class="badge bg-warning-subtle text-warning-emphasis">Chỉ Quản trị được sửa</span> }
                 </div>
+                @if (info.Type == CatalogType.Department)
+                {
+                    <div class="alert alert-info small py-2 mt-2 mb-0">Phòng ban được quản lý tại <a asp-controller="OrgUnits" asp-action="Index" class="alert-link">Cơ cấu tổ chức</a> – danh mục này tự đồng bộ theo cây đơn vị (mã, thứ tự, trạng thái).</div>
+                }
             </div>
         </div></div>
 

@@ -1,0 +1,142 @@
+@model EProcurement.Web.Controllers.OrgUnitsController.OrgPage
+@{
+    var admin = User.IsAdmin();
+    var nodes = Model.Nodes;
+    var kids = nodes.ToLookup(n => n.Unit.ParentId);
+    var ids = nodes.Select(n => n.Unit.Id).ToHashSet();
+    // Tổng nhân sự cả cây con (đơn vị + cấp dưới)
+    var total = new Dictionary<int, int>();
+    for (var i = nodes.Count - 1; i >= 0; i--)
+    {
+        var u = nodes[i].Unit;
+        total[u.Id] = Model.Headcount.GetValueOrDefault(u.Name) + kids[u.Id].Sum(c => total.GetValueOrDefault(c.Unit.Id));
+    }
+    string TypeBadge(OrgUnitType t) => t switch { OrgUnitType.Company => "bg-primary", OrgUnitType.Division => "bg-info-subtle text-info-emphasis", OrgUnitType.Branch => "bg-warning-subtle text-warning-emphasis", OrgUnitType.Team => "bg-light text-dark border", _ => "bg-secondary-subtle text-secondary" };
+    var roots = nodes.Where(n => n.Depth == 0).ToList();
+}
+<style>
+    .org-tree td.name { white-space: nowrap; }
+    .org-tree .toggle { width: 18px; display: inline-block; cursor: pointer; color: #64748b; user-select: none; }
+    .org-chart { overflow-x: auto; padding: 8px 0 16px; }
+    .org-chart ul { padding-top: 20px; position: relative; display: flex; justify-content: center; margin: 0; padding-left: 0; }
+    .org-chart li { list-style: none; text-align: center; position: relative; padding: 20px 6px 0; }
+    .org-chart li::before, .org-chart li::after { content: ''; position: absolute; top: 0; right: 50%; border-top: 1px solid #cbd5e1; width: 50%; height: 20px; }
+    .org-chart li::after { right: auto; left: 50%; border-left: 1px solid #cbd5e1; }
+    .org-chart li:only-child::after, .org-chart li:only-child::before { display: none; }
+    .org-chart li:only-child { padding-top: 0; }
+    .org-chart li:first-child::before, .org-chart li:last-child::after { border: 0 none; }
+    .org-chart li:last-child::before { border-right: 1px solid #cbd5e1; border-radius: 0 5px 0 0; }
+    .org-chart li:first-child::after { border-radius: 5px 0 0 0; }
+    .org-chart ul ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 1px solid #cbd5e1; height: 20px; }
+    .org-chart > ul { padding-top: 0; width: max-content; min-width: 100%; }
+    .org-box { display: inline-block; min-width: 150px; max-width: 200px; padding: 8px 10px; border: 1px solid #e2e8f0; border-top: 3px solid var(--accent, #4f46e5); border-radius: 8px; background: var(--bs-body-bg, #fff); text-decoration: none; color: inherit; font-size: .82rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    .org-box:hover { border-color: var(--accent, #4f46e5); }
+    .org-box .t { font-weight: 600; line-height: 1.25; }
+    .org-box.inactive { opacity: .55; border-top-color: #94a3b8; }
+    .org-box.lv0 { border-top-color: #0f172a; }
+    .org-box.lv1 { border-top-color: #0ea5e9; }
+</style>
+
+<div class="toolbar d-flex flex-wrap gap-2 align-items-center">
+    <div class="btn-group btn-group-sm">
+        <a asp-action="Index" class="btn @(Model.View == "tree" ? "btn-primary" : "btn-outline-primary")">@Icon.Svg("list") Dạng cây</a>
+        <a asp-action="Index" asp-route-view="chart" class="btn @(Model.View == "chart" ? "btn-primary" : "btn-outline-primary")">@Icon.Svg("network") Sơ đồ tổ chức</a>
+    </div>
+    @if (Model.View == "tree")
+    {
+        <input type="search" id="org-filter" class="form-control form-control-sm" style="max-width:260px" placeholder="Tìm đơn vị, mã, trưởng đơn vị…" autocomplete="off" />
+    }
+    <div class="ms-auto d-flex gap-2">
+        @if (admin) { <a asp-action="Create" asp-route-parentId="@roots.FirstOrDefault()?.Unit.Id" class="btn btn-sm btn-primary">+ Thêm đơn vị</a> }
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Đơn vị</div><div class="value">@nodes.Count(n => n.Unit.IsActive)</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Khối / chi nhánh</div><div class="value">@nodes.Count(n => n.Unit.IsActive && n.Unit.Type is OrgUnitType.Division or OrgUnitType.Branch)</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Phòng ban / tổ</div><div class="value">@nodes.Count(n => n.Unit.IsActive && n.Unit.Type is OrgUnitType.Department or OrgUnitType.Team)</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Nhân sự đang hoạt động</div><div class="value">@Model.Headcount.Values.Sum()</div></div></div>
+</div>
+
+@if (nodes.Count == 0)
+{
+    <div class="card"><div class="card-body text-muted">Chưa có đơn vị nào.</div></div>
+}
+else if (Model.View == "chart")
+{
+    async Task Branch(OrgNode n)
+    {
+        var u = n.Unit;
+        <li>
+            <a asp-action="Details" asp-route-id="@u.Id" class="org-box lv@(Math.Min(n.Depth, 2)) @(u.IsActive ? "" : "inactive")">
+                <div class="small text-muted">@u.Type.GetDisplayName() · @u.Code</div>
+                <div class="t">@u.Name</div>
+                <div class="small text-muted mt-1">@(u.Manager?.FullName ?? "Chưa có trưởng đơn vị")</div>
+                <div class="small">@Icon.Svg("users", 12) @total.GetValueOrDefault(u.Id)</div>
+            </a>
+            @if (kids[u.Id].Any())
+            {
+                <ul>@foreach (var c in kids[u.Id]) { await Branch(c); }</ul>
+            }
+        </li>
+    }
+    <div class="card"><div class="card-body org-chart">
+        <ul>@foreach (var r in roots) { await Branch(r); }</ul>
+    </div></div>
+    <div class="small text-muted mt-2">Số người = nhân sự đang hoạt động của đơn vị và các đơn vị cấp dưới. Bấm vào ô để xem chi tiết.</div>
+}
+else
+{
+    <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover table-sm align-middle mb-0 org-tree" id="org-tree">
+        <thead><tr><th>Đơn vị</th><th>Mã</th><th>Loại</th><th>Trưởng đơn vị</th><th class="text-end">Nhân sự</th><th class="text-end" title="Gồm cả đơn vị cấp dưới">Cả khối</th><th>Trạng thái</th>@if (admin) { <th></th> }</tr></thead>
+        <tbody>
+        @foreach (var n in nodes)
+        {
+            var u = n.Unit;
+            var hasKids = kids[u.Id].Any();
+            <tr data-id="@u.Id" data-parent="@(u.ParentId is int p && ids.Contains(p) ? p : 0)" class="@(u.IsActive ? "" : "text-muted")">
+                <td class="name" style="padding-left:@(8 + n.Depth * 22)px">
+                    <span class="toggle">@(hasKids ? "▾" : "")</span>
+                    <a asp-action="Details" asp-route-id="@u.Id" class="@(n.Depth == 0 ? "fw-bold" : n.Unit.Type is OrgUnitType.Division or OrgUnitType.Branch ? "fw-semibold" : "")">@u.Name</a>
+                </td>
+                <td><code>@u.Code</code></td>
+                <td><span class="badge @TypeBadge(u.Type)">@u.Type.GetDisplayName()</span></td>
+                <td>@u.Manager?.FullName</td>
+                <td class="text-end">@Model.Headcount.GetValueOrDefault(u.Name)</td>
+                <td class="text-end text-muted">@(hasKids ? total.GetValueOrDefault(u.Id).ToString() : "")</td>
+                <td>@if (u.IsActive) { <span class="badge bg-success-subtle text-success">Hoạt động</span> } else { <span class="badge bg-secondary">Ngừng</span> }</td>
+                @if (admin)
+                {
+                    <td class="text-end text-nowrap">
+                        <a asp-action="Create" asp-route-parentId="@u.Id" class="btn btn-sm btn-outline-primary" title="Thêm đơn vị cấp dưới">+</a>
+                        <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary">Sửa</a>
+                    </td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table></div></div></div>
+    <div class="small text-muted mt-2">
+        Tên đơn vị chính là <b>phòng ban</b> dùng trong người dùng, đề nghị mua hàng, ngân sách, kế hoạch và hạn mức duyệt (danh mục Phòng ban tự đồng bộ theo cây này).
+        Duyệt đề nghị vẫn theo phòng ban: Trưởng bộ phận cùng phòng → Ban Giám đốc nếu vượt ngưỡng. Báo cáo lọc theo một khối / chi nhánh sẽ gộp cả các đơn vị cấp dưới.
+    </div>
+    <script>
+        (function () {
+            const rows = [...document.querySelectorAll('#org-tree tbody tr')];
+            const childrenOf = id => rows.filter(r => r.dataset.parent === id);
+            function setHidden(id, hide) { childrenOf(id).forEach(r => { r.classList.toggle('d-none', hide); if (hide || r.dataset.collapsed !== '1') setHidden(r.dataset.id, hide); }); }
+            rows.forEach(r => r.querySelector('.toggle').addEventListener('click', function () {
+                if (!this.textContent) return;
+                const c = r.dataset.collapsed === '1';
+                r.dataset.collapsed = c ? '0' : '1'; this.textContent = c ? '▾' : '▸';
+                setHidden(r.dataset.id, !c);
+            }));
+            const f = document.getElementById('org-filter');
+            f && f.addEventListener('input', function () {
+                const k = this.value.trim().toLowerCase();
+                rows.forEach(r => r.classList.toggle('d-none', !!k && !r.textContent.toLowerCase().includes(k)));
+                if (!k) rows.forEach(r => { r.dataset.collapsed = '0'; const t = r.querySelector('.toggle'); if (t.textContent) t.textContent = '▾'; });
+            });
+        })();
+    </script>
+}

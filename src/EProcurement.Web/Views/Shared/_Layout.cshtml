@@ -23,7 +23,7 @@
     var purchasing = User.IsPurchasing();
     var director = User.IsInRole(AppRoles.Director);
     var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
-    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", "Prequalifications" => "clipboard", "SupplierEvaluations" => "users", "PriceBank" => "database", "StandardPrices" => "tag", _ => null };
+    var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", "Prequalifications" => "clipboard", "SupplierEvaluations" => "users", "PriceBank" => "database", "StandardPrices" => "tag", "OrgUnits" => "network", _ => null };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -133,6 +133,7 @@
             }
 
             <div class="nav-group">Danh mục</div>
+            <a class="@Active("OrgUnits")" asp-controller="OrgUnits" asp-action="Index">@Icon.Svg("network")<span>Cơ cấu tổ chức</span></a>
             <a class="@Active("Items")" asp-controller="Items" asp-action="Index">@Icon.Svg("package")<span>Hàng hóa & nhóm hàng</span></a>
             @if (purchasing || director)
             {
