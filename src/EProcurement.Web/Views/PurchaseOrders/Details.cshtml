@@ -1,0 +1,122 @@
+@model PurchaseOrder
+@{
+    ViewData["Title"] = $"Đơn mua hàng {Model.Number}";
+    var history = (List<ApprovalHistory>)ViewBag.History;
+    var receipts = (List<GoodsReceipt>)ViewBag.Receipts;
+    var eval = ViewBag.Evaluation as VendorEvaluation;
+    decimal threshold = ViewBag.Threshold;
+    var buyer = User.IsPurchasing();
+    var canDecide = Model.Status == PoStatus.PendingApproval && (User.IsInRole(AppRoles.Director) || User.IsAdmin());
+    var flow = new[] { PoStatus.Draft, PoStatus.PendingApproval, PoStatus.Approved, PoStatus.Issued, PoStatus.PartiallyReceived, PoStatus.Received };
+    var received = Model.Lines.Sum(l => l.Quantity) == 0 ? 0 : Model.Lines.Sum(l => Math.Min(l.ReceivedQuantity, l.Quantity)) * 100 / Model.Lines.Sum(l => l.Quantity);
+}
+<div class="card mb-3"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="flow">
+        @foreach (var s in flow.Where(s => s != PoStatus.PendingApproval || Model.Total > threshold))
+        {
+            var cls = Model.Status == PoStatus.Cancelled ? "" : (int)s < (int)Model.Status ? "done" : s == Model.Status ? "current" : "";
+            <span class="step @cls">@s.GetDisplayName()</span>
+            @if (s != PoStatus.Received) { <span class="arrow">›</span> }
+        }
+    </div>
+    <partial name="_Badge" model="Model.Status" />
+</div></div>
+<div class="toolbar">
+    @if (buyer && Model.Status == PoStatus.Draft)
+    {
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa</a>
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">@(Model.Total > threshold ? "Trình Giám đốc duyệt" : "Duyệt đơn hàng")</button></form>
+    }
+    @if (buyer && Model.Status == PoStatus.Approved)
+    {
+        <form asp-action="Issue" asp-route-id="@Model.Id" method="post" data-confirm="Xác nhận đã gửi đơn hàng cho nhà cung cấp?"><button class="btn btn-primary">Gửi NCC</button></form>
+    }
+    @if (buyer && Model.Status is PoStatus.Issued or PoStatus.PartiallyReceived)
+    {
+        <a class="btn btn-success" asp-controller="GoodsReceipts" asp-action="Create" asp-route-poId="@Model.Id">Nhận hàng</a>
+    }
+    <a class="btn btn-outline-secondary" asp-action="Print" asp-route-id="@Model.Id" target="_blank">In đơn hàng</a>
+    @if (buyer && Model.Status is not (PoStatus.Received or PoStatus.Cancelled) && Model.Lines.All(l => l.ReceivedQuantity == 0))
+    {
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="Hủy đơn mua hàng này?">
+            <input name="reason" class="form-control form-control-sm" placeholder="Lý do hủy" /><button class="btn btn-sm btn-outline-danger text-nowrap">Hủy PO</button>
+        </form>
+    }
+</div>
+@if (canDecide)
+{
+    <div class="card mb-3 border-warning"><div class="card-body">
+        <div class="fw-semibold mb-2">Phê duyệt Giám đốc – giá trị @Model.Total.ToMoney() đ vượt ngưỡng @threshold.ToMoney() đ</div>
+        <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+            <input name="comment" class="form-control" placeholder="Ý kiến (bắt buộc khi trả lại)" />
+            <button name="approve" value="true" class="btn btn-success text-nowrap">Duyệt</button>
+            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">Trả lại</button>
+        </form>
+    </div></div>
+}
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card mb-3"><div class="card-body">
+            <dl class="row small mb-0 info">
+                <dt class="col-sm-3">Nhà cung cấp</dt><dd class="col-sm-9"><a asp-controller="Vendors" asp-action="Details" asp-route-id="@Model.VendorId" class="fw-semibold">@Model.Vendor?.Name</a> <span class="stars">@Model.Vendor?.Rating.Stars()</span></dd>
+                <dt class="col-sm-3">Nguồn</dt><dd class="col-sm-9">
+                    @if (Model.PurchaseRequest != null) { <span>PR <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId">@Model.PurchaseRequest.Number</a></span> }
+                    @if (Model.Rfq != null) { <span> · RFQ <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@Model.RfqId">@Model.Rfq.Number</a></span> }
+                    @if (Model.PurchaseRequest == null && Model.Rfq == null) { <span>Lập trực tiếp</span> }</dd>
+                <dt class="col-sm-3">Ngày đặt / giao</dt><dd class="col-sm-9">@Model.OrderDate.ToDate() → <b class="@(Model.IsLate ? "text-danger" : "")">@Model.DeliveryDate.ToDate()</b> @if (Model.IsLate) { <span class="text-danger">(trễ hạn)</span> }</dd>
+                <dt class="col-sm-3">Giao tại</dt><dd class="col-sm-9">@Model.DeliveryAddress</dd>
+                <dt class="col-sm-3">Thanh toán</dt><dd class="col-sm-9">@Model.PaymentTerms</dd>
+                <dt class="col-sm-3">Người lập</dt><dd class="col-sm-9">@Model.Buyer?.FullName</dd>
+                @if (!string.IsNullOrEmpty(Model.Notes)) { <dt class="col-sm-3">Ghi chú</dt><dd class="col-sm-9 pre">@Model.Notes</dd> }
+            </dl>
+        </div></div>
+        <div class="card mb-3"><div class="card-header d-flex justify-content-between">Chi tiết đơn hàng
+            @if (Model.Status >= PoStatus.Issued && Model.Status != PoStatus.Cancelled) { <span class="small fw-normal">Đã nhận @received.ToString("0")%</span> }</div>
+            <div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL đặt</th><th class="money">Đã nhận</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead>
+            <tbody>
+            @foreach (var l in Model.Lines)
+            {
+                <tr><td>@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td>
+                    <td class="money @(l.ReceivedQuantity >= l.Quantity ? "text-success" : l.ReceivedQuantity > 0 ? "text-warning" : "")">@l.ReceivedQuantity.ToQty()</td>
+                    <td class="money">@l.UnitPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr><td colspan="6" class="text-end">Cộng tiền hàng</td><td class="money">@Model.SubTotal.ToMoney()</td></tr>
+                <tr><td colspan="6" class="text-end">Thuế GTGT @Model.VatPercent.ToString("0.##")%</td><td class="money">@Model.VatAmount.ToMoney()</td></tr>
+                <tr class="fw-bold"><td colspan="6" class="text-end">Tổng giá trị đơn hàng</td><td class="money">@Model.Total.ToMoney()</td></tr>
+            </tfoot>
+        </table></div></div>
+        @if (receipts.Any())
+        {
+            <div class="card mb-3"><div class="card-header">Phiếu nhận hàng</div><div class="card-body p-0"><table class="table mb-0">
+                <thead><tr><th>Số phiếu</th><th>Ngày nhận</th><th>Phiếu giao NCC</th><th class="money">SL đạt</th><th class="money">SL không đạt</th><th>Người nhận</th></tr></thead>
+                <tbody>@foreach (var g in receipts) { <tr><td><a asp-controller="GoodsReceipts" asp-action="Details" asp-route-id="@g.Id">@g.Number</a></td><td>@g.ReceiptDate.ToDate()</td><td>@g.DeliveryNoteNo</td><td class="money">@g.Lines.Sum(l => l.QuantityAccepted).ToQty()</td><td class="money @(g.Lines.Sum(l => l.QuantityRejected) > 0 ? "text-danger" : "")">@g.Lines.Sum(l => l.QuantityRejected).ToQty()</td><td>@g.ReceivedBy?.FullName</td></tr> }</tbody>
+            </table></div></div>
+        }
+        @if (Model.Status == PoStatus.Received)
+        {
+            <div class="card"><div class="card-header">Đánh giá nhà cung cấp</div><div class="card-body">
+            @if (eval != null)
+            {
+                <div>Chất lượng <b>@eval.Quality</b> · Tiến độ <b>@eval.Delivery</b> · Giá <b>@eval.Price</b> · Dịch vụ <b>@eval.Service</b> → trung bình <span class="stars">@eval.Average.Stars()</span></div>
+                <div class="small text-muted">@eval.Comment – @eval.Evaluator?.FullName, @eval.CreatedAt.ToDate()</div>
+            }
+            else if (buyer)
+            {
+                <form asp-action="Evaluate" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
+                    @foreach (var (name, label) in new[] { ("Quality", "Chất lượng"), ("Delivery", "Tiến độ giao"), ("Price", "Giá cả"), ("Service", "Dịch vụ") })
+                    {
+                        <div class="col-md-2"><label class="form-label small mb-1">@label</label>
+                            <select name="@name" class="form-select form-select-sm">@for (var i = 5; i >= 1; i--) { <option value="@i" selected="@(i == 4)">@i – @("★★★★★".Substring(0, i))</option> }</select></div>
+                    }
+                    <div class="col-md-3"><input name="Comment" class="form-control form-control-sm" placeholder="Nhận xét" /></div>
+                    <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Lưu</button></div>
+                </form>
+            }
+            </div></div>
+        }
+    </div>
+    <div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+</div>

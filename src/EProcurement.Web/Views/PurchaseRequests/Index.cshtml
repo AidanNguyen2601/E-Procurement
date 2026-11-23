@@ -1,0 +1,49 @@
+@model PagedList<PurchaseRequest>
+@{
+    ViewData["Title"] = "Đề nghị mua hàng";
+    string scope = ViewBag.Scope; var status = ViewBag.Status as PrStatus?; string? keyword = ViewBag.Keyword;
+    bool seesAll = ViewBag.SeesAll, isApprover = ViewBag.IsApprover;
+    string Tab(string s) => scope == s ? "active" : "";
+    var statusItems = Html.GetEnumSelectList<PrStatus>().ToList();
+    foreach (var i in statusItems) i.Selected = status.HasValue && i.Value == ((int)status.Value).ToString();
+    Func<int, string> pageUrl = p => Url.Action("Index", new { scope, status, keyword, page = p })!;
+}
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item"><a class="nav-link @Tab("mine")" asp-route-scope="mine">Của tôi</a></li>
+    @if (isApprover || seesAll) { <li class="nav-item"><a class="nav-link @Tab("dept")" asp-route-scope="dept">Phòng tôi</a></li> }
+    @if (seesAll)
+    {
+        <li class="nav-item"><a class="nav-link @Tab("approved")" asp-route-scope="approved">Đã duyệt – cần mua</a></li>
+        <li class="nav-item"><a class="nav-link @Tab("all")" asp-route-scope="all">Tất cả</a></li>
+    }
+</ul>
+<form method="get" class="toolbar">
+    <input type="hidden" name="scope" value="@scope" />
+    <div><label class="form-label small mb-1">Tìm kiếm</label><input name="keyword" value="@keyword" class="form-control" placeholder="Số PR, nội dung" /></div>
+    <div><label class="form-label small mb-1">Trạng thái</label><select name="status" class="form-select" asp-items="statusItems"><option value="">-- Tất cả --</option></select></div>
+    <button class="btn btn-outline-primary">Lọc</button>
+    <a class="btn btn-primary ms-auto" asp-action="Create">+ Tạo đề nghị</a>
+</form>
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+    <thead><tr><th>Số PR</th><th>Nội dung</th><th>Người đề nghị</th><th>Phòng ban</th><th>Ngày đề nghị</th><th>Cần hàng</th><th>Mức độ</th><th class="money">Dự toán</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+    @foreach (var p in Model.Items)
+    {
+        <tr>
+            <td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td>
+            <td>@p.Title</td><td>@p.Requester?.FullName</td><td>@p.Department</td>
+            <td>@p.RequestDate.ToDate()</td><td>@p.NeededDate.ToDate()</td>
+            <td><partial name="_Badge" model="p.Priority" /></td>
+            <td class="money">@p.EstimatedTotal.ToMoney()</td>
+            <td><partial name="_Badge" model="p.Status" /></td>
+        </tr>
+    }
+    @if (!Model.Items.Any()) { <tr><td colspan="9" class="text-center text-muted p-4">Không có đề nghị.</td></tr> }
+    </tbody>
+</table>
+</div>
+<div class="card-footer bg-white d-flex justify-content-between align-items-center">
+    <span class="small text-muted">Tổng: @Model.TotalCount đề nghị</span>
+    <partial name="_Pager" model="(Model.Page, Model.TotalPages, pageUrl)" />
+</div></div>

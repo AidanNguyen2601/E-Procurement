@@ -1,0 +1,31 @@
+@model List<Rfq>
+@{
+    ViewData["Title"] = "Yêu cầu báo giá (RFQ)";
+    var status = ViewBag.Status as RfqStatus?;
+    var statusItems = Html.GetEnumSelectList<RfqStatus>().ToList();
+    foreach (var i in statusItems) i.Selected = status.HasValue && i.Value == ((int)status.Value).ToString();
+}
+<form method="get" class="toolbar">
+    <div><label class="form-label small mb-1">Trạng thái</label><select name="status" class="form-select" asp-items="statusItems" onchange="this.form.submit()"><option value="">-- Tất cả --</option></select></div>
+    @if (User.IsPurchasing()) { <a class="btn btn-primary ms-auto" asp-action="Create">+ Tạo RFQ</a> }
+</form>
+<div class="card"><div class="card-body p-0"><table class="table table-hover mb-0">
+    <thead><tr><th>Số RFQ</th><th>Tiêu đề</th><th>Từ PR</th><th>Hạn báo giá</th><th class="text-center">NCC đã báo giá</th><th>NCC trúng</th><th>Phụ trách</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        var overdue = r.Status == RfqStatus.Open && r.Deadline < DateTime.Today;
+        <tr>
+            <td><a asp-action="Details" asp-route-id="@r.Id" class="fw-semibold">@r.Number</a></td>
+            <td>@r.Title</td>
+            <td>@if (r.PurchaseRequest != null) { <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@r.PurchaseRequestId">@r.PurchaseRequest.Number</a> }</td>
+            <td class="@(overdue ? "text-danger" : "")">@r.Deadline.ToDate() @if (overdue) { <small>(đã hết hạn)</small> }</td>
+            <td class="text-center">@r.Vendors.Count(v => v.Responded)/@r.Vendors.Count</td>
+            <td>@r.AwardedVendor?.Name</td>
+            <td>@r.Buyer?.FullName</td>
+            <td><partial name="_Badge" model="r.Status" /></td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted p-4">Chưa có RFQ.</td></tr> }
+    </tbody>
+</table></div></div>

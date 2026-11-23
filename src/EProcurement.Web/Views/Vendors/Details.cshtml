@@ -1,0 +1,68 @@
+@model Vendor
+@{
+    ViewData["Title"] = Model.Name;
+    var orders = (List<PurchaseOrder>)ViewBag.Orders;
+    var evals = (List<VendorEvaluation>)ViewBag.Evaluations;
+    var rfqs = (List<RfqVendor>)ViewBag.Rfqs;
+    var spend = orders.Where(o => o.Status >= PoStatus.Approved && o.Status != PoStatus.Cancelled).Sum(o => o.SubTotal);
+    var winRate = rfqs.Count(r => r.Responded) == 0 ? 0 : rfqs.Count(r => r.Rfq?.AwardedVendorId == Model.Id) * 100 / rfqs.Count(r => r.Responded);
+}
+@if (User.IsPurchasing())
+{
+    <div class="toolbar">
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa</a>
+        <form asp-action="SetStatus" asp-route-id="@Model.Id" method="post" class="d-flex gap-1 ms-auto">
+            <select name="status" class="form-select form-select-sm" style="width:180px" asp-items="Html.GetEnumSelectList<VendorStatus>()"></select>
+            <input name="note" class="form-control form-control-sm" placeholder="Ghi chú thẩm định / lý do" style="width:260px" />
+            <button class="btn btn-sm btn-primary text-nowrap">Cập nhật trạng thái</button>
+        </form>
+    </div>
+}
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card"><div class="card-body">
+            <h5 class="mb-0">@Model.Name</h5>
+            <div class="text-muted mb-2">@Model.Code · MST @Model.TaxCode</div>
+            <partial name="_Badge" model="Model.Status" /> <span class="stars ms-2">@Model.Rating.Stars()</span>
+            <div class="row text-center mt-3">
+                <div class="col"><div class="small text-muted">Đã mua</div><div class="fw-bold">@spend.ToShortMoney()</div></div>
+                <div class="col"><div class="small text-muted">Số PO</div><div class="fw-bold">@orders.Count</div></div>
+                <div class="col"><div class="small text-muted">Tỷ lệ trúng RFQ</div><div class="fw-bold">@winRate%</div></div>
+            </div>
+            <hr />
+            <dl class="row small mb-0 info">
+                <dt class="col-5">Nhóm hàng</dt><dd class="col-7">@string.Join(", ", Model.Categories.Select(c => c.Category?.Name))</dd>
+                <dt class="col-5">Địa chỉ</dt><dd class="col-7">@Model.Address</dd>
+                <dt class="col-5">Điện thoại</dt><dd class="col-7">@Model.Phone</dd>
+                <dt class="col-5">Email</dt><dd class="col-7">@Model.Email</dd>
+                <dt class="col-5">Người liên hệ</dt><dd class="col-7">@Model.ContactPerson – @Model.ContactPhone</dd>
+                <dt class="col-5">Tài khoản</dt><dd class="col-7">@Model.BankAccount – @Model.BankName</dd>
+                <dt class="col-5">Thanh toán</dt><dd class="col-7">@Model.PaymentTerms</dd>
+            </dl>
+            @if (!string.IsNullOrEmpty(Model.Note)) { <hr /><div class="small pre">@Model.Note</div> }
+        </div></div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card mb-3"><div class="card-header">Đơn mua hàng</div><div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>Số PO</th><th>Ngày đặt</th><th>Ngày giao</th><th class="money">Tổng giá trị</th><th>Trạng thái</th></tr></thead>
+            <tbody>
+            @foreach (var o in orders) { <tr><td><a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@o.Id">@o.Number</a></td><td>@o.OrderDate.ToDate()</td><td>@o.DeliveryDate.ToDate()</td><td class="money">@o.Total.ToMoney()</td><td><partial name="_Badge" model="o.Status" /></td></tr> }
+            @if (!orders.Any()) { <tr><td colspan="5" class="text-muted p-3">Chưa có đơn hàng.</td></tr> }
+            </tbody>
+        </table></div></div>
+        <div class="card mb-3"><div class="card-header">Lịch sử đánh giá</div><div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>Ngày</th><th>PO</th><th class="text-center">Chất lượng</th><th class="text-center">Tiến độ</th><th class="text-center">Giá</th><th class="text-center">Dịch vụ</th><th>Nhận xét</th></tr></thead>
+            <tbody>
+            @foreach (var e in evals) { <tr><td>@e.CreatedAt.ToDate()</td><td>@e.PurchaseOrder?.Number</td><td class="text-center">@e.Quality</td><td class="text-center">@e.Delivery</td><td class="text-center">@e.Price</td><td class="text-center">@e.Service</td><td class="small">@e.Comment<br /><span class="text-muted">@e.Evaluator?.FullName</span></td></tr> }
+            @if (!evals.Any()) { <tr><td colspan="7" class="text-muted p-3">Chưa có đánh giá.</td></tr> }
+            </tbody>
+        </table></div></div>
+        <div class="card"><div class="card-header">Tham gia báo giá</div><div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>RFQ</th><th>Đã báo giá</th><th class="money">Tổng báo giá</th><th>Kết quả</th></tr></thead>
+            <tbody>
+            @foreach (var r in rfqs) { <tr><td><a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.RfqId">@r.Rfq?.Number</a> – @r.Rfq?.Title</td><td>@(r.Responded ? "Có" : "Chưa")</td><td class="money">@(r.Responded ? r.TotalAmount.ToMoney() : "")</td>
+                <td>@(r.Rfq?.AwardedVendorId == Model.Id ? Html.Raw("<span class='badge bg-success'>Trúng</span>") : r.Rfq?.Status == RfqStatus.Awarded ? Html.Raw("<span class='badge bg-secondary'>Không trúng</span>") : Html.Raw(""))</td></tr> }
+            </tbody>
+        </table></div></div>
+    </div>
+</div>

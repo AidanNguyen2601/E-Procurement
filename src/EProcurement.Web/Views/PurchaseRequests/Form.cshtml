@@ -1,0 +1,22 @@
+@model PrFormViewModel
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Tạo đề nghị mua hàng" : $"Sửa đề nghị {Model.Number}";
+    ViewData["PriceLabel"] = "Đơn giá dự toán";
+    ViewData["ItemsJson"] = ViewBag.ItemsJson;
+}
+<form asp-action="Save" method="post">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="card mb-3"><div class="card-body row g-3">
+        <div class="col-md-2"><label asp-for="Number" class="form-label"></label><input asp-for="Number" class="form-control" readonly /></div>
+        <div class="col-md-6"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" placeholder="VD: Mua laptop cho nhân viên mới" /><span asp-validation-for="Title" class="text-danger small"></span></div>
+        <div class="col-md-2"><label asp-for="NeededDate" class="form-label"></label><input asp-for="NeededDate" class="form-control" /><span asp-validation-for="NeededDate" class="text-danger small"></span></div>
+        <div class="col-md-2"><label asp-for="Priority" class="form-label"></label><select asp-for="Priority" class="form-select" asp-items="Html.GetEnumSelectList<PrPriority>()"></select></div>
+        <div class="col-12"><label asp-for="Purpose" class="form-label"></label><textarea asp-for="Purpose" class="form-control" rows="2"></textarea></div>
+        <div class="col-12 small text-muted">Người đề nghị: <b>@User.GetFullName()</b> · Phòng ban: <b>@User.GetDepartment()</b>. Chọn hàng trong danh mục để tự điền đơn vị và giá tham khảo.</div>
+    </div></div>
+    <partial name="_LineEditor" model="Model.Lines" />
+    <button class="btn btn-outline-primary" name="submit" value="false">Lưu nháp</button>
+    <button class="btn btn-primary" name="submit" value="true">Lưu & gửi duyệt</button>
+    <a asp-action="Index" class="btn btn-light">Hủy</a>
+</form>

@@ -1,0 +1,66 @@
+@model ComparisonViewModel
+@{
+    var r = Model.Rfq;
+    ViewData["Title"] = $"So sánh báo giá {r.Number}";
+    var canAward = User.IsPurchasing() && r.Status == RfqStatus.Open;
+}
+@if (!Model.Responded.Any())
+{
+    <div class="alert alert-warning">Chưa có nhà cung cấp nào báo giá.</div>
+}
+else
+{
+    <div class="small text-muted mb-2">Ô xanh: đơn giá thấp nhất từng dòng. Khung xanh: NCC có tổng giá thấp nhất (đã báo đủ các dòng). Dự toán tham chiếu: <b>@Model.ReferenceTotal.ToMoney() đ</b>.</div>
+    <div class="card mb-3"><div class="card-body p-0 table-responsive">
+    <table class="table table-bordered compare mb-0">
+        <thead>
+            <tr><th rowspan="2">Hàng hóa / dịch vụ</th><th rowspan="2" class="money">SL</th>
+                @foreach (var v in Model.Responded)
+                {
+                    <th class="vendor-head text-center @(v.VendorId == Model.LowestTotalVendorId ? "winner" : "") @(r.AwardedVendorId == v.VendorId ? "table-success" : "")">
+                        @v.Vendor?.Name<br /><span class="stars small fw-normal">@v.Vendor?.Rating.Stars()</span></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var l in r.Lines)
+        {
+            <tr><td>@l.Description <span class="text-muted small">(@l.Unit)</span></td><td class="money">@l.Quantity.ToQty()</td>
+                @foreach (var v in Model.Responded)
+                {
+                    var q = v.QuoteLines.FirstOrDefault(x => x.RfqLineId == l.Id);
+                    var best = q != null && Model.LowestByLine.TryGetValue(l.Id, out var lo) && q.UnitPrice == lo;
+                    <td class="money @(best ? "best" : "") @(v.VendorId == Model.LowestTotalVendorId ? "winner" : "")">
+                        @if (q != null && q.UnitPrice > 0) { @q.UnitPrice.ToMoney()<div class="small text-muted">= @q.Amount.ToMoney()</div> } else { <span class="text-muted">không chào</span> }
+                    </td>
+                }
+            </tr>
+        }
+        </tbody>
+        <tfoot>
+            <tr class="fw-bold"><td colspan="2" class="text-end">Tổng trước VAT</td>@foreach (var v in Model.Responded) { <td class="money @(v.VendorId == Model.LowestTotalVendorId ? "winner best" : "")">@v.TotalAmount.ToMoney()</td> }</tr>
+            <tr><td colspan="2" class="text-end">So với dự toán</td>@foreach (var v in Model.Responded) { var d = Model.ReferenceTotal == 0 ? 0 : (v.TotalAmount - Model.ReferenceTotal) * 100 / Model.ReferenceTotal; <td class="money @(d <= 0 ? "text-success" : "text-danger")">@(d > 0 ? "+" : "")@d.ToString("0.0")%</td> }</tr>
+            <tr><td colspan="2" class="text-end">VAT</td>@foreach (var v in Model.Responded) { <td class="money">@v.VatPercent.ToString("0.##")%</td> }</tr>
+            <tr><td colspan="2" class="text-end">Thời gian giao</td>@foreach (var v in Model.Responded) { <td class="money">@(v.LeadTimeDays.HasValue ? v.LeadTimeDays + " ngày" : "—")</td> }</tr>
+            <tr><td colspan="2" class="text-end">Bảo hành</td>@foreach (var v in Model.Responded) { <td class="text-end small">@v.Warranty</td> }</tr>
+            <tr><td colspan="2" class="text-end">Thanh toán</td>@foreach (var v in Model.Responded) { <td class="text-end small">@v.PaymentTerms</td> }</tr>
+            @if (canAward)
+            {
+                <tr><td colspan="2"></td>@foreach (var v in Model.Responded)
+                {
+                    <td>
+                        <form asp-action="Award" asp-route-id="@r.Id" method="post" data-confirm="Chọn @v.Vendor?.Name trúng và tạo đơn mua hàng?">
+                            <input type="hidden" name="vendorId" value="@v.VendorId" />
+                            <input name="reason" class="form-control form-control-sm mb-1" placeholder="Lý do chọn" value="@(v.VendorId == Model.LowestTotalVendorId ? "Giá tổng thấp nhất, đáp ứng yêu cầu kỹ thuật" : "")" />
+                            <button class="btn btn-sm btn-success w-100">Chọn NCC này</button>
+                        </form>
+                    </td>
+                }</tr>
+            }
+        </tfoot>
+    </table>
+    </div></div>
+}
+@{ var pending = r.Vendors.Where(v => !v.Responded).ToList(); }
+@if (pending.Any()) { <div class="small text-muted">Chưa báo giá: @string.Join(", ", pending.Select(v => v.Vendor?.Name))</div> }
+<a asp-action="Details" asp-route-id="@r.Id" class="btn btn-light mt-3">← Quay lại RFQ</a>

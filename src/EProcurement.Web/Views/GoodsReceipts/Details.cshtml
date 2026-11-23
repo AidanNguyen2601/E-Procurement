@@ -1,0 +1,14 @@
+@model GoodsReceipt
+@{ ViewData["Title"] = $"Phiếu nhận hàng {Model.Number}"; }
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In phiếu</button>
+    <a class="btn btn-outline-primary" asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@Model.PurchaseOrderId">Xem đơn hàng</a></div>
+<div class="card paper"><div class="card-body p-4">
+    <div class="text-center mb-3"><h4 class="mb-0">PHIẾU NHẬN HÀNG</h4><div>Số: @Model.Number · Ngày: @Model.ReceiptDate.ToDate()</div></div>
+    <div class="small mb-3">Đơn hàng: <b>@Model.PurchaseOrder?.Number</b> · Nhà cung cấp: <b>@Model.PurchaseOrder?.Vendor?.Name</b> · Phiếu giao hàng NCC: @Model.DeliveryNoteNo</div>
+    <table class="table table-bordered table-sm">
+        <thead><tr><th>Hàng hóa</th><th>ĐVT</th><th class="money">SL đặt</th><th class="money">SL đạt</th><th class="money">SL không đạt</th><th>Ghi chú</th></tr></thead>
+        <tbody>@foreach (var l in Model.Lines) { <tr><td>@l.PurchaseOrderLine?.Description</td><td>@l.PurchaseOrderLine?.Unit</td><td class="money">@l.PurchaseOrderLine?.Quantity.ToQty()</td><td class="money">@l.QuantityAccepted.ToQty()</td><td class="money">@l.QuantityRejected.ToQty()</td><td>@l.Note</td></tr> }</tbody>
+    </table>
+    @if (!string.IsNullOrEmpty(Model.Note)) { <p class="small">Ghi chú: @Model.Note</p> }
+    <div class="row text-center mt-5 small"><div class="col"><b>NGƯỜI GIAO HÀNG</b><br />(Ký, ghi rõ họ tên)</div><div class="col"><b>NGƯỜI NHẬN HÀNG</b><br />@Model.ReceivedBy?.FullName</div></div>
+</div></div>

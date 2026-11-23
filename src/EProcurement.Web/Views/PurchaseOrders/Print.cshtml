@@ -1,0 +1,21 @@
+@model PurchaseOrder
+@{ ViewData["Title"] = $"Đơn đặt hàng {Model.Number}"; }
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="card paper"><div class="card-body p-4">
+    <div class="text-center mb-3"><h4 class="mb-0">ĐƠN ĐẶT HÀNG</h4><div>Số: @Model.Number · Ngày: @Model.OrderDate.ToDate()</div></div>
+    <div class="row small mb-3">
+        <div class="col-6"><div class="text-muted">Bên bán (Nhà cung cấp)</div><b>@Model.Vendor?.Name</b><br />MST: @Model.Vendor?.TaxCode<br />@Model.Vendor?.Address<br />Người liên hệ: @Model.Vendor?.ContactPerson – @Model.Vendor?.ContactPhone</div>
+        <div class="col-6"><div class="text-muted">Thông tin giao hàng</div>Địa điểm: @Model.DeliveryAddress<br />Ngày giao: <b>@Model.DeliveryDate.ToDate()</b><br />Thanh toán: @Model.PaymentTerms<br />Người đặt hàng: @Model.Buyer?.FullName</div>
+    </div>
+    <table class="table table-bordered table-sm">
+        <thead><tr><th class="text-center">STT</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead>
+        <tbody>@foreach (var l in Model.Lines) { <tr><td class="text-center">@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.UnitPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr> }</tbody>
+        <tfoot>
+            <tr><td colspan="5" class="text-end">Cộng tiền hàng</td><td class="money">@Model.SubTotal.ToMoney()</td></tr>
+            <tr><td colspan="5" class="text-end">Thuế GTGT @Model.VatPercent.ToString("0.##")%</td><td class="money">@Model.VatAmount.ToMoney()</td></tr>
+            <tr class="fw-bold"><td colspan="5" class="text-end">TỔNG CỘNG</td><td class="money">@Model.Total.ToMoney()</td></tr>
+        </tfoot>
+    </table>
+    @if (!string.IsNullOrEmpty(Model.Notes)) { <div class="small pre mb-3"><b>Ghi chú:</b> @Model.Notes</div> }
+    <div class="row text-center mt-5 small"><div class="col"><b>ĐẠI DIỆN BÊN BÁN</b><br />(Ký, ghi rõ họ tên, đóng dấu)</div><div class="col"><b>ĐẠI DIỆN BÊN MUA</b><br />(Ký, ghi rõ họ tên, đóng dấu)</div></div>
+</div></div>

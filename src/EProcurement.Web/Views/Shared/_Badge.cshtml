@@ -1,0 +1,16 @@
+@model Enum
+@{
+    var css = Model switch
+    {
+        PrStatus.Draft or RfqStatus.Draft or PoStatus.Draft => "bg-secondary",
+        PrStatus.Submitted or PrStatus.PendingDirector or PoStatus.PendingApproval or VendorStatus.Pending => "bg-warning text-dark",
+        PrStatus.Approved or PoStatus.Approved or RfqStatus.Open => "bg-info text-dark",
+        PrStatus.Processing or PoStatus.Issued or PoStatus.PartiallyReceived => "bg-primary",
+        PrStatus.Completed or PoStatus.Received or RfqStatus.Awarded or VendorStatus.Approved => "bg-success",
+        PrStatus.Rejected or VendorStatus.Blacklisted => "bg-danger",
+        PrStatus.Cancelled or RfqStatus.Cancelled or PoStatus.Cancelled or VendorStatus.Suspended => "bg-dark",
+        PrPriority.Urgent => "bg-warning text-dark", PrPriority.Critical => "bg-danger",
+        _ => "bg-light text-dark border"
+    };
+}
+<span class="badge @css">@Model.GetDisplayName()</span>

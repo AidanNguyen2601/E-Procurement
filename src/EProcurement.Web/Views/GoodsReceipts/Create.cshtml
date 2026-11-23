@@ -1,0 +1,33 @@
+@model ReceiptFormViewModel
+@{
+    ViewData["Title"] = $"Nhận hàng – {Model.PurchaseOrder?.Number}";
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<form asp-action="Create" method="post">
+    <input type="hidden" asp-for="PurchaseOrderId" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="card mb-3"><div class="card-body row g-3">
+        <div class="col-12 small">Nhà cung cấp: <b>@Model.PurchaseOrder?.Vendor?.Name</b> · Ngày giao hẹn: <b>@Model.PurchaseOrder?.DeliveryDate.ToDate()</b></div>
+        <div class="col-md-3"><label asp-for="ReceiptDate" class="form-label"></label><input asp-for="ReceiptDate" class="form-control" /><span asp-validation-for="ReceiptDate" class="text-danger small"></span></div>
+        <div class="col-md-3"><label asp-for="DeliveryNoteNo" class="form-label"></label><input asp-for="DeliveryNoteNo" class="form-control" /></div>
+        <div class="col-md-6"><label asp-for="Note" class="form-label"></label><input asp-for="Note" class="form-control" /></div>
+    </div></div>
+    <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
+        <thead><tr><th>Hàng hóa</th><th>ĐVT</th><th class="money">SL đặt</th><th class="money">Đã nhận</th><th class="money">Còn lại</th><th style="width:130px">SL đạt (nhập kho)</th><th style="width:130px">SL không đạt (trả lại)</th><th>Ghi chú</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < Model.Lines.Count; i++)
+        {
+            var l = Model.Lines[i];
+            <tr>
+                <td>@l.Description<input type="hidden" asp-for="Lines[i].PurchaseOrderLineId" /></td><td>@l.Unit</td>
+                <td class="money">@l.Ordered.ToQty()</td><td class="money">@l.Received.ToQty()</td><td class="money fw-semibold">@Math.Max(0, l.Ordered - l.Received).ToQty()</td>
+                <td><input name="Lines[@i].QuantityAccepted" type="number" min="0" step="0.01" class="form-control form-control-sm" value="@l.QuantityAccepted.ToString(inv)" /></td>
+                <td><input name="Lines[@i].QuantityRejected" type="number" min="0" step="0.01" class="form-control form-control-sm" value="@l.QuantityRejected.ToString(inv)" /></td>
+                <td><input asp-for="Lines[i].Note" class="form-control form-control-sm" placeholder="Lý do không đạt…" /></td>
+            </tr>
+        }
+        </tbody>
+    </table></div></div>
+    <button class="btn btn-success">Lưu phiếu nhận hàng</button>
+    <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@Model.PurchaseOrderId" class="btn btn-light">Hủy</a>
+</form>

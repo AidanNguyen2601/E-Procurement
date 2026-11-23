@@ -1,0 +1,62 @@
+@model Rfq
+@{
+    ViewData["Title"] = $"{Model.Number} – {Model.Title}";
+    var history = (List<ApprovalHistory>)ViewBag.History;
+    var po = ViewBag.Po as PurchaseOrder;
+    var buyer = User.IsPurchasing();
+}
+<div class="toolbar">
+    @if (buyer && Model.Status == RfqStatus.Draft)
+    {
+        <form asp-action="Publish" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">Phát hành RFQ</button></form>
+    }
+    @if (Model.Vendors.Any(v => v.Responded)) { <a class="btn btn-primary" asp-action="Compare" asp-route-id="@Model.Id">So sánh báo giá</a> }
+    @if (po != null) { <a class="btn btn-success" asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id">Xem đơn hàng @po.Number</a> }
+    @if (buyer && Model.Status is RfqStatus.Draft or RfqStatus.Open)
+    {
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="Hủy RFQ này?">
+            <input name="reason" class="form-control form-control-sm" placeholder="Lý do hủy" /><button class="btn btn-sm btn-outline-danger text-nowrap">Hủy RFQ</button>
+        </form>
+    }
+</div>
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card mb-3"><div class="card-body">
+            <div class="d-flex justify-content-between"><h5>@Model.Title</h5><partial name="_Badge" model="Model.Status" /></div>
+            <dl class="row small mb-0 info">
+                <dt class="col-sm-3">Từ đề nghị</dt><dd class="col-sm-9">@if (Model.PurchaseRequest != null) { <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId">@Model.PurchaseRequest.Number</a> <span>– dự toán @Model.PurchaseRequest.EstimatedTotal.ToMoney() đ</span> } else { <span>—</span> }</dd>
+                <dt class="col-sm-3">Phát hành / hạn</dt><dd class="col-sm-9">@Model.IssueDate.ToDate() → <b class="@(Model.Status == RfqStatus.Open && Model.Deadline < DateTime.Today ? "text-danger" : "")">@Model.Deadline.ToDate()</b></dd>
+                <dt class="col-sm-3">Phụ trách</dt><dd class="col-sm-9">@Model.Buyer?.FullName</dd>
+                <dt class="col-sm-3">Yêu cầu</dt><dd class="col-sm-9 pre">@Model.Requirements</dd>
+                @if (Model.AwardedVendor != null)
+                {
+                    <dt class="col-sm-3">NCC trúng</dt><dd class="col-sm-9 text-success fw-semibold">@Model.AwardedVendor.Name</dd>
+                    <dt class="col-sm-3">Lý do chọn</dt><dd class="col-sm-9">@Model.AwardReason</dd>
+                }
+            </dl>
+        </div></div>
+        <div class="card mb-3"><div class="card-header">Hàng hóa cần báo giá</div><div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">Số lượng</th></tr></thead>
+            <tbody>@foreach (var l in Model.Lines) { <tr><td>@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td></tr> }</tbody>
+        </table></div></div>
+        <div class="card"><div class="card-header">Nhà cung cấp được mời</div><div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>Nhà cung cấp</th><th>Báo giá</th><th class="money">Tổng (trước VAT)</th><th>Giao hàng</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var v in Model.Vendors.OrderByDescending(v => v.Responded).ThenBy(v => v.TotalAmount))
+            {
+                <tr class="@(Model.AwardedVendorId == v.VendorId ? "table-success" : "")">
+                    <td><a asp-controller="Vendors" asp-action="Details" asp-route-id="@v.VendorId">@v.Vendor?.Name</a><br /><span class="stars small">@v.Vendor?.Rating.Stars()</span></td>
+                    <td>@(v.Responded ? $"Đã nhận {v.RespondedAt.ToDate()}" : "Chưa báo giá")</td>
+                    <td class="money">@(v.Responded ? v.TotalAmount.ToMoney() : "")</td>
+                    <td>@(v.LeadTimeDays.HasValue ? $"{v.LeadTimeDays} ngày" : "")</td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Invitation" asp-route-id="@Model.Id" asp-route-vendorId="@v.VendorId" target="_blank">Thư mời</a>
+                        @if (buyer && Model.Status == RfqStatus.Open) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterQuote" asp-route-rfqVendorId="@v.Id">@(v.Responded ? "Sửa báo giá" : "Nhập báo giá")</a> }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table></div></div>
+    </div>
+    <div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" /></div></div></div>
+</div>

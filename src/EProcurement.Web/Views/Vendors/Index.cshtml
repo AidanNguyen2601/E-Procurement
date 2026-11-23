@@ -1,0 +1,35 @@
+@model List<Vendor>
+@{
+    ViewData["Title"] = "Nhà cung cấp";
+    var status = ViewBag.Status as VendorStatus?;
+    var statusItems = Html.GetEnumSelectList<VendorStatus>().ToList();
+    foreach (var i in statusItems) i.Selected = status.HasValue && i.Value == ((int)status.Value).ToString();
+    var cats = (List<Category>)ViewBag.Categories;
+    int? catId = ViewBag.CategoryId;
+    var spend = (Dictionary<int, decimal>)ViewBag.Spend;
+}
+<form method="get" class="toolbar">
+    <div><label class="form-label small mb-1">Tìm kiếm</label><input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Tên, mã, MST" /></div>
+    <div><label class="form-label small mb-1">Trạng thái</label><select name="status" class="form-select" asp-items="statusItems"><option value="">-- Tất cả --</option></select></div>
+    <div><label class="form-label small mb-1">Nhóm hàng</label><select name="categoryId" class="form-select"><option value="">-- Tất cả --</option>@foreach (var c in cats) { <option value="@c.Id" selected="@(c.Id == catId)">@c.Name</option> }</select></div>
+    <button class="btn btn-outline-primary">Lọc</button>
+    @if (User.IsPurchasing()) { <a class="btn btn-primary ms-auto" asp-action="Create">+ Đăng ký NCC</a> }
+</form>
+<div class="card"><div class="card-body p-0"><table class="table table-hover mb-0">
+    <thead><tr><th>Mã</th><th>Nhà cung cấp</th><th>MST</th><th>Nhóm hàng</th><th>Liên hệ</th><th>Đánh giá</th><th class="money">Giá trị đã mua</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+    @foreach (var v in Model)
+    {
+        <tr>
+            <td>@v.Code</td>
+            <td><a asp-action="Details" asp-route-id="@v.Id" class="fw-semibold">@v.Name</a></td>
+            <td>@v.TaxCode</td>
+            <td class="small">@string.Join(", ", v.Categories.Select(c => c.Category?.Name))</td>
+            <td class="small">@v.ContactPerson<br />@v.ContactPhone</td>
+            <td><span class="stars">@v.Rating.Stars()</span></td>
+            <td class="money">@(spend.TryGetValue(v.Id, out var s) ? s.ToMoney() : "")</td>
+            <td><partial name="_Badge" model="v.Status" /></td>
+        </tr>
+    }
+    </tbody>
+</table></div></div>

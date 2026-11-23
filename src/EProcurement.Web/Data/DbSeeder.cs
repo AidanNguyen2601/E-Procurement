@@ -1,0 +1,233 @@
+using EProcurement.Web.Models.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace EProcurement.Web.Data;
+
+/// <summary>Tạo database (nếu chưa có) và nạp dữ liệu mẫu cho toàn bộ quy trình mua sắm.</summary>
+public static class DbSeeder
+{
+    public static async Task SeedAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EProcDbContext>();
+        var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>();
+
+        await db.Database.EnsureCreatedAsync();
+        if (await db.Users.AnyAsync()) return;
+
+        var today = DateTime.Today;
+        var year = today.Year;
+
+        // ---------- Người dùng (mật khẩu chung: Abc@123) ----------
+        AppUser U(string u, string name, string role, string dept)
+        {
+            var x = new AppUser { Username = u, FullName = name, Role = role, Department = dept, Email = $"{u}@company.local" };
+            x.PasswordHash = hasher.HashPassword(x, "Abc@123");
+            return x;
+        }
+        var admin = U("admin", "Quản trị hệ thống", AppRoles.Admin, "Phòng CNTT");
+        var director = U("director", "Nguyễn Văn Đức", AppRoles.Director, "Ban Giám đốc");
+        var approver = U("approver", "Lê Thị Hồng", AppRoles.Approver, "Phòng CNTT");
+        var approver2 = U("approver2", "Phan Minh Quân", AppRoles.Approver, "Phòng Hành chính");
+        var requester = U("requester", "Trần Văn Nam", AppRoles.Requester, "Phòng CNTT");
+        var requester2 = U("requester2", "Hoàng Thị Mai", AppRoles.Requester, "Phòng Hành chính");
+        var buyer = U("buyer", "Vũ Thị Thu", AppRoles.Buyer, "Phòng Mua hàng");
+        db.Users.AddRange(admin, director, approver, approver2, requester, requester2, buyer);
+
+        // ---------- Nhóm hàng & hàng hóa ----------
+        var cIT = new Category { Code = "IT", Name = "Thiết bị CNTT" };
+        var cVPP = new Category { Code = "VPP", Name = "Văn phòng phẩm" };
+        var cNT = new Category { Code = "NT", Name = "Nội thất văn phòng" };
+        var cBH = new Category { Code = "BHLD", Name = "Bảo hộ lao động" };
+        var cDV = new Category { Code = "DV", Name = "Dịch vụ" };
+        var cSW = new Category { Code = "SW", Name = "Phần mềm & bản quyền" };
+        db.Categories.AddRange(cIT, cVPP, cNT, cBH, cDV, cSW);
+        await db.SaveChangesAsync();
+
+        Item I(string code, string name, Category c, string unit, decimal price, string? spec = null)
+            => new() { Code = code, Name = name, CategoryId = c.Id, Unit = unit, ReferencePrice = price, Specification = spec };
+        var laptop = I("IT-LAP-01", "Laptop văn phòng 14 inch", cIT, "Cái", 22_000_000, "Core i5 / 16GB RAM / SSD 512GB / Win 11 Pro");
+        var monitor = I("IT-MON-24", "Màn hình 24 inch Full HD", cIT, "Cái", 4_500_000, "IPS, 75Hz, HDMI + DisplayPort");
+        var sw = I("IT-NET-SW", "Switch 24 port Gigabit", cIT, "Cái", 6_800_000, "Managed L2, 4 SFP");
+        var ap = I("IT-NET-AP", "Bộ phát WiFi 6 ốp trần", cIT, "Cái", 3_900_000);
+        var cable = I("IT-CAB-6", "Cáp mạng Cat6 (thùng 305m)", cIT, "Thùng", 2_600_000);
+        var av = I("SW-AV-1Y", "Bản quyền diệt virus doanh nghiệp (1 năm)", cSW, "License", 480_000);
+        var paper = I("VPP-A4", "Giấy A4 Double A 70gsm", cVPP, "Ram", 78_000);
+        var pen = I("VPP-PEN", "Bút bi Thiên Long (hộp 20)", cVPP, "Hộp", 65_000);
+        var file = I("VPP-FILE", "Bìa còng 7cm", cVPP, "Cái", 42_000);
+        var ink = I("VPP-INK", "Mực in laser HP 107A", cVPP, "Hộp", 950_000);
+        var desk = I("NT-DESK", "Bàn họp gỗ 2,4m", cNT, "Bộ", 18_500_000);
+        var chair = I("NT-CHAIR", "Ghế lưới văn phòng", cNT, "Cái", 1_850_000);
+        var helmet = I("BH-HELM", "Mũ bảo hộ", cBH, "Cái", 120_000);
+        var clean = I("DV-CLEAN", "Dịch vụ vệ sinh văn phòng (tháng)", cDV, "Tháng", 15_000_000);
+        db.Items.AddRange(laptop, monitor, sw, ap, cable, av, paper, pen, file, ink, desk, chair, helmet, clean);
+
+        // ---------- Nhà cung cấp ----------
+        Vendor V(string code, string name, string tax, VendorStatus st, decimal rating, string contact, params Category[] cats)
+        {
+            var v = new Vendor
+            {
+                Code = code, Name = name, TaxCode = tax, Status = st, Rating = rating, ContactPerson = contact,
+                ContactPhone = "09" + tax[^8..], Phone = "028 3" + tax[^7..], Email = $"sales@{code.ToLower()}.vn",
+                Address = "TP. Hồ Chí Minh", PaymentTerms = "Thanh toán 30 ngày sau khi nhận hàng và hóa đơn",
+                BankName = "Vietcombank", BankAccount = "0071" + tax[^6..]
+            };
+            foreach (var c in cats) v.Categories.Add(new VendorCategory { CategoryId = c.Id });
+            return v;
+        }
+        var vSaoMai = V("NCC001", "Công ty TNHH Thiết bị Tin học Sao Mai", "0312345671", VendorStatus.Approved, 4.25m, "Ngô Minh Trí", cIT, cSW);
+        var vPhongVu = V("NCC002", "Công ty CP Công nghệ Phong Vũ Số", "0312345682", VendorStatus.Approved, 4.0m, "Đặng Thu Trang", cIT);
+        var vHoangLong = V("NCC003", "Công ty TNHH Giải pháp Mạng Hoàng Long", "0312345693", VendorStatus.Approved, 3.75m, "Lý Văn Long", cIT, cDV);
+        var vVPP = V("NCC004", "Công ty TNHH Văn phòng phẩm Hồng Hà Nam", "0312345604", VendorStatus.Approved, 4.5m, "Trần Thị Hà", cVPP);
+        var vNoiThat = V("NCC005", "Công ty CP Nội thất Hòa Phát Miền Nam", "0312345615", VendorStatus.Approved, 4.0m, "Phạm Quốc Huy", cNT);
+        var vXanh = V("NCC006", "Công ty TNHH Dịch vụ Vệ sinh Xanh", "0312345626", VendorStatus.Approved, 3.5m, "Võ Thị Lan", cDV);
+        var vBH = V("NCC007", "Công ty TNHH Bảo hộ An Toàn Việt", "0312345637", VendorStatus.Pending, 0, "Huỳnh Văn Sang", cBH);
+        var vBad = V("NCC008", "Công ty TNHH Thương mại Tân Tiến", "0312345648", VendorStatus.Blacklisted, 1.75m, "Lâm Tấn Tài", cIT, cVPP);
+        vBad.Note = "Giao hàng trễ nhiều lần, hàng không đúng quy cách (2025).";
+        db.Vendors.AddRange(vSaoMai, vPhongVu, vHoangLong, vVPP, vNoiThat, vXanh, vBH, vBad);
+        await db.SaveChangesAsync();
+
+        // ---------- Helper chứng từ ----------
+        var prSeq = 1; var poSeq = 1; var rfqSeq = 1; var grnSeq = 1;
+        PurchaseRequest PR(string title, AppUser req, PrStatus st, int daysAgo, PrPriority pri, params (Item it, decimal qty)[] lines)
+        {
+            var pr = new PurchaseRequest
+            {
+                Number = $"PR-{year}-{prSeq++:0000}", Title = title, RequesterId = req.Id, Department = req.Department, Status = st,
+                Priority = pri, RequestDate = today.AddDays(-daysAgo), NeededDate = today.AddDays(14 - daysAgo / 2),
+                Purpose = "Phục vụ hoạt động của phòng ban.", CreatedAt = today.AddDays(-daysAgo),
+                SubmittedAt = st == PrStatus.Draft ? null : today.AddDays(-daysAgo).AddHours(9)
+            };
+            var s = 1;
+            foreach (var (it, q) in lines)
+                pr.Lines.Add(new PurchaseRequestLine { ItemId = it.Id, Description = it.Name, Unit = it.Unit, Quantity = q, EstimatedPrice = it.ReferencePrice, SortOrder = s++ });
+            pr.Recalculate();
+            return pr;
+        }
+        void Log(DocType t, int id, AppUser u, string action, DateTime at, string? cmt = null)
+            => db.ApprovalHistories.Add(new ApprovalHistory { DocumentType = t, DocumentId = id, UserId = u.Id, Action = action, Comment = cmt, CreatedAt = at });
+        PurchaseOrder PO(Vendor v, int daysAgo, PoStatus st, PurchaseRequest? pr, params (Item it, decimal qty, decimal price)[] lines)
+        {
+            var po = new PurchaseOrder
+            {
+                Number = $"PO-{year}-{poSeq++:0000}", VendorId = v.Id, PurchaseRequestId = pr?.Id, BuyerId = buyer.Id, Status = st,
+                OrderDate = today.AddDays(-daysAgo), DeliveryDate = today.AddDays(-daysAgo + 7), PaymentTerms = v.PaymentTerms,
+                DeliveryAddress = "Kho công ty – Tầng 1, tòa nhà văn phòng", CreatedAt = today.AddDays(-daysAgo),
+                IssuedAt = st >= PoStatus.Issued && st != PoStatus.Cancelled ? today.AddDays(-daysAgo) : null
+            };
+            var s = 1;
+            foreach (var (it, q, p) in lines)
+                po.Lines.Add(new PurchaseOrderLine { ItemId = it.Id, Description = it.Name, Unit = it.Unit, Quantity = q, UnitPrice = p, SortOrder = s++,
+                    ReceivedQuantity = st == PoStatus.Received ? q : 0 });
+            po.Recalculate();
+            return po;
+        }
+        GoodsReceipt GRN(PurchaseOrder po, int daysAgo, Func<PurchaseOrderLine, decimal> qty)
+        {
+            var g = new GoodsReceipt { Number = $"GRN-{year}-{grnSeq++:0000}", PurchaseOrderId = po.Id, ReceiptDate = today.AddDays(-daysAgo),
+                ReceivedById = buyer.Id, DeliveryNoteNo = $"PGH-{po.Number[^4..]}", CreatedAt = today.AddDays(-daysAgo) };
+            foreach (var l in po.Lines)
+            {
+                var q = qty(l);
+                if (q > 0) g.Lines.Add(new GoodsReceiptLine { PurchaseOrderLineId = l.Id, QuantityAccepted = q });
+            }
+            return g;
+        }
+
+        // ---------- Đề nghị mua hàng ----------
+        var pr1 = PR("Mua laptop và màn hình cho nhân viên mới", requester, PrStatus.Processing, 20, PrPriority.Urgent, (laptop, 5), (monitor, 5));
+        var pr2 = PR("Văn phòng phẩm quý IV", requester2, PrStatus.Completed, 25, PrPriority.Normal, (paper, 60), (pen, 10), (file, 40), (ink, 4));
+        var pr3 = PR("Thiết bị mạng cho phòng họp tầng 3", requester, PrStatus.Approved, 8, PrPriority.Normal, (sw, 2), (ap, 4), (cable, 1));
+        var pr4 = PR("Bàn ghế phòng họp lớn", requester2, PrStatus.PendingDirector, 4, PrPriority.Normal, (desk, 1), (chair, 16));
+        var pr5 = PR("Gia hạn bản quyền diệt virus 2027", requester, PrStatus.Submitted, 1, PrPriority.Normal, (av, 50));
+        var pr6 = PR("Đồ bảo hộ cho đội kỹ thuật", requester2, PrStatus.Draft, 0, PrPriority.Normal, (helmet, 20));
+        var pr7 = PR("Mua thêm 3 laptop dự phòng", requester, PrStatus.Rejected, 12, PrPriority.Normal, (laptop, 3));
+        db.PurchaseRequests.AddRange(pr1, pr2, pr3, pr4, pr5, pr6, pr7);
+        await db.SaveChangesAsync();
+
+        Log(DocType.PR, pr1.Id, requester, "Gửi duyệt", today.AddDays(-20).AddHours(9));
+        Log(DocType.PR, pr1.Id, approver, "Trưởng bộ phận duyệt", today.AddDays(-19).AddHours(10), "Đồng ý, nhân sự mới vào ngày 01.");
+        Log(DocType.PR, pr1.Id, director, "Giám đốc duyệt", today.AddDays(-19).AddHours(15));
+        Log(DocType.PR, pr2.Id, requester2, "Gửi duyệt", today.AddDays(-25).AddHours(9));
+        Log(DocType.PR, pr2.Id, approver2, "Trưởng bộ phận duyệt", today.AddDays(-25).AddHours(14));
+        Log(DocType.PR, pr3.Id, requester, "Gửi duyệt", today.AddDays(-8).AddHours(9));
+        Log(DocType.PR, pr3.Id, approver, "Trưởng bộ phận duyệt", today.AddDays(-7).AddHours(11));
+        Log(DocType.PR, pr4.Id, requester2, "Gửi duyệt", today.AddDays(-4).AddHours(9));
+        Log(DocType.PR, pr4.Id, approver2, "Trưởng bộ phận duyệt", today.AddDays(-3).AddHours(10), "Phòng họp lớn xuống cấp, cần thay.");
+        Log(DocType.PR, pr5.Id, requester, "Gửi duyệt", today.AddDays(-1).AddHours(9));
+        Log(DocType.PR, pr7.Id, requester, "Gửi duyệt", today.AddDays(-12).AddHours(9));
+        Log(DocType.PR, pr7.Id, approver, "Từ chối", today.AddDays(-11).AddHours(9), "Kho còn 2 máy dự phòng, chưa cần mua.");
+
+        // ---------- RFQ 1: đã chọn NCC (từ PR1) ----------
+        var rfq1 = new Rfq
+        {
+            Number = $"RFQ-{year}-{rfqSeq++:0000}", Title = "Báo giá laptop + màn hình (PR1)", PurchaseRequestId = pr1.Id, BuyerId = buyer.Id,
+            IssueDate = today.AddDays(-18), Deadline = today.AddDays(-14), Status = RfqStatus.Awarded, AwardedVendorId = vSaoMai.Id,
+            AwardReason = "Giá tốt nhất, giao hàng nhanh, bảo hành 24 tháng.", Requirements = "Hàng mới 100%, bảo hành tối thiểu 12 tháng.",
+            CreatedAt = today.AddDays(-18)
+        };
+        var l1 = new RfqLine { ItemId = laptop.Id, Description = laptop.Name, Unit = laptop.Unit, Quantity = 5, SortOrder = 1 };
+        var l2 = new RfqLine { ItemId = monitor.Id, Description = monitor.Name, Unit = monitor.Unit, Quantity = 5, SortOrder = 2 };
+        rfq1.Lines.Add(l1); rfq1.Lines.Add(l2);
+        // ---------- RFQ 2: đang nhận báo giá (từ PR3) ----------
+        var rfq2 = new Rfq
+        {
+            Number = $"RFQ-{year}-{rfqSeq++:0000}", Title = "Thiết bị mạng phòng họp tầng 3", PurchaseRequestId = pr3.Id, BuyerId = buyer.Id,
+            IssueDate = today.AddDays(-5), Deadline = today.AddDays(2), Status = RfqStatus.Open, Requirements = "Bao gồm lắp đặt, cấu hình.",
+            CreatedAt = today.AddDays(-5)
+        };
+        var m1 = new RfqLine { ItemId = sw.Id, Description = sw.Name, Unit = sw.Unit, Quantity = 2, SortOrder = 1 };
+        var m2 = new RfqLine { ItemId = ap.Id, Description = ap.Name, Unit = ap.Unit, Quantity = 4, SortOrder = 2 };
+        var m3 = new RfqLine { ItemId = cable.Id, Description = cable.Name, Unit = cable.Unit, Quantity = 1, SortOrder = 3 };
+        rfq2.Lines.Add(m1); rfq2.Lines.Add(m2); rfq2.Lines.Add(m3);
+        db.Rfqs.AddRange(rfq1, rfq2);
+        await db.SaveChangesAsync();
+
+        RfqVendor Inv(Rfq r, Vendor v, int? lead, params (RfqLine line, decimal price)[] prices)
+        {
+            var rv = new RfqVendor { RfqId = r.Id, VendorId = v.Id, Responded = prices.Length > 0, LeadTimeDays = lead,
+                RespondedAt = prices.Length > 0 ? r.IssueDate.AddDays(2) : null, PaymentTerms = v.PaymentTerms, Warranty = "12 tháng" };
+            foreach (var (line, p) in prices)
+                rv.QuoteLines.Add(new VendorQuoteLine { RfqLineId = line.Id, UnitPrice = p, Amount = p * line.Quantity });
+            rv.TotalAmount = rv.QuoteLines.Sum(x => x.Amount);
+            return rv;
+        }
+        var w1 = Inv(rfq1, vSaoMai, 5, (l1, 21_200_000), (l2, 4_300_000)); w1.Warranty = "24 tháng";
+        db.RfqVendors.AddRange(w1, Inv(rfq1, vPhongVu, 7, (l1, 21_900_000), (l2, 4_150_000)), Inv(rfq1, vHoangLong, 10, (l1, 22_500_000), (l2, 4_600_000)),
+            Inv(rfq2, vSaoMai, 7, (m1, 6_500_000), (m2, 3_750_000), (m3, 2_550_000)),
+            Inv(rfq2, vHoangLong, 5, (m1, 6_900_000), (m2, 3_600_000), (m3, 2_400_000)),
+            Inv(rfq2, vPhongVu, null));
+        Log(DocType.RFQ, rfq1.Id, buyer, "Phát hành RFQ", today.AddDays(-18).AddHours(10));
+        Log(DocType.RFQ, rfq1.Id, buyer, "Chọn NCC trúng: " + vSaoMai.Name, today.AddDays(-13).AddHours(16));
+        Log(DocType.RFQ, rfq2.Id, buyer, "Phát hành RFQ", today.AddDays(-5).AddHours(10));
+
+        // ---------- Đơn mua hàng ----------
+        var po1 = PO(vSaoMai, 12, PoStatus.PartiallyReceived, pr1, (laptop, 5, 21_200_000), (monitor, 5, 4_300_000));
+        po1.RfqId = rfq1.Id;
+        var po2 = PO(vVPP, 22, PoStatus.Received, pr2, (paper, 60, 76_000), (pen, 10, 62_000), (file, 40, 40_000), (ink, 4, 920_000));
+        var po3 = PO(vPhongVu, 95, PoStatus.Received, null, (laptop, 3, 21_500_000));
+        var po4 = PO(vXanh, 62, PoStatus.Received, null, (clean, 3, 15_000_000));
+        var po5 = PO(vHoangLong, 40, PoStatus.Received, null, (sw, 1, 6_700_000), (cable, 2, 2_500_000));
+        var po6 = PO(vVPP, 10, PoStatus.Issued, null, (paper, 30, 76_000), (ink, 2, 920_000));
+        db.PurchaseOrders.AddRange(po1, po2, po3, po4, po5, po6);
+        await db.SaveChangesAsync();
+        Log(DocType.PO, po1.Id, buyer, "Trình duyệt", today.AddDays(-12).AddHours(9));
+        Log(DocType.PO, po1.Id, director, "Giám đốc duyệt", today.AddDays(-12).AddHours(14));
+        Log(DocType.PO, po1.Id, buyer, "Gửi NCC", today.AddDays(-12).AddHours(15));
+
+        // ---------- Nhận hàng ----------
+        var g1 = GRN(po1, 6, l => l.ItemId == laptop.Id ? 3 : 5);
+        po1.Lines.First(l => l.ItemId == laptop.Id).ReceivedQuantity = 3;
+        po1.Lines.First(l => l.ItemId == monitor.Id).ReceivedQuantity = 5;
+        db.GoodsReceipts.AddRange(g1, GRN(po2, 18, l => l.Quantity), GRN(po3, 88, l => l.Quantity), GRN(po4, 60, l => l.Quantity), GRN(po5, 35, l => l.Quantity));
+
+        // ---------- Đánh giá NCC ----------
+        db.VendorEvaluations.AddRange(
+            new VendorEvaluation { VendorId = vVPP.Id, PurchaseOrderId = po2.Id, EvaluatorId = buyer.Id, Quality = 5, Delivery = 4, Price = 5, Service = 4, Comment = "Giao đủ, đúng hẹn." },
+            new VendorEvaluation { VendorId = vPhongVu.Id, PurchaseOrderId = po3.Id, EvaluatorId = buyer.Id, Quality = 4, Delivery = 4, Price = 4, Service = 4 },
+            new VendorEvaluation { VendorId = vHoangLong.Id, PurchaseOrderId = po5.Id, EvaluatorId = buyer.Id, Quality = 4, Delivery = 3, Price = 4, Service = 4, Comment = "Giao trễ 2 ngày." });
+
+        await db.SaveChangesAsync();
+    }
+}

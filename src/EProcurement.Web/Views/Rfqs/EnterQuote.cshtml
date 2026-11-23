@@ -1,0 +1,49 @@
+@model QuoteEntryViewModel
+@{
+    ViewData["Title"] = $"Nhập báo giá – {Model.RfqVendor?.Vendor?.Name}";
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<form asp-action="EnterQuote" method="post">
+    <input type="hidden" asp-for="RfqVendorId" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="card mb-3"><div class="card-body row g-3">
+        <div class="col-12 small text-muted">@Model.RfqVendor?.Rfq?.Number – @Model.RfqVendor?.Rfq?.Title. Nhập theo báo giá chính thức NCC gửi (email / văn bản); để trống đơn giá nếu NCC không chào dòng đó.</div>
+        <div class="col-md-2"><label asp-for="LeadTimeDays" class="form-label"></label><input asp-for="LeadTimeDays" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" /></div>
+        <div class="col-md-3"><label asp-for="Warranty" class="form-label"></label><input asp-for="Warranty" class="form-control" /></div>
+        <div class="col-md-3"><label asp-for="VatPercent" class="form-label"></label><select asp-for="VatPercent" class="form-select"><option value="0">0%</option><option value="5">5%</option><option value="8">8%</option><option value="10">10%</option></select></div>
+        <div class="col-12"><label asp-for="Note" class="form-label"></label><input asp-for="Note" class="form-control" /></div>
+    </div></div>
+    <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
+        <thead><tr><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL</th><th style="width:180px">Đơn giá (trước VAT)</th><th class="money">Thành tiền</th><th>Ghi chú</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < Model.Lines.Count; i++)
+        {
+            <tr>
+                <td>@Model.Lines[i].Description<input type="hidden" asp-for="Lines[i].RfqLineId" /><input type="hidden" asp-for="Lines[i].Description" /><input type="hidden" asp-for="Lines[i].Quantity" /></td>
+                <td>@Model.Lines[i].Unit</td>
+                <td class="money qty" data-q="@Model.Lines[i].Quantity.ToString(inv)">@Model.Lines[i].Quantity.ToQty()</td>
+                <td><input name="Lines[@i].UnitPrice" type="number" min="0" step="1000" class="form-control form-control-sm price" value="@Model.Lines[i].UnitPrice.ToString(inv)" /></td>
+                <td class="money amt">0</td>
+                <td><input asp-for="Lines[i].Note" class="form-control form-control-sm" /></td>
+            </tr>
+        }
+        </tbody>
+        <tfoot><tr class="fw-bold"><td colspan="4" class="text-end">Tổng trước VAT</td><td class="money" id="sum">0</td><td></td></tr></tfoot>
+    </table></div></div>
+    <button class="btn btn-primary">Lưu báo giá</button>
+    <a asp-action="Details" asp-route-id="@Model.RfqVendor?.RfqId" class="btn btn-light">Hủy</a>
+</form>
+@section Scripts {
+<script>
+    function calc() {
+        let s = 0;
+        document.querySelectorAll('tbody tr').forEach(tr => {
+            const q = parseFloat(tr.querySelector('.qty').dataset.q) || 0, p = parseFloat(tr.querySelector('.price').value) || 0;
+            tr.querySelector('.amt').textContent = Math.round(q * p).toLocaleString('vi-VN'); s += q * p;
+        });
+        document.getElementById('sum').textContent = Math.round(s).toLocaleString('vi-VN');
+    }
+    document.addEventListener('input', calc); calc();
+</script>
+}

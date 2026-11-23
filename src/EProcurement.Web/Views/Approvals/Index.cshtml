@@ -1,0 +1,56 @@
+@model ApprovalInboxViewModel
+@{ ViewData["Title"] = "Chứng từ chờ tôi duyệt"; var returnUrl = "/Approvals"; }
+<div class="card mb-4"><div class="card-header">Đề nghị mua hàng (@Model.Requests.Count)</div>
+<div class="card-body p-0"><table class="table mb-0">
+    <thead><tr><th>Số PR</th><th>Nội dung</th><th>Người đề nghị</th><th>Mức độ</th><th>Cần hàng</th><th class="money">Dự toán</th><th>Cấp duyệt</th><th style="min-width:320px">Quyết định</th></tr></thead>
+    <tbody>
+    @foreach (var p in Model.Requests)
+    {
+        <tr>
+            <td><a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td>
+            <td>@p.Title<br /><small class="text-muted">@p.Lines.Count dòng hàng</small></td>
+            <td>@p.Requester?.FullName<br /><small class="text-muted">@p.Department</small></td>
+            <td><partial name="_Badge" model="p.Priority" /></td>
+            <td>@p.NeededDate.ToDate()</td>
+            <td class="money">@p.EstimatedTotal.ToMoney()</td>
+            <td><partial name="_Badge" model="p.Status" /></td>
+            <td>
+                <form asp-controller="PurchaseRequests" asp-action="Decide" asp-route-id="@p.Id" method="post" class="d-flex gap-1">
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <input name="comment" class="form-control form-control-sm" placeholder="Ý kiến (bắt buộc khi từ chối)" />
+                    <button name="approve" value="true" class="btn btn-sm btn-success">Duyệt</button>
+                    <button name="approve" value="false" class="btn btn-sm btn-outline-danger">Từ chối</button>
+                </form>
+            </td>
+        </tr>
+    }
+    @if (!Model.Requests.Any()) { <tr><td colspan="8" class="text-muted p-3">Không có đề nghị nào chờ duyệt.</td></tr> }
+    </tbody>
+</table></div></div>
+
+@if (User.IsInRole(AppRoles.Director) || User.IsAdmin())
+{
+    <div class="card"><div class="card-header">Đơn mua hàng vượt ngưỡng (@Model.Orders.Count)</div>
+    <div class="card-body p-0"><table class="table mb-0">
+        <thead><tr><th>Số PO</th><th>Nhà cung cấp</th><th>Từ PR</th><th>Người lập</th><th class="money">Tổng giá trị</th><th style="min-width:320px">Quyết định</th></tr></thead>
+        <tbody>
+        @foreach (var p in Model.Orders)
+        {
+            <tr>
+                <td><a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td>
+                <td>@p.Vendor?.Name</td><td>@p.PurchaseRequest?.Number</td><td>@p.Buyer?.FullName</td>
+                <td class="money fw-bold">@p.Total.ToMoney()</td>
+                <td>
+                    <form asp-controller="PurchaseOrders" asp-action="Decide" asp-route-id="@p.Id" method="post" class="d-flex gap-1">
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <input name="comment" class="form-control form-control-sm" placeholder="Ý kiến (bắt buộc khi trả lại)" />
+                        <button name="approve" value="true" class="btn btn-sm btn-success">Duyệt</button>
+                        <button name="approve" value="false" class="btn btn-sm btn-outline-danger">Trả lại</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        @if (!Model.Orders.Any()) { <tr><td colspan="6" class="text-muted p-3">Không có đơn hàng nào chờ duyệt.</td></tr> }
+        </tbody>
+    </table></div></div>
+}

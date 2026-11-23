@@ -1,0 +1,107 @@
+@model PurchaseRequest
+@{
+    ViewData["Title"] = $"Đề nghị {Model.Number}";
+    var history = (List<ApprovalHistory>)ViewBag.History;
+    var rfqs = (List<Rfq>)ViewBag.Rfqs;
+    var orders = (List<PurchaseOrder>)ViewBag.Orders;
+    bool canApprove = ViewBag.CanApprove;
+    decimal threshold = ViewBag.Threshold;
+    var me = User.GetUserId();
+    var mine = Model.RequesterId == me;
+    var needsDirector = Model.EstimatedTotal > threshold;
+    var steps = new List<(string Name, PrStatus[] DoneAt)>
+    {
+        ("Nháp", new[] { PrStatus.Submitted, PrStatus.PendingDirector, PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }),
+        ("Trưởng bộ phận duyệt", new[] { PrStatus.PendingDirector, PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }),
+    };
+    if (needsDirector) steps.Add(("Giám đốc duyệt", new[] { PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }));
+    steps.Add(("Mua hàng", new[] { PrStatus.Completed }));
+    steps.Add(("Hoàn tất", Array.Empty<PrStatus>()));
+    var currentIdx = Model.Status switch
+    {
+        PrStatus.Draft => 0, PrStatus.Submitted => 1, PrStatus.PendingDirector => 2,
+        PrStatus.Approved or PrStatus.Processing => steps.Count - 2, PrStatus.Completed => steps.Count - 1, _ => -1
+    };
+}
+<div class="card mb-3"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="flow">
+        @for (var i = 0; i < steps.Count; i++)
+        {
+            var cls = steps[i].DoneAt.Contains(Model.Status) ? "done" : i == currentIdx ? "current" : "";
+            <span class="step @cls">@steps[i].Name</span>
+            @if (i < steps.Count - 1) { <span class="arrow">›</span> }
+        }
+    </div>
+    <div><partial name="_Badge" model="Model.Status" /> <partial name="_Badge" model="Model.Priority" /></div>
+</div></div>
+
+<div class="toolbar">
+    @if (mine && Model.Status is PrStatus.Draft or PrStatus.Rejected)
+    {
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa</a>
+    }
+    @if (mine && Model.Status == PrStatus.Draft)
+    {
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">Gửi duyệt</button></form>
+    }
+    @if (User.IsPurchasing() && Model.Status is PrStatus.Approved or PrStatus.Processing)
+    {
+        <a class="btn btn-primary" asp-controller="Rfqs" asp-action="Create" asp-route-prId="@Model.Id">Lập yêu cầu báo giá (RFQ)</a>
+        <a class="btn btn-outline-primary" asp-controller="PurchaseOrders" asp-action="Create" asp-route-prId="@Model.Id">Lập PO trực tiếp</a>
+    }
+    @if ((mine && Model.Status is PrStatus.Draft or PrStatus.Submitted or PrStatus.Rejected) || (User.IsPurchasing() && Model.Status == PrStatus.Approved))
+    {
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="Hủy đề nghị này?">
+            <input name="comment" class="form-control form-control-sm" placeholder="Lý do hủy" />
+            <button class="btn btn-outline-danger btn-sm text-nowrap">Hủy đề nghị</button>
+        </form>
+    }
+</div>
+
+@if (canApprove)
+{
+    <div class="card mb-3 border-warning"><div class="card-body">
+        <div class="fw-semibold mb-2">Phê duyệt – @(Model.Status == PrStatus.Submitted ? "cấp Trưởng bộ phận" : "cấp Giám đốc")
+            @if (Model.Status == PrStatus.Submitted && needsDirector) { <span class="small text-muted">(dự toán vượt @threshold.ToMoney() đ → sau khi duyệt sẽ chuyển Giám đốc)</span> }</div>
+        <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+            <input name="comment" class="form-control" placeholder="Ý kiến phê duyệt (bắt buộc khi từ chối)" />
+            <button name="approve" value="true" class="btn btn-success text-nowrap">Duyệt</button>
+            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">Từ chối</button>
+        </form>
+    </div></div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card mb-3"><div class="card-body">
+            <h5>@Model.Title</h5>
+            <dl class="row small mb-0 info">
+                <dt class="col-sm-3">Người đề nghị</dt><dd class="col-sm-9">@Model.Requester?.FullName – @Model.Department</dd>
+                <dt class="col-sm-3">Ngày đề nghị</dt><dd class="col-sm-9">@Model.RequestDate.ToDate()</dd>
+                <dt class="col-sm-3">Ngày cần hàng</dt><dd class="col-sm-9">@Model.NeededDate.ToDate()</dd>
+                <dt class="col-sm-3">Mục đích</dt><dd class="col-sm-9 pre">@Model.Purpose</dd>
+            </dl>
+        </div></div>
+        <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL</th><th class="money">Đơn giá dự toán</th><th class="money">Thành tiền</th></tr></thead>
+            <tbody>
+            @{ var n = 1; }
+            @foreach (var l in Model.Lines)
+            {
+                <tr><td>@(n++)</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.EstimatedPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr>
+            }
+            </tbody>
+            <tfoot><tr class="fw-bold"><td colspan="5" class="text-end">Tổng dự toán</td><td class="money">@Model.EstimatedTotal.ToMoney()</td></tr></tfoot>
+        </table></div></div>
+        @if (rfqs.Any() || orders.Any())
+        {
+            <div class="card"><div class="card-header">Xử lý mua hàng</div><ul class="list-group list-group-flush">
+                @foreach (var r in rfqs) { <li class="list-group-item d-flex justify-content-between"><span>RFQ <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.Id">@r.Number</a> – @r.Title</span><partial name="_Badge" model="r.Status" /></li> }
+                @foreach (var o in orders) { <li class="list-group-item d-flex justify-content-between"><span>PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@o.Id">@o.Number</a> – @o.Vendor?.Name · @o.Total.ToMoney() đ</span><partial name="_Badge" model="o.Status" /></li> }
+            </ul></div>
+        }
+    </div>
+    <div class="col-lg-4">
+        <div class="card"><div class="card-header">Nhật ký phê duyệt</div><div class="card-body"><partial name="_History" model="history" /></div></div>
+    </div>
+</div>

@@ -1,0 +1,18 @@
+@model Rfq
+@{
+    ViewData["Title"] = $"Thư mời báo giá {Model.Number}";
+    var v = (Vendor)ViewBag.Vendor;
+}
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="card paper"><div class="card-body p-4">
+    <div class="d-flex justify-content-between mb-3"><div><h4 class="mb-0">THƯ MỜI BÁO GIÁ</h4><div class="text-muted">Số: @Model.Number · Ngày: @Model.IssueDate.ToDate()</div></div></div>
+    <p>Kính gửi: <b>@v.Name</b><br />Người nhận: @v.ContactPerson – @v.Email</p>
+    <p>Công ty chúng tôi có nhu cầu mua sắm <b>@Model.Title</b> và trân trọng mời Quý công ty gửi báo giá cho các hạng mục dưới đây.</p>
+    <table class="table table-bordered table-sm">
+        <thead><tr><th class="text-center">STT</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">Số lượng</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead>
+        <tbody>@foreach (var l in Model.Lines) { <tr><td class="text-center">@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td></td><td></td></tr> }</tbody>
+    </table>
+    <p><b>Yêu cầu:</b></p><div class="pre mb-3">@Model.Requirements</div>
+    <p>Báo giá ghi rõ đơn giá chưa VAT, thuế suất VAT, thời gian giao hàng, bảo hành và điều khoản thanh toán; gửi về trước ngày <b>@Model.Deadline.ToDate()</b>.</p>
+    <p class="mt-4">Người liên hệ: @Model.Buyer?.FullName – @Model.Buyer?.Email</p>
+</div></div>

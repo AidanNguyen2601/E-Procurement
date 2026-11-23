@@ -1,0 +1,80 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard mua sắm";
+    var maxM = Math.Max(1m, Model.SpendByMonth.Count > 0 ? Model.SpendByMonth.Max(m => m.Amount) : 1);
+    var maxC = Math.Max(1m, Model.SpendByCategory.Count > 0 ? Model.SpendByCategory.Max(m => m.Amount) : 1);
+    var maxV = Math.Max(1m, Model.TopVendors.Count > 0 ? Model.TopVendors.Max(m => m.Amount) : 1);
+    var big = User.IsPurchasing() || User.IsInRole(AppRoles.Director);
+}
+<div class="row g-3 mb-4">
+    @if (User.IsInRole(AppRoles.Approver) || User.IsInRole(AppRoles.Director) || User.IsAdmin())
+    {
+        <div class="col-md-3"><div class="card stat"><div class="label">Chứng từ chờ tôi duyệt</div><div class="value @(Model.MyPendingApprovals > 0 ? "text-warning" : "")">@Model.MyPendingApprovals</div><a class="small" asp-controller="Approvals" asp-action="Index">Mở hộp duyệt →</a></div></div>
+    }
+    <div class="col-md-3"><div class="card stat"><div class="label">PR đã duyệt chờ mua hàng</div><div class="value">@Model.PrWaitingPurchase</div><a class="small" asp-controller="PurchaseRequests" asp-action="Index" asp-route-scope="approved">Xem danh sách →</a></div></div>
+    <div class="col-md-3"><div class="card stat"><div class="label">RFQ đang nhận báo giá</div><div class="value">@Model.OpenRfqs</div><a class="small" asp-controller="Rfqs" asp-action="Index" asp-route-status="Open">Xem RFQ →</a></div></div>
+    <div class="col-md-3"><div class="card stat"><div class="label">PO giao hàng trễ hạn</div><div class="value @(Model.LatePos > 0 ? "text-danger" : "")">@Model.LatePos</div><a class="small" asp-controller="PurchaseOrders" asp-action="Index" asp-route-late="true">Xem PO trễ →</a></div></div>
+</div>
+@if (big)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="card stat"><div class="label">Giá trị mua tháng này (trước VAT)</div><div class="value">@Model.SpendThisMonth.ToShortMoney()</div></div></div>
+        <div class="col-md-4"><div class="card stat"><div class="label">Giá trị mua từ đầu năm</div><div class="value">@Model.SpendYtd.ToShortMoney()</div></div></div>
+        <div class="col-md-4"><div class="card stat"><div class="label">Tiết kiệm so với dự toán PR</div><div class="value @(Model.Savings >= 0 ? "text-success" : "text-danger")">@Model.Savings.ToShortMoney()</div></div></div>
+    </div>
+    <div class="row g-3 mb-4">
+        <div class="col-lg-5"><div class="card h-100"><div class="card-header">Giá trị mua 6 tháng</div><div class="card-body"><div class="cols">
+            @foreach (var m in Model.SpendByMonth)
+            {
+                <div class="col-item"><div class="v">@(m.Amount > 0 ? m.Amount.ToShortMoney() : "")</div><div class="colbar" style="height:@((int)(m.Amount * 140 / maxM))px"></div><div class="mt-1 text-muted">@m.Month</div></div>
+            }
+        </div></div></div></div>
+        <div class="col-lg-3"><div class="card h-100"><div class="card-header">Theo nhóm hàng (năm nay)</div><div class="card-body">
+            @foreach (var c in Model.SpendByCategory)
+            {
+                <div class="bar-row"><div class="lbl" style="width:110px">@c.Name</div><div class="bar"><div style="width:@((int)(c.Amount * 100 / maxC))%"></div></div><div class="val" style="width:60px">@c.Amount.ToShortMoney()</div></div>
+            }
+        </div></div></div>
+        <div class="col-lg-4"><div class="card h-100"><div class="card-header">Top nhà cung cấp (năm nay)</div><div class="card-body">
+            @foreach (var v in Model.TopVendors)
+            {
+                <div class="mb-2 small"><div class="d-flex justify-content-between"><span class="text-truncate" style="max-width:230px">@v.Name</span><b>@v.Amount.ToShortMoney()</b></div>
+                    <div class="progress" style="height:6px"><div class="progress-bar" style="width:@((int)(v.Amount * 100 / maxV))%;background:#4f46e5"></div></div>
+                    <span class="stars">@v.Rating.Stars()</span></div>
+            }
+        </div></div></div>
+    </div>
+}
+<div class="row g-3">
+    <div class="col-lg-@(big ? "6" : "12")">
+        <div class="card h-100"><div class="card-header d-flex justify-content-between">Đề nghị mua hàng của tôi <a class="small fw-normal" asp-controller="PurchaseRequests" asp-action="Create">+ Tạo mới</a></div>
+            <div class="card-body p-0"><table class="table mb-0">
+                <tbody>
+                @foreach (var p in Model.MyRequests)
+                {
+                    <tr><td><a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a><br /><small class="text-muted">@p.Title</small></td>
+                        <td class="money">@p.EstimatedTotal.ToMoney()</td><td><partial name="_Badge" model="p.Status" /></td></tr>
+                }
+                @if (!Model.MyRequests.Any()) { <tr><td class="text-muted p-3">Bạn chưa có đề nghị nào.</td></tr> }
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+    @if (big)
+    {
+        <div class="col-lg-6">
+            <div class="card h-100"><div class="card-header">Đơn hàng đang chờ giao</div>
+                <div class="card-body p-0"><table class="table mb-0">
+                    <tbody>
+                    @foreach (var p in Model.OpenOrders)
+                    {
+                        <tr class="@(p.IsLate ? "table-danger" : "")"><td><a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a><br /><small class="text-muted">@p.Vendor?.Name</small></td>
+                            <td class="small">Giao: @p.DeliveryDate.ToDate() @if (p.IsLate) { <b class="text-danger">trễ</b> }</td><td><partial name="_Badge" model="p.Status" /></td></tr>
+                    }
+                    @if (!Model.OpenOrders.Any()) { <tr><td class="text-muted p-3">Không có.</td></tr> }
+                    </tbody>
+                </table></div>
+            </div>
+        </div>
+    }
+</div>

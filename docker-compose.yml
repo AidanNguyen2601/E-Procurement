@@ -1,0 +1,50 @@
+# Phương án A: E-Procurement có SQL Server riêng.  Chạy: docker compose up -d --build
+name: eproc
+
+services:
+  eproc-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: eproc-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${EPROC_SA_PASSWORD}
+      MSSQL_PID: Developer
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${EPROC_DB_PORT:-1436}:1433"
+    volumes:
+      - eproc-sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks: [eproc-net]
+    restart: unless-stopped
+
+  eproc-web:
+    build: { context: ., dockerfile: Dockerfile }
+    image: eproc-web:latest
+    container_name: eproc-web
+    depends_on:
+      eproc-db: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__EProcConnection: "Server=eproc-db,1433;Database=EPROC_DB;User Id=sa;Password=${EPROC_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true"
+      DataProtection__KeysPath: /app/keys
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${EPROC_WEB_PORT:-8110}:8080"
+    volumes:
+      - eproc-keys:/app/keys
+    networks: [eproc-net]
+    restart: unless-stopped
+
+volumes:
+  eproc-sqldata:
+  eproc-keys:
+
+networks:
+  eproc-net:
+    name: eproc-net

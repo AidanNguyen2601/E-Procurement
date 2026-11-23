@@ -1,0 +1,42 @@
+@* Bộ soạn dòng chứng từ dùng chung (PR / RFQ / PO).
+   ViewData: "PriceLabel" (null = ẩn cột giá), "ItemsJson" (danh mục hàng) *@
+@model List<LineInput>
+@{
+    var priceLabel = ViewData["PriceLabel"] as string;
+    var showPrice = priceLabel != null;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">Chi tiết hàng hóa / dịch vụ
+        <button type="button" class="btn btn-sm btn-outline-primary" data-add-line>+ Thêm dòng</button></div>
+    <div class="card-body p-0 table-responsive">
+        <table class="table mb-0 line-editor" data-items="@(ViewData["ItemsJson"] as string)" data-show-price="@(showPrice ? "1" : "0")">
+            <thead><tr><th style="width:40px">#</th><th style="width:260px">Hàng hóa (danh mục)</th><th>Diễn giải / quy cách</th><th style="width:100px">ĐVT</th><th style="width:100px">Số lượng</th>
+                @if (showPrice) { <th style="width:150px">@priceLabel</th><th class="money" style="width:150px">Thành tiền</th> }<th style="width:40px"></th></tr></thead>
+            <tbody>
+            @for (var i = 0; i < Model.Count; i++)
+            {
+                var l = Model[i];
+                <tr class="line">
+                    <td class="idx">@(i + 1)</td>
+                    <td><select data-f="ItemId" class="form-select form-select-sm item-select" data-value="@l.ItemId"></select></td>
+                    <td><input data-f="Description" class="form-control form-control-sm" value="@l.Description" /></td>
+                    <td><input data-f="Unit" class="form-control form-control-sm" value="@l.Unit" /></td>
+                    <td><input data-f="Quantity" type="number" step="0.01" min="0" class="form-control form-control-sm calc" value="@l.Quantity.ToString(inv)" />
+                        @if (!showPrice) { <input data-f="Price" type="hidden" value="@l.Price.ToString(inv)" /> }</td>
+                    @if (showPrice)
+                    {
+                        <td><input data-f="Price" type="number" step="1000" min="0" class="form-control form-control-sm calc" value="@l.Price.ToString(inv)" /></td>
+                        <td class="money total">0</td>
+                    }
+                    <td><button type="button" class="btn btn-sm btn-link text-danger remove-line" title="Xóa dòng">✕</button></td>
+                </tr>
+            }
+            </tbody>
+            @if (showPrice)
+            {
+                <tfoot><tr class="fw-bold"><td colspan="6" class="text-end">Cộng</td><td class="money" data-sum>0</td><td></td></tr></tfoot>
+            }
+        </table>
+    </div>
+</div>

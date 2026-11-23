@@ -1,0 +1,78 @@
+@{
+    var ctrl = ViewContext.RouteData.Values["controller"]?.ToString();
+    var act = ViewContext.RouteData.Values["action"]?.ToString();
+    string Active(string c) => ctrl == c ? "active" : "";
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var purchasing = User.IsPurchasing();
+    var director = User.IsInRole(AppRoles.Director);
+    var approver = User.IsInRole(AppRoles.Approver) || director || User.IsAdmin();
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - E-Procurement</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <a class="brand" asp-controller="Home" asp-action="Index">e<span>Procurement</span></a>
+        <nav>
+            <div class="nav-group">Tổng quan</div>
+            <a class="@Active("Home")" asp-controller="Home" asp-action="Index">Dashboard</a>
+            @if (approver) { <a class="@Active("Approvals")" asp-controller="Approvals" asp-action="Index">Chờ tôi duyệt</a> }
+
+            <div class="nav-group">Đề nghị</div>
+            <a class="@Active("PurchaseRequests")" asp-controller="PurchaseRequests" asp-action="Index">Đề nghị mua hàng (PR)</a>
+            <a class="@Active("Items")" asp-controller="Items" asp-action="Index">Danh mục hàng hóa</a>
+
+            @if (purchasing || director)
+            {
+                <div class="nav-group">Mua hàng</div>
+                <a class="@Active("Rfqs")" asp-controller="Rfqs" asp-action="Index">Yêu cầu báo giá (RFQ)</a>
+                <a class="@Active("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">Đơn mua hàng (PO)</a>
+                <a class="@Active("GoodsReceipts")" asp-controller="GoodsReceipts" asp-action="Index">Nhận hàng (GRN)</a>
+                <a class="@Active("Vendors")" asp-controller="Vendors" asp-action="Index">Nhà cung cấp</a>
+            }
+            @if (User.IsAdmin())
+            {
+                <div class="nav-group">Hệ thống</div>
+                <a class="@Active("Users")" asp-controller="Users" asp-action="Index">Người dùng & phân quyền</a>
+            }
+        </nav>
+    </aside>
+    <div class="main">
+        <header class="topbar">
+            <h1 class="page-title">@ViewData["Title"]</h1>
+            <div class="d-flex align-items-center gap-2">
+                <a class="btn btn-primary btn-sm" asp-controller="PurchaseRequests" asp-action="Create">+ Đề nghị mua hàng</a>
+                <div class="dropdown">
+                    <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
+                        <span class="avatar">@(User.GetFullName().Length > 0 ? char.ToUpper(User.GetFullName().Split(' ').Last()[0]) : '?')</span>
+                        @User.GetFullName() <small class="text-muted">(@AppRoles.DisplayName(role) · @User.GetDepartment())</small>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><form asp-controller="Account" asp-action="Logout" method="post"><button class="dropdown-item text-danger">Đăng xuất</button></form></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+        <main class="content">
+            @if (TempData["Success"] is string ok) { <div class="alert alert-success alert-dismissible fade show">@ok<button class="btn-close" data-bs-dismiss="alert"></button></div> }
+            @if (TempData["Error"] is string err) { <div class="alert alert-danger alert-dismissible fade show">@err<button class="btn-close" data-bs-dismiss="alert"></button></div> }
+            @RenderBody()
+        </main>
+        <footer class="footer">&copy; @DateTime.Now.Year E-Procurement — ASP.NET Core 8 MVC + SQL Server</footer>
+    </div>
+</div>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

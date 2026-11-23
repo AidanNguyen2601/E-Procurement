@@ -1,0 +1,20 @@
+@model List<GoodsReceipt>
+@{ ViewData["Title"] = "Phiếu nhận hàng (GRN)"; }
+<div class="small text-muted mb-2">Lập phiếu nhận hàng từ trang chi tiết đơn mua hàng đã gửi NCC (nút "Nhận hàng").</div>
+<div class="card"><div class="card-body p-0"><table class="table table-hover mb-0">
+    <thead><tr><th>Số phiếu</th><th>Ngày nhận</th><th>Đơn hàng</th><th>Nhà cung cấp</th><th>Phiếu giao NCC</th><th class="money">SL đạt</th><th class="money">SL không đạt</th><th>Người nhận</th></tr></thead>
+    <tbody>
+    @foreach (var g in Model)
+    {
+        <tr>
+            <td><a asp-action="Details" asp-route-id="@g.Id" class="fw-semibold">@g.Number</a></td><td>@g.ReceiptDate.ToDate()</td>
+            <td><a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@g.PurchaseOrderId">@g.PurchaseOrder?.Number</a></td>
+            <td>@g.PurchaseOrder?.Vendor?.Name</td><td>@g.DeliveryNoteNo</td>
+            <td class="money">@g.Lines.Sum(l => l.QuantityAccepted).ToQty()</td>
+            <td class="money @(g.Lines.Sum(l => l.QuantityRejected) > 0 ? "text-danger" : "")">@g.Lines.Sum(l => l.QuantityRejected).ToQty()</td>
+            <td>@g.ReceivedBy?.FullName</td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted p-4">Chưa có phiếu nhận hàng.</td></tr> }
+    </tbody>
+</table></div></div>

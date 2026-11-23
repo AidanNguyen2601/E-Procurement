@@ -1,0 +1,28 @@
+# Phương án B: chỉ chạy web E-Procurement, dùng chung SQL Server đang chạy (của Healthcare).
+# E-Procurement tạo database riêng EPROC_DB. Chạy: docker compose -f docker-compose.shared-db.yml up -d --build
+name: eproc
+
+services:
+  eproc-web:
+    build: { context: ., dockerfile: Dockerfile }
+    image: eproc-web:latest
+    container_name: eproc-web
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__EProcConnection: "Server=${SHARED_DB_HOST},1433;Database=EPROC_DB;User Id=${SHARED_DB_USER};Password=${SHARED_DB_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true"
+      DataProtection__KeysPath: /app/keys
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${EPROC_WEB_PORT:-8110}:8080"
+    volumes:
+      - eproc-keys:/app/keys
+    networks: [shared-net]
+    restart: unless-stopped
+
+volumes:
+  eproc-keys:
+
+networks:
+  shared-net:
+    external: true
+    name: ${SHARED_NETWORK}
