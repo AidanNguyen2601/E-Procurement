@@ -1,0 +1,28 @@
+@model AlertSettings
+<form method="post" asp-action="Alerts" class="card">
+    <div class="card-header">Cảnh báo, nhắc hạn tự động</div>
+    <div class="table-responsive"><table class="table align-middle mb-0">
+        <thead><tr><th style="width:70px">Bật</th><th>Loại cảnh báo</th><th style="width:260px">Ngưỡng</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < AlertSettings.Defs.Length; i++)
+        {
+            var d = AlertSettings.Defs[i]; var r = Model.Get(d.Key);
+            <tr>
+                <td><input type="hidden" name="rules[@i].Key" value="@d.Key" />
+                    <div class="form-check form-switch"><input type="checkbox" class="form-check-input" name="rules[@i].Enabled" value="true" checked="@r.Enabled" id="a-@d.Key" /><input type="hidden" name="rules[@i].Enabled" value="false" /></div></td>
+                <td><label for="a-@d.Key" class="fw-semibold mb-0">@d.Label</label><div class="small text-muted">@d.Description</div></td>
+                <td>@if (d.Max > 0)
+                    {
+                        <div class="input-group input-group-sm"><input type="number" name="rules[@i].Value" value="@r.Value" min="@d.Min" max="@d.Max" class="form-control" /><span class="input-group-text">@d.Unit</span></div>
+                    }
+                    else { <span class="small text-muted">Không cần ngưỡng</span><input type="hidden" name="rules[@i].Value" value="0" /> }</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    <div class="card-footer d-flex gap-2 align-items-center">
+        <button class="btn btn-primary">Lưu</button>
+        <button class="btn btn-outline-primary" name="runNow" value="true">Lưu và quét ngay</button>
+        <span class="small text-muted ms-2">Hệ thống tự quét theo chu kỳ; mỗi cảnh báo chỉ gửi một lần cho mỗi người (nhắc duyệt lâu: mỗi tuần một lần). Kênh nhận (trong hệ thống / email) chỉnh ở <a asp-action="Templates">Mẫu thông báo</a>.</span>
+    </div>
+</form>

@@ -1,12 +1,15 @@
 @model VendorEvaluation
+@inject SettingsStore SettingsDb
 @{
+    var crit = await SettingsDb.GetAsync(SettingsStore.SupplierCriteria, () => new SupplierCriteriaSettings());
+    string Lb(string k) => crit.Of(k).Label + (crit.Items.Sum(i => i.Weight) > 0 ? $" ({crit.Of(k).Weight * 100 / Math.Max(1, crit.Items.Sum(i => i.Weight))}%)" : "");
     var s = ViewBag.Score as SupplierScore; var existing = ViewBag.Existing as VendorEvaluation; var history = (List<VendorEvaluation>)ViewBag.History;
     var fields = new (string Name, string Label, int Value, string Hint)[]
     {
-        ("Quality", "Chất lượng hàng hóa / dịch vụ", existing?.Quality ?? Model.Quality, s?.RejectPercent != null ? $"Gợi ý từ tỷ lệ hàng không đạt {s.RejectPercent:0.#}%" : "Chưa có số liệu nhận hàng"),
-        ("Delivery", "Tiến độ giao hàng", existing?.Delivery ?? Model.Delivery, s?.OnTimePercent != null ? $"Gợi ý từ tỷ lệ giao đúng hạn {s.OnTimePercent:0.#}% ({s.Received} PO nhận đủ)" : "Chưa có PO nhận đủ"),
-        ("Price", "Giá cả, điều khoản thanh toán", existing?.Price ?? Model.Price, s?.Price != null ? $"TB phiếu: {s.Price:0.0}" : ""),
-        ("Service", "Dịch vụ hỗ trợ, bảo hành", existing?.Service ?? Model.Service, s?.Service != null ? $"TB phiếu: {s.Service:0.0}" : "")
+        ("Quality", Lb("Quality"), existing?.Quality ?? Model.Quality, s?.RejectPercent != null ? $"Gợi ý từ tỷ lệ hàng không đạt {s.RejectPercent:0.#}%" : "Chưa có số liệu nhận hàng"),
+        ("Delivery", Lb("Delivery"), existing?.Delivery ?? Model.Delivery, s?.OnTimePercent != null ? $"Gợi ý từ tỷ lệ giao đúng hạn {s.OnTimePercent:0.#}% ({s.Received} PO nhận đủ)" : "Chưa có PO nhận đủ"),
+        ("Price", Lb("Price"), existing?.Price ?? Model.Price, s?.Price != null ? $"TB phiếu: {s.Price:0.0}" : ""),
+        ("Service", Lb("Service"), existing?.Service ?? Model.Service, s?.Service != null ? $"TB phiếu: {s.Service:0.0}" : "")
     };
 }
 <div class="row g-3">
@@ -21,7 +24,7 @@
             }
             @foreach (var f in fields)
             {
-                <div class="row align-items-center mb-2"><div class="col-md-5"><label class="form-label mb-0">@f.Label</label><div class="small text-muted">@f.Hint</div></div>
+                <div class="row align-items-center mb-2"><div class="col-md-5"><label class="form-label mb-0">@f.Label</label><div class="small text-muted">@f.Hint</div>@if (crit.Of(f.Name).Guide is { } guide) { <div class="small text-muted fst-italic">@guide</div> }</div>
                     <div class="col-md-7"><div class="btn-group btn-group-sm" role="group">
                         @for (var i = 1; i <= 5; i++) { <input type="radio" class="btn-check" name="@f.Name" id="@(f.Name)@i" value="@i" @(f.Value == i ? "checked" : "") /><label class="btn btn-outline-primary" for="@(f.Name)@i">@i</label> }
                     </div></div></div>

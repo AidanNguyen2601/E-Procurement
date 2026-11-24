@@ -18,9 +18,10 @@ public class ItemsController : ProcControllerBase
     {
         var q = Db.Items.Include(i => i.Category).AsNoTracking();
         if (!string.IsNullOrWhiteSpace(keyword)) q = q.Where(i => i.Name.Contains(keyword) || i.Code.Contains(keyword));
-        if (categoryId.HasValue) q = q.Where(i => i.CategoryId == categoryId);
+        var allCats = await Db.Categories.AsNoTracking().ToListAsync();
+        if (categoryId.HasValue) { var sub = CategoriesController.SubtreeIds(allCats, categoryId.Value).Select(x => (int?)x).ToList(); q = q.Where(i => sub.Contains(i.CategoryId)); } // gồm nhóm con
         ViewBag.Keyword = keyword;
-        ViewBag.Categories = new SelectList(await Db.Categories.OrderBy(c => c.Name).ToListAsync(), "Id", "Name", categoryId);
+        ViewBag.Categories = CategoriesController.Options(allCats, categoryId);
         ViewBag.CategoryList = await Db.Categories.OrderBy(c => c.Code).ToListAsync();
         return View(await q.OrderBy(i => i.Code).ToListAsync());
     }
@@ -93,5 +94,5 @@ public class ItemsController : ProcControllerBase
     }
 
     private async Task LoadCategories(int? selected) =>
-        ViewBag.Categories = new SelectList(await Db.Categories.OrderBy(c => c.Name).ToListAsync(), "Id", "Name", selected);
+        ViewBag.Categories = CategoriesController.Options(await Db.Categories.AsNoTracking().ToListAsync(), selected);
 }

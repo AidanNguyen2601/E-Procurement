@@ -30,8 +30,8 @@
     </div></div>
 
     <div class="card mb-3"><div class="card-header">2. Hồ sơ mời thầu</div><div class="card-body row g-3">
-        <div class="col-12"><label asp-for="TechnicalRequirements" class="form-label"></label><textarea asp-for="TechnicalRequirements" class="form-control" rows="4"></textarea></div>
-        <div class="col-12"><label asp-for="QualificationCriteria" class="form-label"></label>
+        <div class="col-12"><div class="d-flex flex-wrap gap-2 align-items-center mb-1"><label asp-for="TechnicalRequirements" class="form-label mb-0"></label><span class="ms-auto">@await Html.PartialAsync("_CriteriaPicker", ("TenderTechnical", "text", "#TechnicalRequirements"))</span></div><textarea asp-for="TechnicalRequirements" class="form-control" rows="4"></textarea></div>
+        <div class="col-12"><div class="d-flex flex-wrap gap-2 align-items-center mb-1"><label asp-for="QualificationCriteria" class="form-label mb-0"></label><span class="ms-auto">@await Html.PartialAsync("_CriteriaPicker", ("TenderQualification", "text", "#QualificationCriteria"))</span></div>
             <textarea asp-for="QualificationCriteria" class="form-control" rows="3" placeholder="VD: Đã thực hiện ≥ 2 hợp đồng tương tự trong 3 năm; doanh thu bình quân ≥ …; là đại lý ủy quyền của hãng…"></textarea></div>
         <div class="col-12"><label asp-for="ContractTerms" class="form-label"></label><textarea asp-for="ContractTerms" class="form-control" rows="2"></textarea></div>
         <div class="col-md-6"><label asp-for="EvaluationMethod" class="form-label"></label>

@@ -46,7 +46,47 @@ public class NotificationService
     private readonly EProcDbContext _db;
     private readonly NotificationSettings _s;
     private readonly ProcurementSettings _p;
-    public NotificationService(EProcDbContext db, IOptions<NotificationSettings> s, IOptions<ProcurementSettings> p) { _db = db; _s = s.Value; _p = p.Value; }
+    private readonly SettingsStore? _store;
+    private NotifyTemplates? _tpl;
+    public NotificationService(EProcDbContext db, IOptions<NotificationSettings> s, IOptions<ProcurementSettings> p, SettingsStore? store = null)
+    { _db = db; _s = s.Value; _p = p.Value; _store = store; }
+
+    // ------------------------------------------------------------------ cấu hình (Thiết lập → Cảnh báo / Email / Mẫu thông báo)
+    private async Task<NotifyTemplates> TemplatesAsync() =>
+        _tpl ??= _store == null ? new NotifyTemplates() : await _store.GetAsync(SettingsStore.Templates, () => new NotifyTemplates());
+
+    public async Task<AlertSettings> AlertsAsync() => _store == null
+        ? AlertSettings.FromLegacy(_s.ExpiryWarningDays, _s.StaleApprovalDays, _p.BudgetWarnPercent)
+        : await _store.GetAsync(SettingsStore.Alerts, () => AlertSettings.FromLegacy(_s.ExpiryWarningDays, _s.StaleApprovalDays, _p.BudgetWarnPercent));
+
+    public async Task<EmailConfig> EmailConfigAsync() => _store == null
+        ? EmailConfig.FromLegacy(_s) : await _store.GetAsync(SettingsStore.Email, () => EmailConfig.FromLegacy(_s));
+
+    private static SmtpClient Smtp(EmailConfig e)
+    {
+        var smtp = new SmtpClient(e.Host, e.Port) { EnableSsl = e.EnableSsl, Timeout = 20000 };
+        if (!string.IsNullOrEmpty(e.UserName)) smtp.Credentials = new NetworkCredential(e.UserName, e.Password);
+        return smtp;
+    }
+
+    private static Dictionary<string, string> Values(string title, string? message, string recipient, string link, DateTime at, string company) => new()
+    {
+        ["{TieuDe}"] = title, ["{NoiDung}"] = message ?? "", ["{NguoiNhan}"] = recipient, ["{LienKet}"] = link,
+        ["{ThoiGian}"] = at.ToString("dd/MM/yyyy HH:mm"), ["{CongTy}"] = company
+    };
+
+    private async Task<string> CompanyAsync() =>
+        _store == null ? "" : (await _store.GetAsync(SettingsStore.Print, () => new PrintSettings())).CompanyName;
+
+    /// <summary>Gửi email thử bằng cấu hình và mẫu đang nhập (trước khi lưu)</summary>
+    public async Task SendTestAsync(EmailConfig e, NotifyTemplates tpl, string to, string recipientName)
+    {
+        var v = Values("Email thử từ E-Procurement", "Cấu hình máy chủ gửi email hoạt động bình thường.", recipientName, e.BaseUrl, DateTime.Now, await CompanyAsync());
+        using var smtp = Smtp(e);
+        using var msg = new MailMessage(new MailAddress(e.From, e.FromName), new MailAddress(to))
+            { Subject = NotifyTemplates.Render(tpl.Subject, v, false), Body = NotifyTemplates.Render(tpl.Body, v, true), IsBodyHtml = true };
+        await smtp.SendMailAsync(msg);
+    }
 
     public static string UrlOf(DocType t, int id) => t switch
     {
@@ -69,6 +109,7 @@ public class NotificationService
     // ------------------------------------------------------------------ sự kiện nghiệp vụ
     public async Task OnEventsAsync(IEnumerable<DocEvent> events)
     {
+        await TemplatesAsync();
         foreach (var e in events.GroupBy(e => (e.Type, e.Id)).Select(g => g.Last()))
             await OnEventAsync(e);
         await _db.SaveChangesAsync();
@@ -226,6 +267,8 @@ public class NotificationService
     // ------------------------------------------------------------------ nhắc hạn định kỳ
     public async Task<int> RunRemindersAsync()
     {
+        await TemplatesAsync();
+        var a = await AlertsAsync();
         var today = DateTime.Today; var now = DateTime.Now;
         var created = 0;
         void R(IEnumerable<int> users, NotificationKind k, string title, string? msg, DocType t, int id, string key)
@@ -233,82 +276,108 @@ public class NotificationService
 
         foreach (var r in await _db.Rfqs.AsNoTracking().Include(x => x.Vendors).Where(x => x.Status == RfqStatus.Open).ToListAsync())
         {
-            if (r.Deadline.Date == today.AddDays(1) || r.Deadline.Date == today)
+            if (a.On("rfq-deadline") && r.Deadline.Date >= today && r.Deadline.Date <= today.AddDays(a.Val("rfq-deadline")))
                 R(new[] { r.BuyerId }, NotificationKind.Reminder, $"{r.Number} hết hạn nộp báo giá {r.Deadline.ToDate()}",
                     $"{r.Vendors.Count(v => v.Responded)}/{r.Vendors.Count} NCC đã gửi báo giá.", DocType.RFQ, r.Id, $"rem:RFQ:{r.Id}:deadline");
-            if (RfqEvaluation.CanOpen(r))
+            if (a.On("rfq-open") && RfqEvaluation.CanOpen(r))
                 R(new[] { r.BuyerId }, NotificationKind.Action, $"{r.Number} đã đủ điều kiện mở báo giá", r.Title, DocType.RFQ, r.Id, $"rem:RFQ:{r.Id}:open");
         }
         foreach (var t in await _db.Tenders.AsNoTracking().Include(x => x.Committee).Where(x => x.Status == TenderStatus.Published).ToListAsync())
         {
-            if (t.ClosingAt > now && t.ClosingAt <= now.AddDays(2))
+            if (a.On("tender-closing") && t.ClosingAt > now && t.ClosingAt <= now.AddDays(Math.Max(1, a.Val("tender-closing"))))
                 R(t.Committee.Select(m => m.UserId).Append(t.BuyerId), NotificationKind.Reminder, $"Gói thầu {t.Number} đóng thầu lúc {t.ClosingAt.ToDateTime()}", t.Title,
                     DocType.Tender, t.Id, $"rem:TD:{t.Id}:closing");
-            if (t.ClosingAt <= now)
+            if (a.On("tender-open") && t.ClosingAt <= now)
                 R(new[] { t.BuyerId }, NotificationKind.Action, $"Gói thầu {t.Number} đã đến giờ đóng thầu – tiến hành mở thầu", t.Title, DocType.Tender, t.Id, $"rem:TD:{t.Id}:open");
         }
-        foreach (var po in await _db.PurchaseOrders.AsNoTracking().Include(x => x.Vendor)
-                     .Where(x => (x.Status == PoStatus.Issued || x.Status == PoStatus.PartiallyReceived) && x.DeliveryDate < today).ToListAsync())
-            R(new[] { po.BuyerId }, NotificationKind.Warning, $"{po.Number} quá hạn giao hàng ({po.DeliveryDate.ToDate()})", po.Vendor?.Name, DocType.PO, po.Id, $"rem:PO:{po.Id}:late");
-
-        var soon = today.AddDays(_s.ExpiryWarningDays);
-        var directors = await DirectorsAsync();
-        foreach (var c in await _db.Contracts.AsNoTracking().Include(x => x.Vendor).Where(x => x.Status == ContractStatus.Active).ToListAsync())
+        if (a.On("po-late"))
         {
-            if (c.EndDate <= soon)
-                R(directors.Append(c.CreatedById), NotificationKind.Warning,
-                    c.EndDate < today ? $"Hợp đồng {c.Number} đã hết hạn {c.EndDate.ToDate()}" : $"Hợp đồng {c.Number} hết hạn {c.EndDate.ToDate()}",
-                    $"{c.Title} – {c.Vendor?.Name}", DocType.Contract, c.Id, $"rem:HD:{c.Id}:end:{(c.EndDate < today ? "past" : "soon")}");
-            if (c.PerformanceSecurityExpiry is DateTime ps && ps <= soon)
-                R(new[] { c.CreatedById }, NotificationKind.Warning, $"Bảo lãnh thực hiện HĐ {c.Number} hết hiệu lực {ps.ToDate()}",
-                    c.PerformanceSecurityRef, DocType.Contract, c.Id, $"rem:HD:{c.Id}:security:{(ps < today ? "past" : "soon")}");
+            var lateBefore = today.AddDays(-a.Val("po-late"));
+            foreach (var po in await _db.PurchaseOrders.AsNoTracking().Include(x => x.Vendor)
+                         .Where(x => (x.Status == PoStatus.Issued || x.Status == PoStatus.PartiallyReceived) && x.DeliveryDate < lateBefore).ToListAsync())
+                R(new[] { po.BuyerId }, NotificationKind.Warning, $"{po.Number} quá hạn giao hàng ({po.DeliveryDate.ToDate()})", po.Vendor?.Name, DocType.PO, po.Id, $"rem:PO:{po.Id}:late");
+        }
+
+        var directors = await DirectorsAsync();
+        if (a.On("contract-expiry"))
+        {
+            var soon = today.AddDays(a.Val("contract-expiry"));
+            foreach (var c in await _db.Contracts.AsNoTracking().Include(x => x.Vendor).Where(x => x.Status == ContractStatus.Active).ToListAsync())
+            {
+                if (c.EndDate <= soon)
+                    R(directors.Append(c.CreatedById), NotificationKind.Warning,
+                        c.EndDate < today ? $"Hợp đồng {c.Number} đã hết hạn {c.EndDate.ToDate()}" : $"Hợp đồng {c.Number} hết hạn {c.EndDate.ToDate()}",
+                        $"{c.Title} – {c.Vendor?.Name}", DocType.Contract, c.Id, $"rem:HD:{c.Id}:end:{(c.EndDate < today ? "past" : "soon")}");
+                if (c.PerformanceSecurityExpiry is DateTime ps && ps <= soon)
+                    R(new[] { c.CreatedById }, NotificationKind.Warning, $"Bảo lãnh thực hiện HĐ {c.Number} hết hiệu lực {ps.ToDate()}",
+                        c.PerformanceSecurityRef, DocType.Contract, c.Id, $"rem:HD:{c.Id}:security:{(ps < today ? "past" : "soon")}");
+            }
         }
 
         // Hóa đơn đến hạn / quá hạn thanh toán
-        var accountants = await UsersAsync(u => u.Role == AppRoles.Accountant);
-        foreach (var inv in await _db.Invoices.AsNoTracking().Include(x => x.Vendor)
-                     .Where(x => x.Status != InvoiceStatus.Paid && x.Status != InvoiceStatus.Rejected && x.DueDate <= today.AddDays(3)).ToListAsync())
-            created += Add(accountants, inv.DueDate < today ? NotificationKind.Warning : NotificationKind.Reminder,
-                (inv.DueDate < today ? "Quá hạn thanh toán: " : "Sắp đến hạn thanh toán: ") + $"{inv.Vendor?.Name} – HĐ {inv.InvoiceNo} ({inv.DueDate.ToDate()})",
-                $"{inv.Total.ToMoney()} đ · {inv.Status.GetDisplayName()}", null, $"rem:INV:{inv.Id}:{(inv.DueDate < today ? "overdue" : "due")}", UrlOf(DocType.Invoice, inv.Id), DocType.Invoice, inv.Id);
+        if (a.On("invoice-due"))
+        {
+            var accountants = await UsersAsync(u => u.Role == AppRoles.Accountant);
+            var due = today.AddDays(a.Val("invoice-due"));
+            foreach (var inv in await _db.Invoices.AsNoTracking().Include(x => x.Vendor)
+                         .Where(x => x.Status != InvoiceStatus.Paid && x.Status != InvoiceStatus.Rejected && x.DueDate <= due).ToListAsync())
+                created += Add(accountants, inv.DueDate < today ? NotificationKind.Warning : NotificationKind.Reminder,
+                    (inv.DueDate < today ? "Quá hạn thanh toán: " : "Sắp đến hạn thanh toán: ") + $"{inv.Vendor?.Name} – HĐ {inv.InvoiceNo} ({inv.DueDate.ToDate()})",
+                    $"{inv.Total.ToMoney()} đ · {inv.Status.GetDisplayName()}", null, $"rem:INV:{inv.Id}:{(inv.DueDate < today ? "overdue" : "due")}", UrlOf(DocType.Invoice, inv.Id), DocType.Invoice, inv.Id);
+        }
         // Bảo lãnh tạm ứng / bảo hành sắp hết hiệu lực
-        foreach (var g in await _db.ContractGuarantees.AsNoTracking().Include(x => x.Contract)
-                     .Where(x => x.ReleasedAt == null && x.ExpiryDate <= soon).ToListAsync())
-            created += Add(new[] { g.Contract!.CreatedById }, NotificationKind.Warning,
-                $"{g.Type.GetDisplayName()} HĐ {g.Contract.Number} {(g.ExpiryDate < today ? "đã hết" : "sắp hết")} hiệu lực {g.ExpiryDate.ToDate()}",
-                $"{g.Reference} – {g.Amount.ToMoney()} đ", null, $"rem:BL:{g.Id}:{(g.ExpiryDate < today ? "past" : "soon")}", UrlOf(DocType.Contract, g.ContractId), DocType.Contract, g.ContractId);
+        if (a.On("guarantee-expiry"))
+        {
+            var soon = today.AddDays(a.Val("guarantee-expiry"));
+            foreach (var g in await _db.ContractGuarantees.AsNoTracking().Include(x => x.Contract)
+                         .Where(x => x.ReleasedAt == null && x.ExpiryDate <= soon).ToListAsync())
+                created += Add(new[] { g.Contract!.CreatedById }, NotificationKind.Warning,
+                    $"{g.Type.GetDisplayName()} HĐ {g.Contract.Number} {(g.ExpiryDate < today ? "đã hết" : "sắp hết")} hiệu lực {g.ExpiryDate.ToDate()}",
+                    $"{g.Reference} – {g.Amount.ToMoney()} đ", null, $"rem:BL:{g.Id}:{(g.ExpiryDate < today ? "past" : "soon")}", UrlOf(DocType.Contract, g.ContractId), DocType.Contract, g.ContractId);
+        }
 
         // Hồ sơ pháp lý NCC sắp / đã hết hiệu lực (đang hợp tác, hồ sơ đã xác minh)
-        var buyers = await UsersAsync(u => u.Role == AppRoles.Buyer);
-        foreach (var d in await _db.VendorDocuments.AsNoTracking().Include(x => x.Vendor)
-                     .Where(x => x.ExpiryDate != null && x.ExpiryDate <= soon && x.Status == VendorDocumentStatus.Verified && x.Vendor!.Status == VendorStatus.Approved).ToListAsync())
-            created += Add(buyers, NotificationKind.Warning,
-                (d.ExpiryDate < today ? "Hồ sơ NCC đã hết hiệu lực: " : "Hồ sơ NCC sắp hết hiệu lực: ") + $"{d.Vendor!.Name} – {d.Type.GetDisplayName()} ({d.ExpiryDate.ToDate()})",
-                "Đề nghị NCC cập nhật hồ sơ trên cổng nhà cung cấp.", null, $"rem:VD:{d.Id}:{(d.ExpiryDate < today ? "past" : "soon")}", $"/Vendors/Details/{d.VendorId}");
+        if (a.On("vendor-doc"))
+        {
+            var soon = today.AddDays(a.Val("vendor-doc"));
+            var buyers = await UsersAsync(u => u.Role == AppRoles.Buyer);
+            foreach (var d in await _db.VendorDocuments.AsNoTracking().Include(x => x.Vendor)
+                         .Where(x => x.ExpiryDate != null && x.ExpiryDate <= soon && x.Status == VendorDocumentStatus.Verified && x.Vendor!.Status == VendorStatus.Approved).ToListAsync())
+                created += Add(buyers, NotificationKind.Warning,
+                    (d.ExpiryDate < today ? "Hồ sơ NCC đã hết hiệu lực: " : "Hồ sơ NCC sắp hết hiệu lực: ") + $"{d.Vendor!.Name} – {d.Type.GetDisplayName()} ({d.ExpiryDate.ToDate()})",
+                    "Đề nghị NCC cập nhật hồ sơ trên cổng nhà cung cấp.", null, $"rem:VD:{d.Id}:{(d.ExpiryDate < today ? "past" : "soon")}", $"/Vendors/Details/{d.VendorId}");
+        }
 
         // Ngân sách sắp hết / đã vượt
-        foreach (var b in await new BudgetService(_db).StatusAsync(today.Year))
+        if (a.On("budget"))
         {
-            var level = b.UsedPercent > 100 ? 100 : b.UsedPercent >= _p.BudgetWarnPercent ? _p.BudgetWarnPercent : 0;
-            if (level == 0) continue;
-            var heads = await UsersAsync(u => u.Role == AppRoles.Approver && u.Department == b.Budget.Department);
-            created += Add(directors.Concat(heads), NotificationKind.Warning,
-                level == 100 ? $"Vượt ngân sách: {b.Pool}" : $"Ngân sách đã dùng {b.UsedPercent}%: {b.Pool}",
-                $"Ngân sách {b.Budget.Amount.ToMoney()} đ, đã dùng {b.Used.ToMoney()} đ, còn {b.Available.ToMoney()} đ.", null,
-                $"rem:BG:{b.Budget.Id}:{b.Budget.Amount}:{level}", $"/Budgets?year={b.Budget.Year}");
+            var warn = a.Val("budget");
+            foreach (var b in await new BudgetService(_db).StatusAsync(today.Year))
+            {
+                var level = b.UsedPercent > 100 ? 100 : b.UsedPercent >= warn ? warn : 0;
+                if (level == 0) continue;
+                var heads = await UsersAsync(u => u.Role == AppRoles.Approver && u.Department == b.Budget.Department);
+                created += Add(directors.Concat(heads), NotificationKind.Warning,
+                    level == 100 ? $"Vượt ngân sách: {b.Pool}" : $"Ngân sách đã dùng {b.UsedPercent}%: {b.Pool}",
+                    $"Ngân sách {b.Budget.Amount.ToMoney()} đ, đã dùng {b.Used.ToMoney()} đ, còn {b.Available.ToMoney()} đ.", null,
+                    $"rem:BG:{b.Budget.Id}:{b.Budget.Amount}:{level}", $"/Budgets?year={b.Budget.Year}");
+            }
         }
 
         // Chờ duyệt quá lâu – nhắc lại mỗi tuần
-        var stale = now.AddDays(-_s.StaleApprovalDays);
-        var week = System.Globalization.ISOWeek.GetWeekOfYear(today);
-        foreach (var pr in await _db.PurchaseRequests.AsNoTracking().Where(p => (p.Status == PrStatus.Submitted || p.Status == PrStatus.PendingDirector) && p.SubmittedAt < stale).ToListAsync())
+        if (a.On("stale-approval"))
         {
-            var to = pr.Status == PrStatus.Submitted
-                ? await UsersAsync(u => u.Role == AppRoles.Approver && u.Department == pr.Department && u.Id != pr.RequesterId) : directors;
-            R(to, NotificationKind.Reminder, $"Nhắc: {pr.Number} chờ duyệt từ {pr.SubmittedAt.ToDate()}", pr.Title, DocType.PR, pr.Id, $"rem:PR:{pr.Id}:stale:{week}");
+            var stale = now.AddDays(-a.Val("stale-approval"));
+            var week = System.Globalization.ISOWeek.GetWeekOfYear(today);
+            foreach (var pr in await _db.PurchaseRequests.AsNoTracking().Where(p => (p.Status == PrStatus.Submitted || p.Status == PrStatus.PendingDirector) && p.SubmittedAt < stale).ToListAsync())
+            {
+                var to = pr.Status == PrStatus.Submitted
+                    ? await UsersAsync(u => u.Role == AppRoles.Approver && u.Department == pr.Department && u.Id != pr.RequesterId) : directors;
+                R(to, NotificationKind.Reminder, $"Nhắc: {pr.Number} chờ duyệt từ {pr.SubmittedAt.ToDate()}", pr.Title, DocType.PR, pr.Id, $"rem:PR:{pr.Id}:stale:{week}");
+            }
+            foreach (var po in await _db.PurchaseOrders.AsNoTracking().Where(p => p.Status == PoStatus.PendingApproval && p.CreatedAt < stale).ToListAsync())
+                R(directors, NotificationKind.Reminder, $"Nhắc: {po.Number} chờ duyệt", null, DocType.PO, po.Id, $"rem:PO:{po.Id}:stale:{week}");
         }
-        foreach (var po in await _db.PurchaseOrders.AsNoTracking().Where(p => p.Status == PoStatus.PendingApproval && p.CreatedAt < stale).ToListAsync())
-            R(directors, NotificationKind.Reminder, $"Nhắc: {po.Number} chờ duyệt", null, DocType.PO, po.Id, $"rem:PO:{po.Id}:stale:{week}");
 
         await _db.SaveChangesAsync();
         return created;
@@ -317,26 +386,27 @@ public class NotificationService
     // ------------------------------------------------------------------ email
     public async Task<int> SendEmailsAsync(CancellationToken ct = default)
     {
-        var e = _s.Email;
+        var e = await EmailConfigAsync();
         if (!e.Enabled || string.IsNullOrWhiteSpace(e.Host)) return 0;
+        var tpl = await TemplatesAsync();
         var pending = await _db.Notifications.Include(n => n.User)
             .Where(n => n.EmailedAt == null && n.ReadAt == null && n.CreatedAt > DateTime.Now.AddDays(-3)
                         && n.User!.IsActive && n.User.EmailNotifications && n.User.Email != null && n.User.Email != "")
             .OrderBy(n => n.CreatedAt).Take(100).ToListAsync(ct);
         if (pending.Count == 0) return 0;
-        using var smtp = new SmtpClient(e.Host, e.Port) { EnableSsl = e.EnableSsl };
-        if (!string.IsNullOrEmpty(e.UserName)) smtp.Credentials = new NetworkCredential(e.UserName, e.Password);
+        using var smtp = Smtp(e);
+        var company = await CompanyAsync();
         var sent = 0;
         foreach (var n in pending)
         {
-            var link = string.IsNullOrEmpty(n.Url) ? _s.BaseUrl : _s.BaseUrl.TrimEnd('/') + "/Notifications/Open/" + n.Id;
-            var body = $"<p>Chào {WebUtility.HtmlEncode(n.User!.FullName)},</p><p><b>{WebUtility.HtmlEncode(n.Title)}</b></p>" +
-                       (string.IsNullOrEmpty(n.Message) ? "" : $"<p>{WebUtility.HtmlEncode(n.Message)}</p>") +
-                       $"<p><a href=\"{WebUtility.HtmlEncode(link)}\">Mở trên E-Procurement</a></p><p style=\"color:#888;font-size:12px\">Email tự động – tắt nhận email trong trang Thông báo.</p>";
+            n.EmailedAt = DateTime.Now; // loại đã tắt email: coi như đã xử lý, không gửi
+            if (!tpl.Channel(n.DocumentType).Email) continue;
+            var link = string.IsNullOrEmpty(n.Url) ? e.BaseUrl : e.BaseUrl.TrimEnd('/') + "/Notifications/Open/" + n.Id;
+            var v = Values(n.Title, n.Message, n.User!.FullName, link, n.CreatedAt, company);
             using var msg = new MailMessage(new MailAddress(e.From, e.FromName), new MailAddress(n.User.Email!))
-                { Subject = "[E-Procurement] " + n.Title, Body = body, IsBodyHtml = true };
+                { Subject = NotifyTemplates.Render(tpl.Subject, v, false), Body = NotifyTemplates.Render(tpl.Body, v, true), IsBodyHtml = true };
             await smtp.SendMailAsync(msg, ct);
-            n.EmailedAt = DateTime.Now; sent++;
+            sent++;
         }
         await _db.SaveChangesAsync(ct);
         return sent;
@@ -373,6 +443,7 @@ public class NotificationService
         string? url = null, DocType? type = null, int? id = null)
     {
         var n = 0;
+        if (_tpl != null && !_tpl.Channel(type ?? e?.Type).InApp) return 0; // loại thông báo đã tắt
         foreach (var uid in users.Distinct())
         {
             if (e != null && uid == e.ActorId) continue;

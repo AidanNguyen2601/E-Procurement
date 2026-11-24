@@ -13,6 +13,8 @@ public class NavItem
     public string Label { get; init; } = "";
     public string Icon { get; init; } = "dot";
     public string? Href { get; init; }
+    /// <summary>Controller của liên kết (khóa chức năng trong Thiết lập phân quyền)</summary>
+    public string? Controller { get; init; }
     public bool External { get; init; }
     public bool Active { get; set; }
     public List<NavItem> Children { get; } = new();
@@ -45,11 +47,13 @@ public static class NavMenu
             ("Quotes", "Evaluations") or ("Rfqs", "Evaluate" or "Compare") => "q-eval",
             ("Reports", "Index") when req.Query["group"] == "sourcing" => "src-report",
             ("Reports", "Show") when StandardReports.SourcingKeys.Contains(vc.RouteData.Values["id"]?.ToString()) => "src-report",
+            ("Settings", _) => "set-" + act,
+            ("CriteriaSets", _) when req.Query["group"] == "tender" => "crit-tender",
             _ => ctrl ?? ""
         };
     }
 
-    public static List<NavItem> Build(IUrlHelper url, ClaimsPrincipal user, string currentKey)
+    public static List<NavItem> Build(IUrlHelper url, ClaimsPrincipal user, string currentKey, PermissionSettings? perms = null)
     {
         var purchasing = user.IsPurchasing();
         var director = user.IsInRole(AppRoles.Director);
@@ -59,8 +63,10 @@ public static class NavMenu
         var pd = purchasing || director;
         var finance = pd || accountant;
 
-        NavItem L(string key, string label, string icon, string controller, string action = "Index", object? route = null, bool external = false) =>
-            new() { Key = key, Label = label, Icon = icon, Href = url.Action(action, controller, route), External = external };
+        var role = user.FindFirst(ClaimTypes.Role)?.Value ?? "";
+        NavItem? L(string key, string label, string icon, string controller, string action = "Index", object? route = null, bool external = false) =>
+            perms != null && perms.IsDenied(controller, role) ? null :
+            new() { Key = key, Label = label, Icon = icon, Href = url.Action(action, controller, route), External = external, Controller = controller };
         NavItem G(string key, string label, string icon, params NavItem?[] children)
         {
             var g = new NavItem { Key = key, Label = label, Icon = icon };
@@ -119,14 +125,27 @@ public static class NavMenu
             G("cat", "Danh mục", "book",
                 L("OrgUnits", "Cơ cấu tổ chức", "network", "OrgUnits"),
                 L("Items", "Hàng hóa & nhóm hàng", "package", "Items"),
-                purchasing ? L("Catalogs", "Danh mục dùng chung", "book", "Catalogs") : null),
+                purchasing ? L("Catalogs", "Danh mục dùng chung", "book", "Catalogs") : null,
+                !purchasing ? L("FormTemplates", "Biểu mẫu", "file-text", "FormTemplates") : null),
 
-            admin ? G("sys", "Hệ thống", "settings",
-                L("Users", "Người dùng & phân quyền", "users", "Users"),
-                L("ApprovalSettings", "Hạn mức & ủy quyền", "shield-check", "ApprovalSettings"),
+            purchasing ? G("sys", "Thiết lập", "settings",
+                L("set-Index", "Tổng quan thiết lập", "layout", "Settings"),
+                admin ? L("Users", "Phân quyền người dùng", "users", "Users") : null,
+                admin ? L("set-Permissions", "Thiết lập phân quyền", "shield-check", "Settings", "Permissions") : null,
+                admin ? L("ApprovalSettings", "Ma trận phê duyệt", "scale", "ApprovalSettings") : null,
+                L("set-PackageAccess", "Quyền theo gói thầu", "package", "Settings", "PackageAccess"),
+                L("CriteriaSets", "Bộ tiêu chí đánh giá", "clipboard", "CriteriaSets"),
+                L("crit-tender", "Tiêu chí đánh giá HSDT", "gavel", "CriteriaSets", route: new { group = "tender" }),
+                admin ? L("set-SupplierCriteria", "Tiêu chí đánh giá NCC", "users", "Settings", "SupplierCriteria") : null,
+                admin ? L("set-Alerts", "Cảnh báo", "alert", "Settings", "Alerts") : null,
+                admin ? L("set-Email", "Email, thông báo", "send", "Settings", "Email") : null,
+                admin ? L("set-Templates", "Mẫu thông báo", "bell", "Settings", "Templates") : null,
+                admin ? L("set-Numbering", "Mã tự sinh", "tag", "Settings", "Numbering") : null,
+                L("Categories", "Phân cấp hàng hóa dịch vụ", "network", "Categories"),
+                L("FormTemplates", "Biểu mẫu", "file-text", "FormTemplates"),
                 L("Appearance", "Giao diện", "palette", "Appearance"),
-                L("Integrations", "Tích hợp ERP (API)", "network", "Integrations"),
-                L("SampleData", "Dữ liệu mẫu", "database", "SampleData")) : null,
+                admin ? L("Integrations", "Tích hợp ERP (API)", "network", "Integrations") : null,
+                admin ? L("SampleData", "Dữ liệu mẫu", "database", "SampleData") : null) : null,
         };
         var result = menu.Where(m => m != null && (!m.IsGroup || m.Children.Count > 0)).Select(m => m!).ToList();
         foreach (var link in result.SelectMany(m => m.Links)) link.Active = link.Key == currentKey;

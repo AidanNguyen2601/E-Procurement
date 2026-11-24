@@ -1,3 +1,4 @@
+@inject SettingsStore SettingsDb
 @model PurchaseOrder
 @{
     ViewData["Title"] = $"Đơn mua hàng {Model.Number}";
@@ -127,7 +128,8 @@
             else if (buyer)
             {
                 <form asp-action="Evaluate" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
-                    @foreach (var (name, label) in new[] { ("Quality", "Chất lượng"), ("Delivery", "Tiến độ giao"), ("Price", "Giá cả"), ("Service", "Dịch vụ") })
+                    @{ var crit = await SettingsDb.GetAsync(SettingsStore.SupplierCriteria, () => new SupplierCriteriaSettings()); }
+                    @foreach (var (name, label) in new[] { "Quality", "Delivery", "Price", "Service" }.Select(k => (k, crit.Of(k).Label)))
                     {
                         <div class="col-md-2"><label class="form-label small mb-1">@label</label>
                             <select name="@name" class="form-select form-select-sm">@for (var i = 5; i >= 1; i--) { <option value="@i" selected="@(i == 4)">@i – @("★★★★★".Substring(0, i))</option> }</select></div>

@@ -1,0 +1,78 @@
+@using EProcurement.Web.Controllers
+@{
+    var nodes = (List<CategoriesController.CatNode>)ViewBag.Nodes;
+    var items = (Dictionary<int, int>)ViewBag.ItemCounts; var vendors = (Dictionary<int, int>)ViewBag.VendorCounts;
+    var e = ViewBag.Editing as Category;
+    var manage = User.IsPurchasing();
+    var kids = nodes.ToLookup(n => n.Cat.ParentId);
+    // Tổng hàng hóa cả nhánh
+    var total = new Dictionary<int, int>();
+    for (var i = nodes.Count - 1; i >= 0; i--) { var c = nodes[i].Cat; total[c.Id] = items.GetValueOrDefault(c.Id) + kids[c.Id].Sum(k => total.GetValueOrDefault(k.Cat.Id)); }
+}
+<div class="row g-3">
+<div class="@(manage ? "col-lg-8" : "col-12")">
+    <div class="card"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0" id="cat-tree">
+        <thead><tr><th>Nhóm hàng hóa dịch vụ</th><th>Mã</th><th class="text-end">Hàng hóa</th><th class="text-end" title="Gồm nhóm con">Cả nhánh</th><th class="text-end">NCC</th>@if (manage) { <th></th> }</tr></thead>
+        <tbody>
+        @foreach (var n in nodes)
+        {
+            var c = n.Cat; var has = kids[c.Id].Any();
+            <tr data-id="@c.Id" data-parent="@(c.ParentId ?? 0)" class="@(c.IsActive ? "" : "text-muted")">
+                <td style="padding-left:@(8 + n.Depth * 22)px"><span class="cat-toggle" style="width:16px;display:inline-block;cursor:pointer;color:#64748b">@(has ? "▾" : "")</span>
+                    <a asp-controller="Items" asp-action="Index" asp-route-categoryId="@c.Id" class="@(n.Depth == 0 ? "fw-semibold" : "")">@c.Name</a>
+                    @if (!c.IsActive) { <span class="badge bg-secondary">Ngừng</span> }
+                    @if (c.Description != null) { <div class="small text-muted" style="padding-left:16px">@c.Description</div> }</td>
+                <td><code>@c.Code</code></td>
+                <td class="text-end">@items.GetValueOrDefault(c.Id)</td>
+                <td class="text-end text-muted">@(has ? total[c.Id].ToString() : "")</td>
+                <td class="text-end">@vendors.GetValueOrDefault(c.Id)</td>
+                @if (manage)
+                {
+                    <td class="text-end text-nowrap">
+                        <a asp-action="Index" asp-route-parentId="@c.Id" class="btn btn-sm btn-outline-primary" title="Thêm nhóm con">+</a>
+                        <a asp-action="Index" asp-route-edit="@c.Id" class="btn btn-sm btn-outline-secondary">Sửa</a>
+                    </td>
+                }
+            </tr>
+        }
+        @if (nodes.Count == 0) { <tr><td colspan="6" class="text-muted">Chưa có nhóm hàng.</td></tr> }
+        </tbody>
+    </table></div></div>
+    <div class="small text-muted mt-2">Bấm tên nhóm để xem hàng hóa (gồm cả nhóm con). Lọc hàng hóa theo nhóm cha sẽ gồm hàng của mọi nhóm con.</div>
+</div>
+@if (manage)
+{
+    <div class="col-lg-4">
+        <form asp-action="Save" method="post" class="card" style="position:sticky;top:12px">
+            <div class="card-header">@(e == null ? "Thêm nhóm hàng" : "Sửa: " + e.Name)</div>
+            <div class="card-body row g-2">
+                <input type="hidden" name="id" value="@(e?.Id ?? 0)" />
+                <div class="col-5"><label class="form-label small mb-0">Mã *</label><input name="code" value="@e?.Code" maxlength="20" class="form-control form-control-sm text-uppercase" required /></div>
+                <div class="col-7"><label class="form-label small mb-0">Thứ tự</label><input name="sortOrder" type="number" value="@(e?.SortOrder ?? 0)" class="form-control form-control-sm" /></div>
+                <div class="col-12"><label class="form-label small mb-0">Tên nhóm *</label><input name="name" value="@e?.Name" maxlength="150" class="form-control form-control-sm" required /></div>
+                <div class="col-12"><label class="form-label small mb-0">Nhóm cấp trên</label><select name="parentId" class="form-select form-select-sm" asp-items="(List<SelectListItem>)ViewBag.Parents"><option value="">(Nhóm gốc)</option></select></div>
+                <div class="col-12"><label class="form-label small mb-0">Mô tả</label><input name="description" value="@e?.Description" maxlength="500" class="form-control form-control-sm" /></div>
+                <div class="col-12"><div class="form-check"><input type="checkbox" class="form-check-input" name="isActive" value="true" id="ca" checked="@(e?.IsActive ?? true)" /><input type="hidden" name="isActive" value="false" /><label for="ca" class="form-check-label small">Đang sử dụng</label></div></div>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <button class="btn btn-sm btn-primary">@(e == null ? "Thêm" : "Lưu")</button>
+                @if (e != null)
+                {
+                    <a asp-action="Index" class="btn btn-sm btn-light">Hủy</a>
+                    <button class="btn btn-sm btn-outline-danger ms-auto" form="cat-del" data-confirm="Xóa nhóm @e.Name?">Xóa</button>
+                }
+            </div>
+        </form>
+        @if (e != null) { <form id="cat-del" asp-action="Delete" asp-route-id="@e.Id" method="post"></form> }
+    </div>
+}
+</div>
+<script>
+(function () {
+    const rows = [...document.querySelectorAll('#cat-tree tbody tr[data-id]')];
+    const hide = (id, h) => rows.filter(r => r.dataset.parent === id).forEach(r => { r.classList.toggle('d-none', h); if (h || r.dataset.c !== '1') hide(r.dataset.id, h); });
+    rows.forEach(r => r.querySelector('.cat-toggle').addEventListener('click', function () {
+        if (!this.textContent) return; const c = r.dataset.c === '1'; r.dataset.c = c ? '0' : '1'; this.textContent = c ? '▾' : '▸'; hide(r.dataset.id, !c);
+    }));
+})();
+</script>

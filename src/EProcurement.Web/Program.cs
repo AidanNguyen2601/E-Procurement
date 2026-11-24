@@ -41,6 +41,7 @@ builder.Services.AddControllersWithViews(o =>
 {
     var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
     o.Conventions.Add(new EProcurement.Web.Infrastructure.InternalAuthConvention(new AuthorizeFilter(policy)));
+    o.Filters.Add<EProcurement.Web.Infrastructure.RolePermissionFilter>(); // Thiết lập → phân quyền theo vai trò
 });
 
 // Lưu khóa mã hóa cookie ra thư mục (volume Docker) để restart container không bị đăng xuất
@@ -66,6 +67,7 @@ builder.Services.AddScoped<EProcurement.Web.Infrastructure.SealingService>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.FinanceService>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.SignatureService>();
 builder.Services.AddScoped<EProcurement.Web.Infrastructure.UiThemeService>();
+builder.Services.AddScoped<EProcurement.Web.Infrastructure.SettingsStore>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, EProcurement.Web.Infrastructure.DelegationClaimsTransformation>();
 if (builder.Configuration.GetValue("Notifications:BackgroundEnabled", true)) builder.Services.AddHostedService<EProcurement.Web.Infrastructure.NotificationWorker>();
@@ -108,6 +110,10 @@ if (app.Configuration.GetValue("Database:SeedOnStartup", true))
         try
         {
             await DbSeeder.SeedAsync(app.Services);
+            // Mẫu đánh số chứng từ (Thiết lập → Mã tự sinh)
+            using (var scope = app.Services.CreateScope())
+                DocNumbers.Rules = await scope.ServiceProvider.GetRequiredService<EProcurement.Web.Infrastructure.SettingsStore>()
+                    .GetAsync(EProcurement.Web.Infrastructure.SettingsStore.Numbering, () => new EProcurement.Web.Infrastructure.NumberingSettings());
             break;
         }
         catch (Exception ex) when (attempt < retries)

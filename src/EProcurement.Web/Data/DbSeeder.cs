@@ -325,6 +325,12 @@ public static class DbSeeder
             "IF COL_LENGTH('Items','Brand') IS NULL ALTER TABLE Items ADD Brand nvarchar(100) NULL",
             // Giao diện riêng của người dùng
             "IF COL_LENGTH('Users','UiPrefs') IS NULL ALTER TABLE Users ADD UiPrefs nvarchar(1000) NULL",
+            // Thiết lập: cấu hình dài (mẫu email), phân cấp nhóm hàng
+            "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AppSettings') AND name = 'Value' AND max_length <> -1) ALTER TABLE AppSettings ALTER COLUMN Value nvarchar(max) NULL",
+            "IF COL_LENGTH('Categories','ParentId') IS NULL ALTER TABLE Categories ADD ParentId int NULL CONSTRAINT FK_Categories_Categories_ParentId REFERENCES Categories(Id)",
+            "IF COL_LENGTH('Categories','SortOrder') IS NULL ALTER TABLE Categories ADD SortOrder int NOT NULL CONSTRAINT DF_Categories_SortOrder DEFAULT 0",
+            "IF COL_LENGTH('Categories','Description') IS NULL ALTER TABLE Categories ADD Description nvarchar(500) NULL",
+            "IF COL_LENGTH('Categories','IsActive') IS NULL ALTER TABLE Categories ADD IsActive bit NOT NULL CONSTRAINT DF_Categories_IsActive DEFAULT 1",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"
@@ -334,6 +340,7 @@ public static class DbSeeder
         await EProcurement.Web.Infrastructure.StandardPrices.SyncReferenceAsync(db); // bảng giá tiêu chuẩn tới ngày hiệu lực // PR đã chọn hình thức trước khi có gói → sinh gói + KHLCNT tương ứng
         await EProcurement.Web.Infrastructure.Catalogs.EnsureAsync(db); // danh mục dùng chung: nạp mặc định + giá trị đang dùng
         await EProcurement.Web.Infrastructure.OrgUnits.EnsureAsync(db); // cơ cấu tổ chức: khởi tạo từ phòng ban đang dùng, đồng bộ danh mục Phòng ban
+        await EProcurement.Web.Infrastructure.CriteriaSeed.EnsureAsync(db); // thư viện bộ tiêu chí mẫu
     }
 
     /// <summary>

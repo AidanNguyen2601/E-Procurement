@@ -1,0 +1,39 @@
+@{
+    var c = (Dictionary<string, int>)ViewBag.Counts;
+    var email = (EmailConfig)ViewBag.Email;
+    var admin = User.IsAdmin();
+    var tiles = new List<(string Group, string Icon, string Title, string Desc, string Status, string? Url, bool AdminOnly)>
+    {
+        ("Phân quyền", "users", "Phân quyền", "Người dùng, vai trò, phòng ban, khóa / mở tài khoản", $"{c["users"]} người dùng đang hoạt động", Url.Action("Index", "Users"), true),
+        ("Phân quyền", "shield-check", "Thiết lập phân quyền", "Bật / tắt từng chức năng theo vai trò", (int)ViewBag.Denied > 0 ? $"{(int)ViewBag.Denied} quyền đã thu hẹp" : "Theo mặc định", Url.Action("Permissions"), true),
+        ("Phân quyền", "scale", "Ma trận phê duyệt", "Hạn mức duyệt theo phòng ban / loại chứng từ, ủy quyền duyệt", $"{c["limits"]} hạn mức riêng", Url.Action("Index", "ApprovalSettings"), true),
+        ("Phân quyền", "package", "Quyền theo gói thầu", "Ai phụ trách, ai được sửa, ai chỉ xem từng gói", $"{c["packages"]} gói đã phân quyền", Url.Action("PackageAccess"), false),
+        ("Đánh giá", "clipboard", "Bộ tiêu chí đánh giá", "Thư viện tiêu chí dùng lại cho sơ tuyển, HSDT, báo giá", $"{c["criteria"]} bộ tiêu chí", Url.Action("Index", "CriteriaSets"), false),
+        ("Đánh giá", "gavel", "Tiêu chí đánh giá HSDT", "Tiêu chí năng lực, kinh nghiệm, kỹ thuật cho hồ sơ mời thầu", $"{c["tender"]} bộ cho HSDT", Url.Action("Index", "CriteriaSets", new { group = "tender" }), false),
+        ("Đánh giá", "users", "Tiêu chí đánh giá nhà cung cấp", "Tên, trọng số, hướng dẫn chấm 4 tiêu chí đánh giá định kỳ", "Trọng số & xếp loại", Url.Action("SupplierCriteria"), true),
+        ("Đánh giá", "building", "Danh sách nhà thầu", "Nhà cung cấp / nhà thầu, trạng thái, danh sách đen", $"{c["vendors"]} NCC · {c["blacklist"]} danh sách đen", Url.Action("Index", "Vendors"), false),
+        ("Thông báo", "alert", "Cảnh báo", "Bật / tắt, ngưỡng nhắc hạn: báo giá, đóng thầu, hợp đồng, ngân sách…", $"{(int)ViewBag.AlertsOn}/{AlertSettings.Defs.Length} loại đang bật", Url.Action("Alerts"), true),
+        ("Thông báo", "send", "Email, thông báo", "Máy chủ gửi email (SMTP), gửi thử", email.Enabled && !string.IsNullOrEmpty(email.Host) ? "Đang gửi email · " + email.Host : "Chưa bật gửi email", Url.Action("Email"), true),
+        ("Thông báo", "bell", "Thiết lập mẫu thông báo", "Mẫu email, bật / tắt thông báo theo loại chứng từ", "Tiêu đề, nội dung, kênh", Url.Action("Templates"), true),
+        ("Hệ thống", "tag", "Thiết lập mã tự sinh", "Mẫu số chứng từ: PR-2026-0001, PO/2026/11/001…", (bool)ViewBag.Numbering ? "Đã tùy chỉnh" : "Mặc định MÃ-NĂM-STT", Url.Action("Numbering"), true),
+        ("Hệ thống", "network", "Phân cấp hàng hóa dịch vụ", "Cây nhóm hàng nhiều cấp", $"{c["categories"]} nhóm", Url.Action("Index", "Categories"), false),
+        ("Hệ thống", "file-text", "Biểu mẫu", "Thư viện file mẫu; thông tin công ty in trên chứng từ", $"{c["forms"]} biểu mẫu", Url.Action("Index", "FormTemplates"), false),
+    };
+}
+<p class="text-muted">Các thiết lập dùng chung cho toàn hệ thống. @(admin ? "" : "Một số mục chỉ Quản trị hệ thống chỉnh được.")</p>
+@foreach (var g in tiles.Where(t => admin || !t.AdminOnly).GroupBy(t => t.Group))
+{
+    <h6 class="text-uppercase text-muted small mt-3 mb-2">@g.Key</h6>
+    <div class="row g-3">
+        @foreach (var t in g)
+        {
+            <div class="col-md-6 col-xl-3">
+                <a href="@t.Url" class="card h-100 text-decoration-none text-body set-tile"><div class="card-body d-flex gap-3">
+                    <span class="icon-tile flex-shrink-0">@Icon.Svg(t.Icon, 20)</span>
+                    <div><div class="fw-semibold">@t.Title</div><div class="small text-muted">@t.Desc</div><div class="small mt-1 text-primary">@t.Status</div></div>
+                </div></a>
+            </div>
+        }
+    </div>
+}
+<style>.set-tile:hover { border-color: var(--accent-line); box-shadow: 0 2px 10px rgba(15,23,42,.06); }</style>

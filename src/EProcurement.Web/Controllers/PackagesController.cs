@@ -101,6 +101,7 @@ public class PackagesController : ProcControllerBase
         var p = await Db.ProcurementPackages.Include(x => x.PurchaseRequests).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
         if (p.Status != PackageStatus.Draft) { TempData["Error"] = "Chỉ sửa gói ở trạng thái Nháp (chưa trình / bị trả lại)."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!await PackageAccess.CanEditAsync(Db, User, id)) { TempData["Error"] = PackageAccess.Explain; return RedirectToAction(nameof(Details), new { id }); }
         var vm = new PackageForm
         {
             Id = p.Id, Number = p.Number, Title = p.Title, PrIds = p.PurchaseRequests.Select(r => r.Id).ToList(), Budget = p.Budget, FundingSource = p.FundingSource,
@@ -121,6 +122,7 @@ public class PackagesController : ProcControllerBase
             p = await Db.ProcurementPackages.Include(x => x.PurchaseRequests).FirstOrDefaultAsync(x => x.Id == vm.Id);
             if (p == null) return NotFound();
             if (p.Status != PackageStatus.Draft) return BadRequest();
+            if (!await PackageAccess.CanEditAsync(Db, User, p.Id)) return Forbid();
         }
         vm.PrIds = vm.PrIds.Distinct().ToList();
         await FillAsync(vm);
@@ -167,6 +169,8 @@ public class PackagesController : ProcControllerBase
         ViewBag.Orders = await Db.PurchaseOrders.AsNoTracking().Include(r => r.Vendor).Where(r => r.PackageId == id).ToListAsync();
         ViewBag.Active = await Packages.HasActiveDocumentAsync(Db, id);
         ViewBag.History = await HistoryAsync(DocType.Package, id);
+        ViewBag.Members = await Db.PackageMembers.AsNoTracking().Include(m => m.User).Where(m => m.PackageId == id).OrderBy(m => m.Role).ToListAsync();
+        ViewBag.CanEdit = await PackageAccess.CanEditAsync(Db, User, id);
         ViewBag.OpenPlans = User.IsPurchasing() && p.Status == PackageStatus.Draft
             ? await Db.SelectionPlans.Where(x => x.Status == SelectionPlanStatus.Draft || x.Status == SelectionPlanStatus.Returned).OrderByDescending(x => x.CreatedAt).ToListAsync()
             : new List<SelectionPlan>();
@@ -181,6 +185,7 @@ public class PackagesController : ProcControllerBase
         var p = await Db.ProcurementPackages.Include(x => x.PurchaseRequests).FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
+        if (!await PackageAccess.CanEditAsync(Db, User, id)) return Fail(PackageAccess.Explain);
         if (p.Status is PackageStatus.Completed or PackageStatus.Cancelled or PackageStatus.InPlan) return Fail("Không hủy được gói ở trạng thái hiện tại.");
         if (await Packages.HasActiveDocumentAsync(Db, id)) return Fail("Gói còn hồ sơ lựa chọn NCC / đơn hàng đang xử lý – hủy các chứng từ đó trước.");
         if (string.IsNullOrWhiteSpace(reason)) return Fail("Nhập lý do hủy gói.");

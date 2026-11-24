@@ -208,6 +208,43 @@ window.eprocUi = {
     });
 })();
 
+// ===== Chèn tiêu chí từ thư viện bộ tiêu chí (sơ tuyển, hồ sơ mời thầu) =====
+document.querySelectorAll('.crit-picker').forEach(async box => {
+    const sel = box.querySelector('select'), btn = box.querySelector('button');
+    let sets = [];
+    try { sets = await (await fetch(box.dataset.url + '?kinds=' + encodeURIComponent(box.dataset.kinds), { credentials: 'same-origin' })).json(); } catch (e) { }
+    if (!sets.length) { sel.options[0].text = 'Chưa có bộ tiêu chí phù hợp'; sel.disabled = true; return; }
+    sets.forEach(s => sel.add(new Option(s.name + ' (' + s.items.length + ' tiêu chí)', s.id)));
+    sel.addEventListener('change', () => btn.disabled = !sel.value);
+    btn.addEventListener('click', () => {
+        const s = sets.find(x => String(x.id) === sel.value); if (!s) return;
+        const target = document.querySelector(box.dataset.target);
+        if (box.dataset.mode === 'text') {
+            const text = s.items.map((i, n) => (n + 1) + '. ' + i.name + (i.isMandatory ? ' (bắt buộc – đạt / không đạt)' : i.maxScore > 0 ? ' (' + i.maxScore + ' điểm)' : '') + (i.requirement ? ': ' + i.requirement : '')).join('\n');
+            target.value = target.value.trim() ? target.value.trimEnd() + '\n' + text : text;
+            target.dispatchEvent(new Event('input'));
+        } else {
+            // Bảng tiêu chí: điền vào dòng trống, thiếu thì nhân bản dòng cuối (đánh lại chỉ số)
+            const tbody = target.tBodies[0];
+            const empty = () => [...tbody.rows].filter(r => !r.querySelector('input[name$=".Name"]').value.trim());
+            s.items.forEach(it => {
+                let r = empty()[0];
+                if (!r) {
+                    r = tbody.rows[tbody.rows.length - 1].cloneNode(true); tbody.appendChild(r);
+                    const idx = tbody.rows.length - 1;
+                    r.querySelectorAll('[name]').forEach(el => el.name = el.name.replace(/\[\d+\]/, '[' + idx + ']'));
+                    if (r.cells[0] && /^\d+$/.test(r.cells[0].textContent.trim())) r.cells[0].textContent = idx + 1;
+                }
+                const f = n => r.querySelector('[name$=".' + n + '"]:not([type=hidden])');
+                f('Name').value = it.name; f('Requirement').value = it.requirement || '';
+                f('IsMandatory').checked = it.isMandatory; f('MaxScore').value = it.maxScore;
+                const d = f('DocumentType'); if (d) d.value = it.documentType ?? '';
+            });
+        }
+        sel.value = ''; btn.disabled = true;
+    });
+});
+
 // Đếm ngược: <span data-countdown="số giây còn lại"> (tính từ server, không phụ thuộc múi giờ máy khách)
 (function () {
     const els = document.querySelectorAll('[data-countdown]');

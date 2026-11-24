@@ -202,6 +202,7 @@ public static class SupplierScorecard
             .Select(g => new { g.PurchaseOrderId, g.ReceiptDate, Acc = g.Lines.Sum(l => l.QuantityAccepted), Rej = g.Lines.Sum(l => l.QuantityRejected) }).ToListAsync();
         var evals = await db.VendorEvaluations.AsNoTracking().Where(e => e.CreatedAt >= from && e.CreatedAt < end && (vendorId == null || e.VendorId == vendorId)).ToListAsync();
 
+        var crit = await SupplierCriteriaLoader.LoadAsync(db); // trọng số tiêu chí (Thiết lập → Tiêu chí đánh giá NCC)
         var result = new List<SupplierScore>();
         foreach (var v in vendors)
         {
@@ -223,7 +224,7 @@ public static class SupplierScorecard
             {
                 s.Quality = Math.Round((decimal)ve.Average(e => e.Quality), 2); s.Delivery = Math.Round((decimal)ve.Average(e => e.Delivery), 2);
                 s.Price = Math.Round((decimal)ve.Average(e => e.Price), 2); s.Service = Math.Round((decimal)ve.Average(e => e.Service), 2);
-                s.Score = Math.Round((s.Quality.Value + s.Delivery.Value + s.Price.Value + s.Service.Value) / 4, 2);
+                s.Score = Math.Round(crit.Score(s.Quality.Value, s.Delivery.Value, s.Price.Value, s.Service.Value), 2);
             }
             else if (s.OnTimePercent.HasValue)
                 s.Score = Math.Round((DeliveryScore(s.OnTimePercent.Value) + QualityScore(s.RejectPercent ?? 0)) / 2m, 2);

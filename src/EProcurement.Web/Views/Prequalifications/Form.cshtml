@@ -15,8 +15,8 @@
         <div class="col-md-4"><label asp-for="ValidityMonths" class="form-label"></label><input asp-for="ValidityMonths" class="form-control" /></div>
         <div class="col-md-4"><label asp-for="MinScore" class="form-label"></label><input asp-for="MinScore" class="form-control" /></div>
     </div></div>
-    <div class="card mb-3"><div class="card-header">Tiêu chí sơ tuyển <span class="small fw-normal text-muted">– tiêu chí bắt buộc: đạt / không đạt; tiêu chí chấm điểm quy đổi thang 100. Để trống tên để bỏ dòng.</span></div>
-    <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+    <div class="card mb-3"><div class="card-header d-flex flex-wrap gap-2 align-items-center"><span>Tiêu chí sơ tuyển <span class="small fw-normal text-muted">– tiêu chí bắt buộc: đạt / không đạt; tiêu chí chấm điểm quy đổi thang 100. Để trống tên để bỏ dòng.</span></span><span class="ms-auto fw-normal">@await Html.PartialAsync("_CriteriaPicker", ("Prequalification", "table", "#pq-criteria"))</span></div>
+    <div class="table-responsive"><table class="table table-sm mb-0 align-middle" id="pq-criteria">
         <thead><tr><th>#</th><th style="min-width:180px">Tiêu chí</th><th style="min-width:240px">Yêu cầu / cách đánh giá</th><th>Bắt buộc</th><th style="width:100px">Điểm tối đa</th><th>Hồ sơ chứng minh</th></tr></thead><tbody>
         @for (var i = 0; i < rows.Count; i++)
         {

@@ -1,0 +1,50 @@
+@model List<CriteriaSet>
+@{ string? group = ViewBag.Group; CriteriaKind? kind = ViewBag.Kind; bool inactive = ViewBag.Inactive; }
+<div class="toolbar d-flex flex-wrap gap-2 align-items-center">
+    <div class="btn-group btn-group-sm">
+        <a asp-action="Index" class="btn @(group == null && kind == null ? "btn-primary" : "btn-outline-primary")">Tất cả</a>
+        <a asp-action="Index" asp-route-group="tender" class="btn @(group == "tender" ? "btn-primary" : "btn-outline-primary")">HSDT</a>
+        @foreach (var k in new[] { CriteriaKind.Prequalification, CriteriaKind.Quotation })
+        { <a asp-action="Index" asp-route-kind="@k" class="btn @(kind == k ? "btn-primary" : "btn-outline-primary")">@k.GetDisplayName()</a> }
+    </div>
+    <a asp-action="Index" asp-route-group="@group" asp-route-kind="@kind" asp-route-inactive="@(!inactive)" class="btn btn-sm btn-light">@(inactive ? "Ẩn bộ ngừng dùng" : "Hiện cả bộ ngừng dùng")</a>
+    <a asp-action="Create" asp-route-kind="@(group == "tender" ? CriteriaKind.TenderQualification : kind)" class="btn btn-sm btn-primary ms-auto">+ Thêm bộ tiêu chí</a>
+</div>
+@if (group == "tender")
+{
+    <div class="alert alert-info small">Tiêu chí đánh giá HSDT dùng khi lập hồ sơ mời thầu: bấm <b>"Chèn từ bộ tiêu chí"</b> cạnh ô <i>Tiêu chí năng lực, kinh nghiệm</i> / <i>Yêu cầu kỹ thuật</i> trên form gói thầu. Tổ chuyên gia xem tiêu chí khi chấm kỹ thuật.</div>
+}
+@if (Model.Count == 0)
+{
+    <div class="card"><div class="card-body text-muted">Chưa có bộ tiêu chí. Tạo bộ tiêu chí để dùng lại cho nhiều đợt sơ tuyển / gói thầu.</div></div>
+}
+<div class="row g-3">
+@foreach (var s in Model)
+{
+    <div class="col-lg-6">
+        <div class="card h-100 @(s.IsActive ? "" : "opacity-75")">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span>@s.Name</span>
+                @if (!s.IsActive) { <span class="badge bg-secondary">Ngừng dùng</span> }
+                <span class="ms-auto badge bg-primary-subtle text-primary-emphasis">@s.Kind.GetDisplayName()</span>
+            </div>
+            <div class="card-body small">
+                @if (s.Description != null) { <div class="text-muted mb-2">@s.Description</div> }
+                <ol class="mb-2 ps-3">
+                    @foreach (var i in s.Items.OrderBy(i => i.SortOrder))
+                    {
+                        <li>@i.Name @if (i.IsMandatory) { <span class="badge bg-warning-subtle text-warning-emphasis">Bắt buộc</span> } else if (i.MaxScore > 0) { <span class="text-muted">· @i.MaxScore điểm</span> }
+                            @if (i.DocumentType != null) { <span class="text-muted">· hồ sơ: @i.DocumentType.Value.GetDisplayName()</span> }</li>
+                    }
+                </ol>
+                <div class="text-muted">@s.Items.Count tiêu chí · tổng @s.Items.Sum(i => i.MaxScore) điểm@(s.Category != null ? " · nhóm hàng: " + s.Category.Name : "") · cập nhật @s.UpdatedAt.ToDate()</div>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-sm btn-outline-secondary">Sửa</a>
+                <a asp-action="Create" asp-route-copyFrom="@s.Id" class="btn btn-sm btn-outline-secondary">Nhân bản</a>
+                <form asp-action="Delete" asp-route-id="@s.Id" method="post" class="ms-auto" data-confirm="Xóa bộ tiêu chí @s.Name? (Tiêu chí đã chèn vào đợt sơ tuyển / gói thầu vẫn giữ nguyên)"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
+            </div>
+        </div>
+    </div>
+}
+</div>

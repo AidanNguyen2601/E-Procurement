@@ -1,0 +1,22 @@
+@model PrintSettings
+@* Đầu trang biểu mẫu in: thông tin công ty (trái) + quốc hiệu (phải). Không có thông tin thì không in gì. *@
+@if (!string.IsNullOrWhiteSpace(Model.CompanyName) || Model.ShowNationalHeader)
+{
+    <div class="row small mb-3 print-header">
+        <div class="col-6 text-center">
+            @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
+            {
+                <div class="fw-bold text-uppercase">@Model.CompanyName</div>
+                @if (Model.Address != null) { <div>@Model.Address</div> }
+                <div>@string.Join(" · ", new[] { Model.TaxCode == null ? null : "MST: " + Model.TaxCode, Model.Phone == null ? null : "ĐT: " + Model.Phone, Model.Email }.Where(x => x != null))</div>
+            }
+        </div>
+        <div class="col-6 text-center">
+            @if (Model.ShowNationalHeader)
+            {
+                <div class="fw-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                <div class="fw-semibold text-decoration-underline">Độc lập – Tự do – Hạnh phúc</div>
+            }
+        </div>
+    </div>
+}

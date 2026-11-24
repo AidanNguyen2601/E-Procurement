@@ -1,4 +1,5 @@
 @model SelectionPlan
+@inject SettingsStore SettingsDb
 @{
     ViewData["Title"] = $"KHLCNT {Model.Number}";
     var approved = Model.Status == SelectionPlanStatus.Approved;
@@ -6,7 +7,7 @@
 }
 <div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
 
-<div class="card paper mb-4"><div class="card-body p-4">
+<div class="card paper mb-4"><div class="card-body p-4">@{ var printCfg = await SettingsDb.GetAsync(SettingsStore.Print, () => new PrintSettings()); }<partial name="_PrintHeader" model="printCfg" />
     <div class="text-center mb-3"><h4 class="mb-0">@(approved ? "QUYẾT ĐỊNH" : "TỜ TRÌNH")</h4>
         <div>V/v phê duyệt kế hoạch lựa chọn nhà cung cấp</div>
         <div class="text-muted">Số: @Model.Number · Ngày: @((approved ? Model.DecidedAt : Model.SubmittedAt ?? Model.CreatedAt)?.ToDate())</div></div>
@@ -35,4 +36,5 @@
         <div class="col">NGƯỜI LẬP<br /><br /><br /><br />@Model.CreatedBy?.FullName</div>
         <div class="col">@(approved ? "GIÁM ĐỐC" : "PHÊ DUYỆT CỦA GIÁM ĐỐC")<br />@(approved ? $"(đã ký điện tử {Model.DecidedAt:dd/MM/yyyy HH:mm})" : "")<br /><br /><br />@Model.DecidedBy?.FullName</div>
     </div>
+    @if (printCfg.Footer != null) { <div class="small text-muted text-end border-top mt-4 pt-1">@printCfg.Footer</div> }
 </div></div>

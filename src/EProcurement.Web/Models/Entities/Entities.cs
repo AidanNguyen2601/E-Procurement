@@ -89,6 +89,14 @@ public class Category
     [Required(ErrorMessage = "Nhập tên nhóm"), StringLength(150)]
     [Display(Name = "Tên nhóm")]
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>Nhóm cấp trên (phân cấp hàng hóa dịch vụ); null = nhóm gốc</summary>
+    [Display(Name = "Nhóm cấp trên")] public int? ParentId { get; set; }
+    public Category? Parent { get; set; }
+    public ICollection<Category> Children { get; set; } = new List<Category>();
+    [Display(Name = "Thứ tự")] public int SortOrder { get; set; }
+    [StringLength(500)][Display(Name = "Mô tả")] public string? Description { get; set; }
+    [Display(Name = "Đang sử dụng")] public bool IsActive { get; set; } = true;
 }
 
 /// <summary>Hàng hóa / vật tư / dịch vụ</summary>

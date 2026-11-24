@@ -1,0 +1,64 @@
+@model EProcurement.Web.Controllers.CriteriaSetsController.CriteriaForm
+@{
+    var docTypes = Html.GetEnumSelectList<VendorDocumentType>().ToList();
+}
+<form asp-action="Save" method="post">
+<input type="hidden" name="Id" value="@Model.Id" />
+<div asp-validation-summary="All" class="text-danger small"></div>
+<div class="card mb-3"><div class="card-body row g-3">
+    <div class="col-md-6"><label class="form-label">Tên bộ tiêu chí *</label><input name="Name" value="@Model.Name" maxlength="200" class="form-control" required /></div>
+    <div class="col-md-3"><label class="form-label">Dùng cho</label>
+        <select name="Kind" class="form-select" asp-items="Html.GetEnumSelectList<CriteriaKind>().Select(i => { i.Selected = i.Value == ((int)Model.Kind).ToString(); return i; })"></select></div>
+    <div class="col-md-3"><label class="form-label">Nhóm hàng áp dụng</label><select name="CategoryId" class="form-select" asp-items="(SelectList)ViewBag.Categories"><option value="">-- Mọi nhóm --</option></select></div>
+    <div class="col-md-9"><label class="form-label">Mô tả</label><input name="Description" value="@Model.Description" maxlength="1000" class="form-control" /></div>
+    <div class="col-md-3 d-flex align-items-end"><div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="IsActive" value="true" id="act" checked="@Model.IsActive" /><input type="hidden" name="IsActive" value="false" /><label for="act" class="form-check-label">Đang sử dụng</label></div></div>
+</div></div>
+
+<div class="card"><div class="card-header d-flex">Tiêu chí <span class="ms-auto small text-muted">Tổng điểm: <b id="c-total">0</b></span></div>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0" id="c-table">
+        <thead><tr><th style="width:24%">Tiêu chí *</th><th>Yêu cầu / cách đánh giá</th><th style="width:90px">Bắt buộc</th><th style="width:100px">Điểm tối đa</th><th style="width:190px">Hồ sơ chứng minh</th><th style="width:70px"></th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < Model.Items.Count; i++)
+        {
+            var it = Model.Items[i];
+            <tr class="c-row">
+                <td><input name="Items[@i].Name" value="@it.Name" maxlength="200" class="form-control form-control-sm" /></td>
+                <td><textarea name="Items[@i].Requirement" rows="1" maxlength="1000" class="form-control form-control-sm">@it.Requirement</textarea></td>
+                <td class="text-center"><input type="checkbox" class="form-check-input c-mand" name="Items[@i].IsMandatory" value="true" checked="@it.IsMandatory" /><input type="hidden" name="Items[@i].IsMandatory" value="false" /></td>
+                <td><input name="Items[@i].MaxScore" type="number" min="0" max="100" value="@it.MaxScore" class="form-control form-control-sm c-score" /></td>
+                <td><select name="Items[@i].DocumentType" class="form-select form-select-sm"><option value="">—</option>
+                    @foreach (var d in docTypes) { <option value="@d.Value" selected="@(it.DocumentType != null && ((int)it.DocumentType.Value).ToString() == d.Value)">@d.Text</option> }</select></td>
+                <td class="text-nowrap"><button type="button" class="btn btn-sm btn-light c-up" title="Lên">↑</button><button type="button" class="btn btn-sm btn-light c-del" title="Xóa">✕</button></td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    <div class="card-footer d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" id="c-add">+ Thêm tiêu chí</button>
+        <span class="small text-muted align-self-center">Tiêu chí bắt buộc đánh giá đạt / không đạt (không tính điểm).</span></div>
+</div>
+<div class="d-flex gap-2 mt-3"><button class="btn btn-primary">Lưu</button><a asp-action="Index" class="btn btn-light">Hủy</a></div>
+</form>
+<script>
+(function () {
+    const tb = document.querySelector('#c-table tbody');
+    function reindex() {
+        [...tb.rows].forEach((r, i) => r.querySelectorAll('[name]').forEach(el => el.name = el.name.replace(/Items\[\d+\]/, 'Items[' + i + ']')));
+        let t = 0; tb.querySelectorAll('.c-row').forEach(r => { const m = r.querySelector('.c-mand').checked, s = r.querySelector('.c-score'); s.disabled = m; if (!m) t += +s.value || 0; });
+        document.getElementById('c-total').textContent = t;
+    }
+    tb.addEventListener('input', reindex); tb.addEventListener('change', reindex);
+    tb.addEventListener('click', e => {
+        const r = e.target.closest('tr'); if (!r) return;
+        if (e.target.classList.contains('c-del')) { if (tb.rows.length > 1) r.remove(); else r.querySelectorAll('input:not([type=hidden]),textarea').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; }); reindex(); }
+        if (e.target.classList.contains('c-up') && r.previousElementSibling) { tb.insertBefore(r, r.previousElementSibling); reindex(); }
+    });
+    document.getElementById('c-add').addEventListener('click', () => {
+        const n = tb.rows[tb.rows.length - 1].cloneNode(true);
+        n.querySelectorAll('input:not([type=hidden]),textarea,select').forEach(i => { if (i.type === 'checkbox') i.checked = false; else if (i.tagName === 'SELECT') i.selectedIndex = 0; else i.value = i.type === 'number' ? 0 : ''; });
+        tb.appendChild(n); reindex(); n.querySelector('input').focus();
+    });
+    // Ô điểm bị khóa (bắt buộc) vẫn gửi 0
+    document.querySelector('form').addEventListener('submit', () => tb.querySelectorAll('.c-score:disabled').forEach(s => { s.disabled = false; s.value = 0; }));
+    reindex();
+})();
+</script>

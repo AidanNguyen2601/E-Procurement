@@ -1,0 +1,36 @@
+@model EmailConfig
+@{ bool hasPwd = ViewBag.HasPassword; bool fromWeb = ViewBag.FromWeb; dynamic st = ViewBag.Stats; }
+<div class="row g-3">
+<div class="col-lg-8">
+<form method="post" asp-action="Email" class="card" autocomplete="off">
+    <div class="card-header">Máy chủ gửi email (SMTP)</div>
+    <div class="card-body row g-3">
+        <div class="col-12"><div class="form-check form-switch">
+            <input type="checkbox" class="form-check-input" name="Enabled" value="true" id="en" checked="@Model.Enabled" /><input type="hidden" name="Enabled" value="false" />
+            <label class="form-check-label fw-semibold" for="en">Gửi email thông báo</label></div>
+            <div class="form-text">Mỗi chu kỳ, thông báo chưa đọc (trong 3 ngày) được gửi tới email của người nhận – trừ người tắt nhận email và loại thông báo đã tắt email ở <a asp-action="Templates">Mẫu thông báo</a>.</div></div>
+        <div class="col-md-6"><label class="form-label">Máy chủ SMTP</label><input name="Host" value="@Model.Host" class="form-control" placeholder="smtp.office365.com" /></div>
+        <div class="col-md-3"><label class="form-label">Cổng</label><input name="Port" type="number" value="@Model.Port" class="form-control" /></div>
+        <div class="col-md-3 d-flex align-items-end"><div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="EnableSsl" value="true" id="ssl" checked="@Model.EnableSsl" /><input type="hidden" name="EnableSsl" value="false" /><label for="ssl" class="form-check-label">SSL / TLS</label></div></div>
+        <div class="col-md-6"><label class="form-label">Tài khoản đăng nhập</label><input name="UserName" value="@Model.UserName" class="form-control" autocomplete="off" /></div>
+        <div class="col-md-6"><label class="form-label">Mật khẩu</label><input name="Password" type="password" class="form-control" autocomplete="new-password" placeholder="@(hasPwd ? "•••••• (để trống: giữ mật khẩu cũ)" : "")" />
+            @if (hasPwd) { <div class="form-check mt-1"><input type="checkbox" class="form-check-input" name="clearPassword" value="true" id="cp" /><label for="cp" class="form-check-label small">Xóa mật khẩu đã lưu</label></div> }</div>
+        <div class="col-md-6"><label class="form-label">Email người gửi</label><input name="From" value="@Model.From" class="form-control" required /></div>
+        <div class="col-md-6"><label class="form-label">Tên người gửi</label><input name="FromName" value="@Model.FromName" class="form-control" /></div>
+        <div class="col-12"><label class="form-label">Địa chỉ trang web (tạo liên kết trong email)</label><input name="BaseUrl" value="@Model.BaseUrl" class="form-control" placeholder="https://eproc.congty.vn" /></div>
+        <div class="col-md-8"><label class="form-label">Gửi thử tới</label><input name="testTo" type="email" class="form-control" placeholder="Để trống: email của bạn" /></div>
+        <div class="col-md-4 d-flex align-items-end"><button class="btn btn-outline-primary w-100" name="test" value="true">Gửi email thử</button></div>
+    </div>
+    <div class="card-footer d-flex gap-2 align-items-center"><button class="btn btn-primary">Lưu</button>
+        <span class="small text-muted">@(fromWeb ? "Đang dùng cấu hình lưu trên web." : "Đang dùng cấu hình trong appsettings.json – lưu ở đây sẽ thay thế.")</span></div>
+</form>
+</div>
+<div class="col-lg-4">
+    <div class="card"><div class="card-header">Tình hình gửi</div><ul class="list-group list-group-flush small">
+        <li class="list-group-item d-flex justify-content-between"><span>Thông báo chờ gửi email</span><b>@st.Pending</b></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Email đã xử lý 7 ngày qua</span><b>@st.Sent7</b></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Người dùng chưa có email</span><b>@st.NoEmail</b></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Người dùng tắt nhận email</span><b>@st.OptOut</b></li>
+    </ul></div>
+</div>
+</div>

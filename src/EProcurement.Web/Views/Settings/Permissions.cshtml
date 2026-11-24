@@ -1,0 +1,42 @@
+@model PermissionSettings
+@{
+    var rows = (List<EProcurement.Web.Controllers.SettingsController.PermRow>)ViewBag.Rows;
+    var bas = (Dictionary<string, HashSet<string>>)ViewBag.Base;
+    var roles = AppRoles.All;
+}
+<div class="alert alert-info small">
+    Bỏ chọn để <b>tắt</b> chức năng với vai trò đó: mục bị ẩn khỏi menu và truy cập trực tiếp sẽ bị từ chối.
+    Ô "—" là chức năng vai trò không có theo thiết kế (không mở thêm được). Quản trị hệ thống luôn có toàn quyền.
+    Vai trò của từng người dùng chỉnh tại <a asp-controller="Users" asp-action="Index" class="alert-link">Phân quyền người dùng</a>.
+</div>
+<form method="post" asp-action="Permissions">
+<div class="card"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+    <thead><tr><th>Chức năng</th>@foreach (var r in roles) { <th class="text-center" style="min-width:110px">@AppRoles.DisplayName(r)</th> }</tr></thead>
+    <tbody>
+    @foreach (var g in rows.GroupBy(r => r.Group))
+    {
+        <tr class="table-light"><td colspan="@(roles.Length + 1)" class="small fw-semibold text-uppercase text-muted">@g.Key</td></tr>
+        @foreach (var r in g)
+        {
+            <tr>
+                <td>@r.Label <span class="small text-muted">· @r.Controller</span></td>
+                @foreach (var role in roles)
+                {
+                    <td class="text-center">
+                        @if (role == AppRoles.Admin) { <span class="text-success" title="Toàn quyền">✓</span> }
+                        else if (!bas[role].Contains(r.Controller)) { <span class="text-muted">—</span> }
+                        else
+                        {
+                            <input type="checkbox" class="form-check-input" name="allow" value="@r.Controller|@role" checked="@(!Model.IsDenied(r.Controller, role))" aria-label="@r.Label – @AppRoles.DisplayName(role)" />
+                        }
+                    </td>
+                }
+            </tr>
+        }
+    }
+    </tbody>
+</table></div>
+<div class="card-footer d-flex gap-2"><button class="btn btn-primary">Lưu phân quyền</button>
+    <button type="button" class="btn btn-light" onclick="document.querySelectorAll('input[name=allow]').forEach(c => c.checked = true)">Khôi phục mặc định (chọn tất cả)</button></div>
+</div>
+</form>

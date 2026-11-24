@@ -9,6 +9,10 @@ public class EProcDbContext : DbContext
 
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<CriteriaSet> CriteriaSets => Set<CriteriaSet>();
+    public DbSet<CriteriaItem> CriteriaItems => Set<CriteriaItem>();
+    public DbSet<FormTemplate> FormTemplates => Set<FormTemplate>();
+    public DbSet<PackageMember> PackageMembers => Set<PackageMember>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
@@ -116,6 +120,9 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<OrgUnit>().HasIndex(x => x.Code).IsUnique();
         modelBuilder.Entity<OrgUnit>().HasIndex(x => x.Name).IsUnique();
         modelBuilder.Entity<OrgUnit>().HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId);
+        modelBuilder.Entity<Category>().HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId);
+        modelBuilder.Entity<CriteriaItem>().HasOne(x => x.CriteriaSet).WithMany(x => x.Items).HasForeignKey(x => x.CriteriaSetId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PackageMember>().HasIndex(x => new { x.PackageId, x.UserId }).IsUnique();
         modelBuilder.Entity<Contract>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<CatalogEntry>().HasIndex(x => new { x.Type, x.Name }).IsUnique();
         modelBuilder.Entity<Notification>().HasIndex(x => new { x.UserId, x.ReadAt });
@@ -148,15 +155,27 @@ public class EProcDbContext : DbContext
     }
 }
 
-/// <summary>Sinh số chứng từ dạng PR-2026-0001</summary>
+/// <summary>Sinh số chứng từ theo mẫu (mặc định PR-2026-0001); mẫu chỉnh tại Thiết lập → Mã tự sinh</summary>
 public static class DocNumbers
 {
-    public static async Task<string> NextAsync(IQueryable<string> existing, string prefix)
+    /// <summary>Mẫu đánh số hiện hành (nạp lúc khởi động và khi lưu thiết lập)</summary>
+    public static EProcurement.Web.Infrastructure.NumberingSettings Rules { get; set; } = new();
+
+    /// <summary>Số kế tiếp cho loại chứng từ <paramref name="key"/> (tiền tố mặc định: PR, PO, HD…)</summary>
+    public static async Task<string> NextAsync(IQueryable<string> existing, string key, DateTime? date = null)
     {
-        var p = $"{prefix}-{DateTime.Today:yyyy}-";
-        var n = await existing.CountAsync(x => x.StartsWith(p)) + 1;
+        var (head, digits) = HeadOf(key, date ?? DateTime.Today);
+        var n = await existing.CountAsync(x => x.StartsWith(head)) + 1;
         string no;
-        do no = $"{p}{n++:0000}"; while (await existing.AnyAsync(x => x == no));
+        do no = head + n++.ToString().PadLeft(digits, '0'); while (await existing.AnyAsync(x => x == no));
         return no;
+    }
+
+    public static (string Head, int Digits) HeadOf(string key, DateTime date)
+    {
+        var rule = Rules.Rules.FirstOrDefault(r => r.Key == key);
+        var code = Rules.Codes.TryGetValue(key, out var c) && !string.IsNullOrWhiteSpace(c) ? c : key;
+        var pattern = rule?.Pattern ?? EProcurement.Web.Infrastructure.NumberingSettings.DefaultPattern;
+        return (EProcurement.Web.Infrastructure.NumberingSettings.Head(pattern, code, date), rule?.Digits ?? 4);
     }
 }

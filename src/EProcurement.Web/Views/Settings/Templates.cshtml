@@ -1,0 +1,66 @@
+@model NotifyTemplates
+@{ string company = ViewBag.Company ?? ""; }
+<form method="post" asp-action="Templates">
+<div class="row g-3">
+<div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header">Mẫu email thông báo</div><div class="card-body">
+        <label class="form-label">Tiêu đề email</label>
+        <input name="Subject" id="t-subject" value="@Model.Subject" maxlength="200" class="form-control mb-3" />
+        <label class="form-label">Nội dung (HTML)</label>
+        <textarea name="Body" id="t-body" rows="10" class="form-control font-monospace small">@Model.Body</textarea>
+        <div class="small text-muted mt-2">Mã chèn:
+            @foreach (var (tk, m) in NotifyTemplates.Tokens) { <button type="button" class="btn btn-sm btn-light border py-0 px-1 me-1 mb-1 t-token" data-token="@tk" title="@m">@tk</button> }
+        </div>
+    </div></div>
+    <div class="card"><div class="card-header">Xem trước</div><div class="card-body">
+        <div class="small text-muted">Tiêu đề:</div><div class="fw-semibold mb-2" id="p-subject"></div>
+        <div class="border rounded p-3" id="p-body" style="background:#fff"></div>
+    </div></div>
+</div>
+<div class="col-lg-5">
+    <div class="card"><div class="card-header">Kênh nhận theo loại thông báo</div>
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Loại</th><th class="text-center">Trong hệ thống</th><th class="text-center">Email</th></tr></thead>
+            <tbody>
+            @for (var i = 0; i < NotifyTemplates.Groups.Length; i++)
+            {
+                var (key, label) = NotifyTemplates.Groups[i];
+                var c = Model.Channels.FirstOrDefault(x => x.Key == key) ?? new NotifyChannel { Key = key };
+                <tr><td>@label<input type="hidden" name="Channels[@i].Key" value="@key" /></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input" name="Channels[@i].InApp" value="true" checked="@c.InApp" /><input type="hidden" name="Channels[@i].InApp" value="false" /></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input" name="Channels[@i].Email" value="true" checked="@c.Email" /><input type="hidden" name="Channels[@i].Email" value="false" /></td></tr>
+            }
+            </tbody>
+        </table>
+        <div class="card-body small text-muted">Tắt "Trong hệ thống" thì không tạo thông báo (và không gửi email) cho loại đó. Ngưỡng nhắc hạn chỉnh ở <a asp-action="Alerts">Cảnh báo</a>; máy chủ gửi ở <a asp-action="Email">Email, thông báo</a>.</div>
+    </div>
+</div>
+</div>
+<div class="d-flex gap-2 mt-3">
+    <button class="btn btn-primary">Lưu</button>
+    <button class="btn btn-light" name="reset" value="true" data-confirm="Khôi phục tiêu đề và nội dung email mặc định?">Khôi phục mẫu email mặc định</button>
+</div>
+</form>
+<script>
+(function () {
+    const sample = { '{TieuDe}': 'Đề nghị chờ bạn duyệt: PR-2026-0012', '{NoiDung}': 'PR-2026-0012 – Laptop cho phòng Kỹ thuật', '{NguoiNhan}': 'Lê Thị Hồng',
+        '{LienKet}': '#', '{ThoiGian}': new Date().toLocaleString('vi-VN'), '{CongTy}': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(company)) };
+    const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const sub = document.getElementById('t-subject'), body = document.getElementById('t-body');
+    let last = body;
+    function render() {
+        let s = sub.value, b = body.value;
+        for (const k in sample) { s = s.split(k).join(sample[k]); b = b.split(k).join(esc(sample[k])); }
+        document.getElementById('p-subject').textContent = s;
+        // Xem trước trong khung cách ly (không chạy script)
+        const f = document.createElement('iframe'); f.setAttribute('sandbox', ''); f.style.cssText = 'width:100%;border:0;min-height:220px'; f.srcdoc = b;
+        const box = document.getElementById('p-body'); box.innerHTML = ''; box.appendChild(f);
+    }
+    [sub, body].forEach(el => { el.addEventListener('input', render); el.addEventListener('focus', () => last = el); });
+    document.querySelectorAll('.t-token').forEach(btn => btn.addEventListener('click', () => {
+        const el = last, p = el.selectionStart ?? el.value.length;
+        el.value = el.value.slice(0, p) + btn.dataset.token + el.value.slice(el.selectionEnd ?? p); el.focus(); render();
+    }));
+    render();
+})();
+</script>

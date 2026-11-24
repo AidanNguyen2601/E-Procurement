@@ -1,0 +1,48 @@
+@model NumberingSettings
+<div class="alert alert-info small mb-3">
+    Mã chèn: @foreach (var (tk, m) in NumberingSettings.Tokens) { <code class="me-1">@tk</code><span class="me-3">@m</span> }
+    <br />Số thứ tự đếm lại khi phần đứng trước nó thay đổi: có <code>{YYYY}</code> → đếm lại mỗi năm, có <code>{MM}</code> → mỗi tháng, không có ngày tháng → đếm liên tục.
+    Thay đổi chỉ áp dụng cho chứng từ tạo mới; số đã cấp giữ nguyên.
+</div>
+<form method="post" asp-action="Numbering" class="card">
+    <div class="table-responsive"><table class="table align-middle mb-0">
+        <thead><tr><th>Loại chứng từ</th><th style="width:120px">Mã viết tắt</th><th>Mẫu số</th><th style="width:110px">Số chữ số STT</th><th style="width:220px">Ví dụ số tiếp theo</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < NumberingSettings.Defs.Length; i++)
+        {
+            var d = NumberingSettings.Defs[i];
+            var r = Model.Rules.FirstOrDefault(x => x.Key == d.Key) ?? new NumberRule { Key = d.Key };
+            var code = Model.Codes.TryGetValue(d.Key, out var c) ? c : d.Key;
+            <tr class="num-row">
+                <td>@d.Label<input type="hidden" name="rules[@i].Key" value="@d.Key" /></td>
+                <td><input name="codes[@d.Key]" value="@code" maxlength="10" class="form-control form-control-sm n-code text-uppercase" /></td>
+                <td><input name="rules[@i].Pattern" value="@r.Pattern" maxlength="60" class="form-control form-control-sm font-monospace n-pattern" /></td>
+                <td><input name="rules[@i].Digits" type="number" min="2" max="8" value="@r.Digits" class="form-control form-control-sm n-digits" /></td>
+                <td><code class="n-sample"></code></td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    <div class="card-footer d-flex gap-2 flex-wrap align-items-center">
+        <button class="btn btn-primary">Lưu</button>
+        <span class="small text-muted">Mẫu gợi ý:</span>
+        @foreach (var p in new[] { "{MA}-{YYYY}-{STT}", "{MA}/{YYYY}/{MM}/{STT}", "{MA}{YY}{MM}-{STT}", "{MA}-{STT}" })
+        { <button type="button" class="btn btn-sm btn-light border font-monospace n-preset" data-p="@p">@p</button> }
+        <span class="small text-muted">(bấm để áp cho mọi loại)</span>
+    </div>
+</form>
+<script>
+(function () {
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    function head(p, code) { return p.split('{MA}').join(code).split('{YYYY}').join(d.getFullYear()).split('{YY}').join(String(d.getFullYear()).slice(2))
+        .split('{MM}').join(pad(d.getMonth() + 1)).split('{DD}').join(pad(d.getDate())).split('{STT}').join(''); }
+    function upd(row) {
+        const p = row.querySelector('.n-pattern').value, code = row.querySelector('.n-code').value.toUpperCase(), n = +row.querySelector('.n-digits').value || 4;
+        const ok = /^[A-Za-z0-9\-_/.{}]+$/.test(p) && p.endsWith('{STT}') && p.split('{STT}').length === 2;
+        const s = head(p, code) + '1'.padStart(n, '0');
+        const el = row.querySelector('.n-sample'); el.textContent = ok ? s : 'Mẫu không hợp lệ'; el.classList.toggle('text-danger', !ok || s.length > 30);
+    }
+    document.querySelectorAll('.num-row').forEach(r => { r.addEventListener('input', () => upd(r)); upd(r); });
+    document.querySelectorAll('.n-preset').forEach(b => b.addEventListener('click', () => document.querySelectorAll('.num-row').forEach(r => { r.querySelector('.n-pattern').value = b.dataset.p; upd(r); })));
+})();
+</script>

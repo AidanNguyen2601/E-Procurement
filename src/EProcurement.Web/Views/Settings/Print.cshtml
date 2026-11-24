@@ -1,0 +1,23 @@
+@model PrintSettings
+<div class="row g-3">
+<div class="col-lg-7">
+<form method="post" asp-action="Print" class="card">
+    <div class="card-header">Thông tin công ty in trên đầu biểu mẫu</div>
+    <div class="card-body row g-3">
+        <div class="col-12"><label class="form-label">Tên công ty</label><input name="CompanyName" value="@Model.CompanyName" maxlength="200" class="form-control" /></div>
+        <div class="col-12"><label class="form-label">Địa chỉ</label><input name="Address" value="@Model.Address" maxlength="300" class="form-control" /></div>
+        <div class="col-md-4"><label class="form-label">Mã số thuế</label><input name="TaxCode" value="@Model.TaxCode" maxlength="20" class="form-control" /></div>
+        <div class="col-md-4"><label class="form-label">Điện thoại</label><input name="Phone" value="@Model.Phone" maxlength="50" class="form-control" /></div>
+        <div class="col-md-4"><label class="form-label">Email</label><input name="Email" value="@Model.Email" maxlength="100" class="form-control" /></div>
+        <div class="col-12"><label class="form-label">Chân trang (vd: mã biểu mẫu ISO, lần ban hành)</label><input name="Footer" value="@Model.Footer" maxlength="200" class="form-control" /></div>
+        <div class="col-12"><div class="form-check"><input type="checkbox" class="form-check-input" name="ShowNationalHeader" value="true" id="nh" checked="@Model.ShowNationalHeader" /><input type="hidden" name="ShowNationalHeader" value="false" />
+            <label class="form-check-label" for="nh">In quốc hiệu "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM – Độc lập – Tự do – Hạnh phúc"</label></div></div>
+    </div>
+    <div class="card-footer d-flex gap-2"><button class="btn btn-primary">Lưu</button><a asp-controller="FormTemplates" asp-action="Index" class="btn btn-light">← Biểu mẫu</a></div>
+</form>
+</div>
+<div class="col-lg-5">
+    <div class="card"><div class="card-header">Xem trước đầu trang in</div><div class="card-body paper"><partial name="_PrintHeader" model="Model" /></div>
+        <div class="card-body small text-muted border-top">Áp dụng cho: đơn đặt hàng, tờ trình chỉ định, KHLCNT, hồ sơ sơ tuyển, bảng giá tiêu chuẩn.</div></div>
+</div>
+</div>
