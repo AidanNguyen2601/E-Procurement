@@ -289,3 +289,23 @@ html[data-accordion="1"] [data-nav-expand-all] { display: none; }
 .lang-flag:hover { opacity: 1; color: #0f172a; }
 .lang-flag.on { opacity: 1; background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(15,23,42,.15); }
 @media (max-width: 575.98px) { .lang-flag span { display: none; } }
+
+/* ===== Lưới: ẩn / hiện, kéo thả, đổi độ rộng cột ===== */
+.grid-host { position: relative; overflow-x: auto; }
+.grid-host-wrap { position: relative; overflow-x: auto; }
+.grid-hide { display: none !important; }
+.table.grid-enhanced thead th.grid-th { position: relative; cursor: grab; user-select: none; overflow: hidden; text-overflow: ellipsis; }
+.table.grid-enhanced thead th.grid-last { padding-right: 30px; }
+.grid-rs { position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: col-resize; z-index: 2; }
+.grid-rs:hover, body.grid-resizing .grid-rs { background: rgba(79, 70, 229, .35); }
+body.grid-resizing { cursor: col-resize; user-select: none; }
+.grid-dragging { opacity: .5; }
+.grid-over-l { box-shadow: inset 3px 0 0 var(--bs-primary, #4f46e5); }
+.grid-over-r { box-shadow: inset -3px 0 0 var(--bs-primary, #4f46e5); }
+.grid-gear { position: absolute; top: 4px; right: 4px; z-index: 6; width: 22px; height: 22px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #64748b; line-height: 1; opacity: .55; }
+.grid-gear:hover, .grid-host:hover .grid-gear { opacity: 1; background: #fff; border-color: #cbd5e1; }
+.grid-panel { position: fixed; z-index: 20; min-width: 190px; max-width: 280px; max-height: 340px; overflow: auto; padding: 8px 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, .15); font-size: .85rem; }
+.grid-panel[hidden] { display: none; }
+.grid-panel-title { font-weight: 600; color: #475569; margin-bottom: 4px; }
+.grid-panel-item { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; white-space: nowrap; }
+@media print { .grid-gear, .grid-panel, .grid-rs { display: none !important; } }
