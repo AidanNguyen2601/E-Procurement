@@ -17,11 +17,59 @@ public static partial class I18n
     private static readonly Regex Attr = new(@"\b(title|placeholder|aria-label|data-confirm|alt)=""([^""]*)""", RegexOptions.Compiled);
     private static readonly Regex Spaces = new(@"\s+", RegexOptions.Compiled);
 
+    private static readonly Regex NumToken = new(@"\d+(?:[.,:/]\d+)*(?: (?:bn|M)\b)?",RegexOptions.Compiled);
+
+    /// <summary>Dịch một câu: khớp nguyên câu → mẫu có số ({0}, {1}…) → từng đoạn tách bởi " · " hoặc "nhãn: giá trị"</summary>
+    public static string? TranslateText(string key, int depth = 0)
+    {
+        if (key.Length <= 1) return null;
+        if (En.TryGetValue(key, out var exact)) return exact;
+        var nums = NumToken.Matches(key);
+        if (nums.Count > 0)
+        {
+            var i = 0;
+            var template = NumToken.Replace(key, _ => "{" + i++ + "}");
+            if (En.TryGetValue(template, out var tpl))
+            {
+                var result = tpl;
+                for (var n = 0; n < nums.Count; n++) result = result.Replace("{" + n + "}", nums[n].Value);
+                return result;
+            }
+        }
+        if (depth > 1) return null;
+        // Bỏ dấu phân cách ở hai đầu ("… ·", "– …", "(…)") rồi dịch phần lõi
+        var core = key.Trim(' ', '·', '–', '-', '(', ')', ':', ';', '|', '→', '.', ',');
+        if (core.Length > 1 && core != key)
+        {
+            var tr = TranslateText(core, depth + 1);
+            if (tr != null)
+            {
+                var start = key.IndexOf(core, StringComparison.Ordinal);
+                return key[..start] + tr + key[(start + core.Length)..];
+            }
+        }
+        foreach (var sep in new[] { " · ", ". ", ": " })
+        {
+            if (key.IndexOf(sep, StringComparison.Ordinal) <= 0) continue;
+            var pieces = key.Split(sep);
+            var any = false;
+            for (var p = 0; p < pieces.Length; p++)
+            {
+                var piece = pieces[p].Trim();
+                // tách theo ". " làm mất dấu chấm cuối câu → thử lại có dấu chấm
+                var tr = sep == ". " ?(TranslateText(piece + ".", depth + 1) ?? TranslateText(piece, depth + 1)) : TranslateText(piece, depth + 1);
+                if (tr != null) { pieces[p] = sep == ". " && tr.EndsWith('.') ? tr[..^1] : tr; any = true; }
+            }
+            if (any) return string.Join(sep, pieces);
+        }
+        return null;
+    }
+
     private static bool TryEn(string raw, out string en)
     {
-        en = "";
         var key = Spaces.Replace(WebUtility.HtmlDecode(raw).Trim(), " ");
-        return key.Length > 1 && En.TryGetValue(key, out en!);
+        en = TranslateText(key) ?? "";
+        return en.Length > 0;
     }
 
     /// <summary>Dịch một đoạn HTML sang tiếng Anh theo từ điển (khớp nguyên câu)</summary>
