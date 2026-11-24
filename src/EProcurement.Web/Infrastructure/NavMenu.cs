@@ -130,6 +130,7 @@ public static class NavMenu
 
             purchasing ? G("sys", "Thiết lập", "settings",
                 L("set-Index", "Tổng quan thiết lập", "layout", "Settings"),
+                L("Walkthrough", "Kịch bản nghiệp vụ", "layout", "Walkthrough"),
                 admin ? L("Users", "Phân quyền người dùng", "users", "Users") : null,
                 admin ? L("set-Permissions", "Thiết lập phân quyền", "shield-check", "Settings", "Permissions") : null,
                 admin ? L("ApprovalSettings", "Ma trận phê duyệt", "scale", "ApprovalSettings") : null,

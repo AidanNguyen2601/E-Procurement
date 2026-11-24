@@ -20,6 +20,7 @@ public class SampleDataController : Controller
     public async Task<IActionResult> Index()
     {
         ViewData["Title"] = "Dữ liệu mẫu";
+        ViewBag.Flows = await SampleFlows.StatusAsync(_db);
         return View(await SampleDataSeeder.StatusAsync(_db));
     }
 
@@ -53,6 +54,25 @@ public class SampleDataController : Controller
         {
             _log.LogError(ex, "Gỡ dữ liệu mẫu thất bại");
             TempData["Error"] = "Gỡ dữ liệu mẫu thất bại, không có thay đổi nào được lưu: " + ex.GetBaseException().Message;
+        }
+        return RedirectToAction(nameof(Index));
+    }
+    /// <summary>Nạp bổ sung các luồng mở rộng trên bộ dữ liệu mẫu đã có (phần nào có rồi thì bỏ qua)</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> LoadFlows()
+    {
+        try
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            var done = await SampleFlows.LoadAsync(_db);
+            await tx.CommitAsync();
+            TempData["Success"] = done.Count == 0 ? "Các luồng bổ sung đã có đủ, không nạp thêm." : "Đã nạp bổ sung: " + string.Join("; ", done) + ".";
+        }
+        catch (InvalidOperationException ex) { TempData["Error"] = ex.Message; }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Nạp luồng bổ sung thất bại");
+            TempData["Error"] = "Nạp bổ sung thất bại, không có thay đổi nào được lưu: " + ex.GetBaseException().Message;
         }
         return RedirectToAction(nameof(Index));
     }

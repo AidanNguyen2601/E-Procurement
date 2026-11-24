@@ -12,7 +12,7 @@ public class RolePermissionFilter : IAsyncActionFilter
 {
     /// <summary>Chức năng chung không áp phân quyền (đăng nhập, trang chủ, thông báo, giao diện, tệp đính kèm…)</summary>
     public static readonly HashSet<string> Exempt = new(StringComparer.OrdinalIgnoreCase)
-        { "Account", "Home", "Notifications", "Appearance", "Attachments", "Settings" };
+        { "Account", "Home", "Notifications", "Appearance", "Attachments", "Settings", "Walkthrough" };
 
     private readonly SettingsStore _store;
     public RolePermissionFilter(SettingsStore store) => _store = store;

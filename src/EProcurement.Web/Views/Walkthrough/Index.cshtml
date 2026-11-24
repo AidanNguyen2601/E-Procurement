@@ -1,0 +1,64 @@
+@model List<EProcurement.Web.Controllers.WalkthroughController.Flow>
+@{
+    var accounts = (List<EProcurement.Web.Controllers.WalkthroughController.Account>)ViewBag.Accounts;
+    bool loaded = ViewBag.SampleLoaded;
+}
+<style>
+    .wt-nav a { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 6px; text-decoration: none; color: inherit; font-size: .9rem; }
+    .wt-nav a:hover { background: var(--accent-soft); }
+    .wt-steps { list-style: none; padding: 0; margin: 0; counter-reset: s; }
+    .wt-steps > li { position: relative; padding: 0 0 18px 44px; counter-increment: s; }
+    .wt-steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: .85rem; }
+    .wt-steps > li::after { content: ""; position: absolute; left: 13px; top: 30px; bottom: 2px; border-left: 2px dashed var(--accent-line); }
+    .wt-steps > li:last-child::after { display: none; }
+    .wt-who { font-size: .78rem; background: var(--accent-soft); color: var(--accent-dark); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+    .wt-doc { display: inline-flex; gap: 6px; align-items: baseline; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 8px; margin: 4px 4px 0 0; font-size: .82rem; text-decoration: none; background: var(--bs-body-bg, #fff); }
+    .wt-doc:hover { border-color: var(--accent); }
+    .wt-doc small { color: #64748b; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+@if (!loaded)
+{
+    <div class="alert alert-warning">Chưa có dữ liệu mẫu – các bước bên dưới sẽ ít chứng từ để mở.
+        @if (User.IsAdmin()) { <a asp-controller="SampleData" asp-action="Index" class="alert-link">Nạp dữ liệu mẫu</a> } else { <span>Nhờ Quản trị nạp dữ liệu mẫu.</span> }</div>
+}
+<div class="row g-3">
+    <div class="col-lg-3">
+        <div class="card mb-3" style="position:sticky;top:12px"><div class="card-body p-2 wt-nav">
+            @foreach (var f in Model) { <a href="#@f.Key">@Icon.Svg(f.Icon, 15)<span>@f.Title</span></a> }
+            <a href="#accounts">@Icon.Svg("users", 15)<span>Tài khoản dùng thử</span></a>
+        </div></div>
+    </div>
+    <div class="col-lg-9">
+        <p class="text-muted">Mỗi luồng gồm các bước theo thứ tự; nhãn cạnh tên bước là <b>tài khoản nên đăng nhập</b> để làm bước đó (mật khẩu mẫu <code>Abc@123</code>).
+            Bấm vào số chứng từ để mở chứng từ đang ở đúng bước – chứng từ mẫu có số <code>MAU-…</code>.</p>
+        @foreach (var f in Model)
+        {
+            <div class="card mb-3" id="@f.Key">
+                <div class="card-header d-flex align-items-center gap-2"><span class="icon-tile" style="width:32px;height:32px">@Icon.Svg(f.Icon, 16)</span><span>@f.Title</span></div>
+                <div class="card-body">
+                    <p class="small text-muted">@f.Intro</p>
+                    <ol class="wt-steps">
+                        @foreach (var s in f.Steps)
+                        {
+                            <li>
+                                <div class="d-flex flex-wrap gap-2 align-items-center"><b>@s.Title</b><span class="wt-who">@s.Who</span></div>
+                                <div class="small">@s.Description</div>
+                                <div>
+                                    @foreach (var d in s.Links) { <a class="wt-doc" href="@d.Url">@d.Label @if (d.Note != null) { <small>@d.Note</small> }</a> }
+                                    @if (s.Links.Count == 0) { <span class="small text-muted fst-italic">Hiện không có chứng từ ở bước này.</span> }
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </div>
+        }
+        <div class="card" id="accounts"><div class="card-header">Tài khoản dùng thử (mật khẩu mẫu <code>Abc@123</code>)</div>
+            <div class="table-responsive"><table class="table table-sm mb-0">
+                <thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>Vai trò</th><th>Phòng ban</th></tr></thead>
+                <tbody>@foreach (var a in accounts) { <tr><td><code>@a.Username</code></td><td>@a.Name</td><td>@AppRoles.DisplayName(a.Role)</td><td>@a.Department</td></tr> }</tbody>
+            </table></div>
+            <div class="card-body small text-muted border-top">Cổng nhà cung cấp: <code>ncc1@ncc-mau.vn</code> … <code>ncc4@ncc-mau.vn</code> / <code>Abc@123</code> – mở ở cửa sổ ẩn danh. Tài khoản do người dùng tự đổi mật khẩu thì không dùng mật khẩu mẫu.</div>
+        </div>
+    </div>
+</div>

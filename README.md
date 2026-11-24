@@ -42,7 +42,7 @@ Hệ thống mua sắm điện tử cơ bản, số hóa quy trình từ đề n
 | 3. Mua hàng → thanh toán | **Hóa đơn & đối chiếu 3 bên** PO – phiếu nhận – hóa đơn · đề nghị thanh toán (phạt chậm giao, khấu trừ tạm ứng) · hợp đồng nâng cao (phụ lục, lịch thanh toán, bảo lãnh) · **REST API** `/api/v1` cho ERP (API key) |
 | 4. Tối ưu & tuân thủ | **Kế hoạch mua sắm năm** + gom nhu cầu · **mua theo hợp đồng khung** (catalog) · phân tích giá & cảnh báo rủi ro · **ký xác nhận** quyết định phê duyệt (mật khẩu + mã băm nội dung) · giao diện điện thoại, cài như ứng dụng |
 
-Trang quản trị: Danh mục dùng chung, Hạn mức & ủy quyền, Tích hợp ERP (API key + tài liệu endpoint), Dữ liệu mẫu (nạp / gỡ bộ dữ liệu 15 tháng).
+Trang quản trị: Danh mục dùng chung, Hạn mức & ủy quyền, Tích hợp ERP (API key + tài liệu endpoint), Dữ liệu mẫu (nạp / gỡ bộ dữ liệu 15 tháng; "Nạp bổ sung luồng mở rộng" thêm sơ tuyển, ngân hàng giá, bảng giá tiêu chuẩn, kế hoạch năm, đàm phán / thẩm định LCNT, hỏi đáp HSMT, cổng NCC mẫu ncc1–4@ncc-mau.vn, hồ sơ pháp lý NCC, cơ cấu khối, nhóm hàng 2 cấp, quyền theo gói, biểu mẫu Word). **Kịch bản nghiệp vụ** (menu người dùng): 8 luồng theo bước, mỗi bước có tài khoản nên dùng và link tới chứng từ đang ở đúng bước.
 
 Ngưỡng duyệt cấu hình trong `appsettings.json`:
 

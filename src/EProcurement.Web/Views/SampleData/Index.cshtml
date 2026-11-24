@@ -1,4 +1,5 @@
 @model EProcurement.Web.Data.SampleDataStatus
+@{ var fl = (EProcurement.Web.Data.SampleFlows.Status)ViewBag.Flows; }
 <div class="row g-3">
     <div class="col-lg-7">
         <div class="card mb-3"><div class="card-header">Bộ dữ liệu mẫu cho các quy trình</div><div class="card-body">
@@ -10,6 +11,9 @@
                 <li><b>Đấu thầu rộng rãi</b>: gói đã ký hợp đồng và thanh lý (có kiến nghị), hợp đồng khung sắp hết hạn với 7 đợt đặt hàng, gói đang mời thầu, gói hai túi hồ sơ đang chấm kỹ thuật, gói chờ duyệt kế hoạch.</li>
                 <li><b>Nhận hàng & đánh giá NCC</b>: giao đúng hạn / trễ, hàng lỗi trả lại và giao bù, PO quá hạn chưa giao.</li>
                 <li>Đề nghị ở mọi bước duyệt: nháp, chờ trưởng bộ phận, chờ Giám đốc, đã duyệt, bị từ chối, đã hủy.</li>
+                <li><b>Luồng mở rộng</b>: kế hoạch mua sắm năm sau của 4 phòng (nháp / chờ duyệt / trả lại / đã duyệt), đàm phán hợp đồng và thẩm định kết quả LCNT, câu hỏi làm rõ HSMT từ cổng NCC, thông báo giao hàng của NCC.</li>
+                <li><b>Nguồn cung</b>: 5 đợt sơ tuyển ở đủ trạng thái (có chấm điểm, NCC đạt / không đạt), ngân hàng giá 12 tháng, 3 bảng giá tiêu chuẩn (đã ban hành / chờ duyệt / nháp), hồ sơ pháp lý NCC (đã xác minh, chờ xác minh, bị từ chối, sắp hết hạn).</li>
+                <li><b>Thiết lập</b>: cơ cấu tổ chức 3 khối + tổ, nhóm hàng 2 cấp, quyền theo gói, 8 biểu mẫu Word, 4 tài khoản cổng NCC <code>ncc1…ncc4@ncc-mau.vn</code> (mật khẩu <code>Abc@123</code>).</li>
             </ul>
             <p class="small text-muted mb-0">Chứng từ mẫu có số bắt đầu bằng <code>MAU-</code>, không ảnh hưởng dãy số chứng từ thật và gỡ được hoàn toàn.
                 Hệ thống bổ sung người dùng cho 4 phòng ban mới (ketoan, kinhdoanh, kythuat, nhansu và trưởng phòng *.tp, buyer2 – mật khẩu <code>Abc@123</code>),
@@ -28,7 +32,19 @@
                     <tr><td>Hợp đồng</td><td class="text-end">@Model.Contracts</td></tr>
                     <tr><td>Đơn mua hàng (PO)</td><td class="text-end">@Model.Orders</td></tr>
                     <tr><td>Phiếu nhận hàng</td><td class="text-end">@Model.Receipts</td></tr>
+                    <tr class="table-light"><td colspan="2" class="small fw-semibold">Luồng mở rộng</td></tr>
+                    <tr><td>Đợt sơ tuyển</td><td class="text-end">@fl.Prequalifications</td></tr>
+                    <tr><td>Giá trong ngân hàng giá</td><td class="text-end">@fl.PriceRecords</td></tr>
+                    <tr><td>Bảng giá tiêu chuẩn</td><td class="text-end">@fl.PriceLists</td></tr>
+                    <tr><td>Kế hoạch mua sắm năm</td><td class="text-end">@fl.Plans</td></tr>
+                    <tr><td>Đàm phán / thẩm định LCNT</td><td class="text-end">@fl.Negotiations / @fl.Appraisals</td></tr>
+                    <tr><td>Tài khoản cổng NCC mẫu</td><td class="text-end">@fl.VendorAccounts</td></tr>
+                    <tr><td>Biểu mẫu</td><td class="text-end">@fl.Forms</td></tr>
                 </table>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <form asp-action="LoadFlows" method="post"><button class="btn btn-primary">Nạp bổ sung luồng mở rộng</button></form>
+                    <a asp-controller="Walkthrough" asp-action="Index" class="btn btn-outline-primary">Xem kịch bản nghiệp vụ</a>
+                </div>
                 <form asp-action="Remove" method="post" data-confirm="Gỡ toàn bộ chứng từ mẫu (số MAU-…)? Chứng từ khác tạo từ chứng từ mẫu cũng bị gỡ theo hoặc bỏ liên kết.">
                     <button class="btn btn-outline-danger">Gỡ dữ liệu mẫu</button>
                 </form>

@@ -38,12 +38,18 @@ public static class SampleDataSeeder
         await Catalogs.EnsureAsync(db); // bổ sung phòng ban mới vào danh mục
         await OrgUnits.EnsureAsync(db); // phòng ban mẫu → đơn vị trong cơ cấu tổ chức
         await Packages.EnsureLegacyAsync(db); // gói mua sắm + KHLCNT cho các đề nghị mẫu đã chọn hình thức
+        await using (var tx2 = await db.Database.BeginTransactionAsync())
+        {
+            await SampleFlows.LoadAsync(db); // luồng mở rộng: sơ tuyển, ngân hàng giá, bảng giá, cổng NCC, đàm phán / thẩm định, biểu mẫu…
+            await tx2.CommitAsync();
+        }
     }
 
     /// <summary>Gỡ toàn bộ chứng từ mẫu (số "MAU-…") cùng lịch sử, file đính kèm; giữ lại danh mục.</summary>
     public static async Task RemoveAsync(EProcDbContext db)
     {
         await using var tx = await db.Database.BeginTransactionAsync();
+        await SampleFlows.RemoveAsync(db); // phần bổ sung (sơ tuyển, bảng giá, cổng NCC mẫu…)
         var prIds = await db.PurchaseRequests.Where(x => x.Number.StartsWith(Prefix)).Select(x => x.Id).ToListAsync();
         // Chứng từ (kể cả do người dùng tạo thêm) bám vào PR / gói thầu mẫu cũng bị gỡ theo
         var tenderIds = await db.Tenders.Where(x => x.Number.StartsWith(Prefix) || prIds.Contains(x.PurchaseRequestId)).Select(x => x.Id).ToListAsync();
@@ -108,6 +114,7 @@ public static class SampleDataSeeder
         await db.Rfqs.Where(x => rfqIds.Contains(x.Id)).ExecuteDeleteAsync();
         await db.PurchaseRequestLines.Where(x => prIds.Contains(x.PurchaseRequestId)).ExecuteDeleteAsync();
         await db.PurchaseRequests.Where(x => prIds.Contains(x.Id)).ExecuteDeleteAsync();
+        await db.PackageMembers.Where(x => pkgIds.Contains(x.PackageId)).ExecuteDeleteAsync();
         await db.ProcurementPackages.Where(x => pkgIds.Contains(x.Id)).ExecuteDeleteAsync();
         var emptyPlans = await db.SelectionPlans.Where(x => (x.Number.StartsWith(Prefix) || x.Number.StartsWith("KH-CD-")) && !x.Packages.Any()).Select(x => x.Id).ToListAsync();
         await db.SelectionPlans.Where(x => emptyPlans.Contains(x.Id)).ExecuteDeleteAsync();
