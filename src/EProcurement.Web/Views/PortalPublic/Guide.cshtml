@@ -23,33 +23,33 @@
     @foreach (var s in steps)
     {
         <div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
-            <h6 class="fw-bold text-primary">@s.Title</h6>
-            <p class="small mb-2">@s.Body</p>
-            @if (s.Ctrl != null && (loggedIn || s.Ctrl is "PortalAccount")) { <a asp-controller="@s.Ctrl" asp-action="@s.Act" class="small fw-semibold">@s.Link →</a> }
+            <h6 class="fw-bold text-primary">@L[s.Title]</h6>
+            <p class="small mb-2">@L[s.Body]</p>
+            @if (s.Ctrl != null && (loggedIn || s.Ctrl is "PortalAccount")) { <a asp-controller="@s.Ctrl" asp-action="@s.Act" class="small fw-semibold">@L[s.Link ?? ""] →</a> }
         </div></div></div>
     }
 </div>
 <div class="row g-3">
     <div class="col-lg-7">
-        <div class="card"><div class="card-header fw-semibold">Câu hỏi thường gặp</div>
+        <div class="card"><div class="card-header fw-semibold">@L["Câu hỏi thường gặp"]</div>
         <div class="accordion accordion-flush" id="faq">
             @for (var i = 0; i < faqs.Length; i++)
             {
-                <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed small fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#f@(i)">@faqs[i].Q</button></h2>
-                    <div id="f@(i)" class="accordion-collapse collapse" data-bs-parent="#faq"><div class="accordion-body small">@faqs[i].A</div></div></div>
+                <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed small fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#f@(i)">@L[faqs[i].Q]</button></h2>
+                    <div id="f@(i)" class="accordion-collapse collapse" data-bs-parent="#faq"><div class="accordion-body small">@L[faqs[i].A]</div></div></div>
             }
         </div></div>
     </div>
     <div class="col-lg-5">
-        <div class="card"><div class="card-header fw-semibold">Yêu cầu kỹ thuật khi nộp online</div><ul class="list-group list-group-flush small">
-            <li class="list-group-item">Định dạng file: pdf, doc(x), xls(x), zip, rar, 7z, jpg, png.</li>
-            <li class="list-group-item">Dung lượng mỗi file theo quy định của bên mời thầu (mặc định 10 MB) – nén thành zip nếu nhiều tài liệu.</li>
-            <li class="list-group-item">Giá chào là giá trước VAT; VAT nhập riêng. Hệ thống tự tính thành tiền và tổng giá.</li>
-            <li class="list-group-item">Lưu biên nhận (mã băm SHA-256) sau mỗi lần nộp để đối chiếu khi mở thầu.</li>
+        <div class="card"><div class="card-header fw-semibold">@L["Yêu cầu kỹ thuật khi nộp online"]</div><ul class="list-group list-group-flush small">
+            <li class="list-group-item">@L["Định dạng file: pdf, doc(x), xls(x), zip, rar, 7z, jpg, png."]</li>
+            <li class="list-group-item">@L["Dung lượng mỗi file theo quy định của bên mời thầu (mặc định 10 MB) – nén thành zip nếu nhiều tài liệu."]</li>
+            <li class="list-group-item">@L["Giá chào là giá trước VAT; VAT nhập riêng. Hệ thống tự tính thành tiền và tổng giá."]</li>
+            <li class="list-group-item">@L["Lưu biên nhận (mã băm SHA-256) sau mỗi lần nộp để đối chiếu khi mở thầu."]</li>
         </ul></div>
         @if (!loggedIn)
         {
-            <div class="d-flex gap-2 mt-3"><a asp-controller="PortalAccount" asp-action="Register" class="btn btn-danger">Đăng ký nhà cung cấp</a><a asp-controller="PortalAccount" asp-action="Login" class="btn btn-outline-primary">Đăng nhập</a></div>
+            <div class="d-flex gap-2 mt-3"><a asp-controller="PortalAccount" asp-action="Register" class="btn btn-danger">@L["Đăng ký nhà cung cấp"]</a><a asp-controller="PortalAccount" asp-action="Login" class="btn btn-outline-primary">@L["Đăng nhập"]</a></div>
         }
     </div>
 </div>

@@ -62,8 +62,8 @@ public static class FormatExtensions
     public static string ToMoney(this decimal value) => value.ToString("N0", Vi);
     public static string ToQty(this decimal value) => value.ToString("0.##", Vi);
     public static string ToShortMoney(this decimal value) =>
-        value >= 1_000_000_000 ? (value / 1_000_000_000m).ToString("0.##", Vi) + " tỷ"
-        : value >= 1_000_000 ? (value / 1_000_000m).ToString("0.#", Vi) + " tr"
+        value >= 1_000_000_000 ? (value / 1_000_000_000m).ToString("0.##", Vi) + I18n.T(" tỷ")
+        : value >= 1_000_000 ? (value / 1_000_000m).ToString("0.#", Vi) + I18n.T(" tr")
         : value.ToString("N0", Vi);
     public static string ToDate(this DateTime value) => value.ToString("dd/MM/yyyy");
     public static string ToDate(this DateTime? value) => value?.ToString("dd/MM/yyyy") ?? "";
@@ -72,10 +72,10 @@ public static class FormatExtensions
     public static string GetDisplayName(this Enum value)
     {
         var member = value.GetType().GetMember(value.ToString()).FirstOrDefault();
-        return member?.GetCustomAttribute<DisplayAttribute>()?.GetName() ?? value.ToString();
+        return I18n.T(member?.GetCustomAttribute<DisplayAttribute>()?.GetName() ?? value.ToString());
     }
     public static string Stars(this decimal rating) =>
-        rating <= 0 ? "Chưa đánh giá" : new string('★', (int)Math.Round(rating)) + new string('☆', 5 - (int)Math.Round(rating)) + $" {rating:0.0}";
+        rating <= 0 ? I18n.T("Chưa đánh giá") : new string('★', (int)Math.Round(rating)) + new string('☆', 5 - (int)Math.Round(rating)) + $" {rating:0.0}";
 }
 
 public static class ClaimsExtensions

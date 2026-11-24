@@ -7,19 +7,19 @@
 }
 <div class="card mb-3"><div class="card-body">
     <h5 class="mb-1">@Model.Title</h5>
-    <div class="small text-muted mb-2">Nhóm hàng: @Model.Category?.Name · <b>Hạn nộp hồ sơ: @Model.Deadline.ToDateTime()</b>
-        @if (canApply) { <span>· còn <b data-countdown="@((int)(Model.Deadline - DateTime.Now).TotalSeconds)"></b></span> } · @Model.Status.GetDisplayName()</div>
+    <div class="small text-muted mb-2">@L["Nhóm hàng:"] @Model.Category?.Name · <b>@L["Hạn nộp hồ sơ:"] @Model.Deadline.ToDateTime()</b>
+        @if (canApply) { <span>@L["· còn"] <b data-countdown="@((int)(Model.Deadline - DateTime.Now).TotalSeconds)"></b></span> } · @Model.Status.GetDisplayName()</div>
     @if (!string.IsNullOrEmpty(Model.Description)) { <div class="small pre">@Model.Description</div> }
-    <div class="small mt-2">Đạt khi mọi tiêu chí bắt buộc đạt và điểm các tiêu chí chấm điểm ≥ @Model.MinScore/100. Kết quả có hiệu lực @Model.ValidityMonths tháng – NCC đạt được ưu tiên mời chào giá nhóm hàng này.</div>
+    <div class="small mt-2">@L["Đạt khi mọi tiêu chí bắt buộc đạt và điểm các tiêu chí chấm điểm ≥ {0}/100. Kết quả có hiệu lực {1} tháng – NCC đạt được ưu tiên mời chào giá nhóm hàng này.", Model.MinScore, Model.ValidityMonths]</div>
 </div></div>
 
-<div class="card mb-3"><div class="card-header">Tiêu chí sơ tuyển</div><div class="table-responsive"><table class="table table-sm mb-0 small">
-    <thead><tr><th>Tiêu chí</th><th>Yêu cầu</th><th>Loại</th><th>Hồ sơ chứng minh</th>@if (done && a != null) { <th>Kết quả</th> }</tr></thead><tbody>
+<div class="card mb-3"><div class="card-header">@L["Tiêu chí sơ tuyển"]</div><div class="table-responsive"><table class="table table-sm mb-0 small">
+    <thead><tr><th>@L["Tiêu chí"]</th><th>@L["Yêu cầu"]</th><th>@L["Loại"]</th><th>@L["Hồ sơ chứng minh"]</th>@if (done && a != null) { <th>@L["Kết quả"]</th> }</tr></thead><tbody>
     @foreach (var c in Model.Criteria)
     {
         var sc = a?.Scores.FirstOrDefault(x => x.CriterionId == c.Id);
-        <tr><td>@c.Name</td><td>@c.Requirement</td><td>@(c.IsMandatory ? "Bắt buộc" : $"Tối đa {c.MaxScore} điểm")</td><td>@c.DocumentType?.GetDisplayName()</td>
-            @if (done && a != null) { <td>@(c.IsMandatory ? (sc?.Pass == true ? "Đạt" : sc?.Pass == false ? "Không đạt" : "") : sc?.Score?.ToString("0.##"))@(string.IsNullOrEmpty(sc?.Comment) ? "" : " – " + sc!.Comment)</td> }</tr>
+        <tr><td>@c.Name</td><td>@c.Requirement</td><td>@(c.IsMandatory ? L["Bắt buộc"] : L["Tối đa {0} điểm", c.MaxScore])</td><td>@c.DocumentType?.GetDisplayName()</td>
+            @if (done && a != null) { <td>@(c.IsMandatory ? (sc?.Pass == true ? L["Đạt"] : sc?.Pass == false ? L["Không đạt"] : "") : sc?.Score?.ToString("0.##"))@(string.IsNullOrEmpty(sc?.Comment) ? "" : " – " + sc!.Comment)</td> }</tr>
     }
 </tbody></table></div></div>
 
@@ -28,38 +28,38 @@
     @if (done)
     {
         <div class="alert @(a.Status == PrequalificationResult.Passed ? "alert-success" : "alert-secondary")">
-            Kết quả sơ tuyển: <b>@a.Status.GetDisplayName()</b> – @a.TotalScore?.ToString("0.##")/100 điểm@(a.ValidUntil.HasValue ? $", hiệu lực đến {a.ValidUntil:dd/MM/yyyy}" : "").
+            @L["Kết quả sơ tuyển:"] <b>@a.Status.GetDisplayName()</b> – @a.TotalScore?.ToString("0.##")/100 @L["điểm"]@(a.ValidUntil.HasValue ? L[", hiệu lực đến {0}", a.ValidUntil?.ToString("dd/MM/yyyy")] : "").
             @if (!string.IsNullOrEmpty(a.ResultNote)) { <span>@a.ResultNote</span> }</div>
     }
     else
     {
-        <div class="alert alert-info d-flex flex-wrap gap-2 align-items-center">Đã nộp hồ sơ lúc @a.SubmittedAt.ToDateTime() (@a.Documents.Count tài liệu) – chờ kết quả.
-            @if (canApply) { <form asp-action="Withdraw" asp-route-id="@Model.Id" method="post" class="ms-auto" data-confirm="Rút hồ sơ dự sơ tuyển?"><button class="btn btn-sm btn-link text-danger p-0">Rút hồ sơ</button></form> }</div>
+        <div class="alert alert-info d-flex flex-wrap gap-2 align-items-center">@L["Đã nộp hồ sơ lúc {0} ({1} tài liệu) – chờ kết quả.", a.SubmittedAt.ToDateTime(), a.Documents.Count]
+            @if (canApply) { <form asp-action="Withdraw" asp-route-id="@Model.Id" method="post" class="ms-auto" data-confirm="@L["Rút hồ sơ dự sơ tuyển?"]"><button class="btn btn-sm btn-link text-danger p-0">@L["Rút hồ sơ"]</button></form> }</div>
     }
 }
 
 @if (canApply)
 {
     <form asp-action="Apply" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="card mb-3">
-    <div class="card-header">@(a == null || a.Status == PrequalificationResult.Withdrawn ? "Nộp hồ sơ dự sơ tuyển" : "Cập nhật hồ sơ (thay bản đã nộp)")</div><div class="card-body">
-        <label class="form-label small mb-0">Thuyết minh năng lực, kinh nghiệm theo từng tiêu chí</label>
+    <div class="card-header">@(a == null || a.Status == PrequalificationResult.Withdrawn ? L["Nộp hồ sơ dự sơ tuyển"] : L["Cập nhật hồ sơ (thay bản đã nộp)"])</div><div class="card-body">
+        <label class="form-label small mb-0">@L["Thuyết minh năng lực, kinh nghiệm theo từng tiêu chí"]</label>
         <textarea name="note" rows="4" maxlength="2000" class="form-control form-control-sm mb-3" required>@a?.Note</textarea>
-        <div class="fw-semibold small mb-1">Hồ sơ chứng minh (từ hồ sơ pháp lý của công ty)</div>
+        <div class="fw-semibold small mb-1">@L["Hồ sơ chứng minh (từ hồ sơ pháp lý của công ty)"]</div>
         @foreach (var d in docs)
         {
             <div class="form-check small"><input class="form-check-input" type="checkbox" name="documentIds" value="@d.Id" id="d@(d.Id)" @(chosen.Contains(d.Id) || (a == null && Model.Criteria.Any(c => c.DocumentType == d.Type)) ? "checked" : "") />
-                <label class="form-check-label" for="d@(d.Id)">@d.Type.GetDisplayName() @d.Number <span class="text-muted">· @d.FileName · hiệu lực @(d.ExpiryDate?.ToDate() ?? "không thời hạn") · @d.Status.GetDisplayName()</span></label></div>
+                <label class="form-check-label" for="d@(d.Id)">@d.Type.GetDisplayName() @d.Number <span class="text-muted">· @d.FileName · @L["hiệu lực"] @(d.ExpiryDate?.ToDate() ?? L["không thời hạn"]) · @d.Status.GetDisplayName()</span></label></div>
         }
-        @if (!docs.Any()) { <div class="small text-muted mb-2">Chưa có hồ sơ pháp lý – tải lên bên dưới hoặc tại <a asp-controller="Portal" asp-action="Profile">Hồ sơ công ty</a>.</div> }
+        @if (!docs.Any()) { <div class="small text-muted mb-2">@L["Chưa có hồ sơ pháp lý – tải lên bên dưới hoặc tại"] <a asp-controller="Portal" asp-action="Profile">@L["Hồ sơ công ty"]</a>.</div> }
         <div class="row g-2 mt-2 small">
-            <div class="col-12 fw-semibold">Tải thêm tài liệu (tùy chọn)</div>
+            <div class="col-12 fw-semibold">@L["Tải thêm tài liệu (tùy chọn)"]</div>
             <div class="col-md-4"><select name="newDocType" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<VendorDocumentType>()"></select></div>
-            <div class="col-md-3"><input name="newDocNumber" maxlength="100" class="form-control form-control-sm" placeholder="Số hiệu" /></div>
-            <div class="col-md-2"><input name="newDocExpiry" type="date" class="form-control form-control-sm" title="Hiệu lực đến" /></div>
+            <div class="col-md-3"><input name="newDocNumber" maxlength="100" class="form-control form-control-sm" placeholder="@L["Số hiệu"]" /></div>
+            <div class="col-md-2"><input name="newDocExpiry" type="date" class="form-control form-control-sm" title="@L["Hiệu lực đến"]" /></div>
             <div class="col-md-3"><input name="newDocFile" type="file" class="form-control form-control-sm" /></div>
         </div>
-        <button class="btn btn-primary mt-3" data-confirm="Nộp hồ sơ dự sơ tuyển?">Nộp hồ sơ</button>
+        <button class="btn btn-primary mt-3" data-confirm="@L["Nộp hồ sơ dự sơ tuyển?"]">@L["Nộp hồ sơ"]</button>
     </div></form>
 }
-else if (Model.Status == PrequalificationStatus.Open && DateTime.Now < Model.Deadline) { <div class="alert alert-warning">Tài khoản cần được xác nhận trước khi nộp hồ sơ.</div> }
-else if (a == null) { <div class="alert alert-secondary">Đã hết hạn nộp hồ sơ.</div> }
+else if (Model.Status == PrequalificationStatus.Open && DateTime.Now < Model.Deadline) { <div class="alert alert-warning">@L["Tài khoản cần được xác nhận trước khi nộp hồ sơ."]</div> }
+else if (a == null) { <div class="alert alert-secondary">@L["Đã hết hạn nộp hồ sơ."]</div> }

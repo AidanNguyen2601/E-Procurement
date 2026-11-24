@@ -10,14 +10,14 @@
     var pageIcon = ctrl switch { "Home" => "dashboard", "Approvals" => "inbox", "PurchaseRequests" => "file-text", "Items" => "package", "Tenders" => "gavel", "Rfqs" => "send", "DirectAwards" => "award", "Contracts" => "file-check", "PurchaseOrders" => "cart", "GoodsReceipts" => "truck", "Vendors" => "building", "Reports" => "bar-chart", "ReportBuilder" => "sliders", "Catalogs" => "book", "Users" => "users", "SampleData" => "database", "Notifications" => "bell", "Budgets" => "wallet", "ApprovalSettings" => "shield-check", "Invoices" => "receipt", "Payments" => "coins", "Integrations" => "network", "Plans" => "clipboard", "Ordering" => "cart", "Packages" => "package", "SelectionPlans" => "clipboard", "Quotes" => "receipt", "Prequalifications" => "clipboard", "SupplierEvaluations" => "users", "PriceBank" => "database", "StandardPrices" => "tag", "OrgUnits" => "network", "Appearance" => "palette", "Settings" => "settings", "CriteriaSets" => "clipboard", "Categories" => "network", "FormTemplates" => "file-text", "Walkthrough" => "layout", _ => null };
 }
 <!DOCTYPE html>
-<html lang="vi" data-nav="@ui.Nav" data-menu="@ui.Menu" data-accordion="@(ui.Accordion ? "1" : "0")" style="@UiTheme.Style(ui)">
+<html lang="@L.Lang" data-nav="@ui.Nav" data-menu="@ui.Menu" data-accordion="@(ui.Accordion ? "1" : "0")" style="@UiTheme.Style(ui)">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="@ui.Color" />
     <link rel="manifest" href="~/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="~/icon.svg" />
-    <title>@ViewData["Title"] - E-Procurement</title>
+    <title>@L[ViewData["Title"]?.ToString() ?? ""] - E-Procurement</title>
     @if (fontHref != null)
     {
         <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,24 +32,25 @@
 <div class="app">
     <aside class="sidebar">
         <div class="brand-row"><a class="brand" asp-controller="Home" asp-action="Index" title="eProcurement">e<span>Procurement</span></a>
-            <button type="button" class="sb-btn" data-nav-mini title="Rút gọn / mở rộng menu (Ctrl+B)" aria-label="Rút gọn menu">@Icon.Svg("chevron-down", 16)</button></div>
-        <div class="nav-search"><input type="search" id="nav-search" placeholder="Tìm chức năng…" autocomplete="off" aria-label="Tìm chức năng trong menu" /></div>
+            <button type="button" class="sb-btn" data-nav-mini title="@L["Rút gọn / mở rộng menu (Ctrl+B)"]" aria-label="@L["Rút gọn menu"]">@Icon.Svg("chevron-down", 16)</button></div>
+        <div class="nav-search"><input type="search" id="nav-search" placeholder="@L["Tìm chức năng…"]" autocomplete="off" aria-label="@L["Tìm chức năng trong menu"]" /></div>
         <nav>
             <partial name="_NavVertical" model="menu" />
         </nav>
         <div class="sidebar-foot">
-            <button type="button" class="sb-btn" data-nav-expand-all title="Mở rộng tất cả nhóm">⊞ <span>Mở rộng</span></button>
-            <button type="button" class="sb-btn" data-nav-collapse-all title="Thu gọn tất cả nhóm">⊟ <span>Thu gọn</span></button>
-            <button type="button" class="sb-btn ms-auto" data-nav-hide title="Ẩn menu (Ctrl+B để hiện lại)">⇤ <span>Ẩn</span></button>
+            <button type="button" class="sb-btn" data-nav-expand-all title="@L["Mở rộng tất cả nhóm"]">⊞ <span>@L["Mở rộng"]</span></button>
+            <button type="button" class="sb-btn" data-nav-collapse-all title="@L["Thu gọn tất cả nhóm"]">⊟ <span>@L["Thu gọn"]</span></button>
+            <button type="button" class="sb-btn ms-auto" data-nav-hide title="@L["Ẩn menu (Ctrl+B để hiện lại)"]">⇤ <span>@L["Ẩn"]</span></button>
         </div>
     </aside>
     <div class="main">
         <partial name="_NavHorizontal" model="menu" />
         <header class="topbar">
-            <button type="button" class="btn btn-light nav-toggle" data-nav-toggle aria-label="Ẩn / hiện menu" title="Ẩn / hiện menu (Ctrl+B)">@Icon.Svg("menu", 18)</button>
-            <h1 class="page-title d-flex align-items-center gap-2">@if (pageIcon != null) { <span class="text-primary d-inline-flex">@Icon.Svg(pageIcon, 20)</span> }@ViewData["Title"]</h1>
+            <button type="button" class="btn btn-light nav-toggle" data-nav-toggle aria-label="@L["Ẩn / hiện menu"]" title="@L["Ẩn / hiện menu (Ctrl+B)"]">@Icon.Svg("menu", 18)</button>
+            <h1 class="page-title d-flex align-items-center gap-2">@if (pageIcon != null) { <span class="text-primary d-inline-flex">@Icon.Svg(pageIcon, 20)</span> }@L[ViewData["Title"]?.ToString() ?? ""]</h1>
             <div class="d-flex align-items-center gap-2">
-                <a class="btn btn-primary btn-sm" asp-controller="PurchaseRequests" asp-action="Create">@Icon.Svg("plus", 14)<span>Đề nghị mua hàng</span></a>
+                <a class="btn btn-primary btn-sm" asp-controller="PurchaseRequests" asp-action="Create">@Icon.Svg("plus", 14)<span>@L["Đề nghị mua hàng"]</span></a>
+                <partial name="_LangSwitch" />
                 @await Component.InvokeAsync("NotificationBell")
                 <div class="dropdown">
                     <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
@@ -57,14 +58,14 @@
                         @User.GetFullName() <small class="text-muted">(@AppRoles.DisplayName(role) · @User.GetDepartment())</small>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        @foreach (var from in User.DelegatedFrom()) { <li><span class="dropdown-item-text small text-success">Đang được ủy quyền duyệt thay: @from</span></li> }
-                        <li><a class="dropdown-item" asp-controller="Notifications" asp-action="Index">Thông báo</a></li>
-                        @if (!User.IsAdmin() && (User.IsInRole(AppRoles.Director) || User.IsInRole(AppRoles.Approver))) { <li><a class="dropdown-item" asp-controller="ApprovalSettings" asp-action="Index">Ủy quyền duyệt</a></li> }
-                        <li><a class="dropdown-item" asp-controller="Walkthrough" asp-action="Index">Kịch bản nghiệp vụ</a></li>
-                        <li><a class="dropdown-item" asp-controller="Appearance" asp-action="Index">Giao diện</a></li>
-                        <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a></li>
+                        @foreach (var from in User.DelegatedFrom()) { <li><span class="dropdown-item-text small text-success">@L["Đang được ủy quyền duyệt thay: {0}", from]</span></li> }
+                        <li><a class="dropdown-item" asp-controller="Notifications" asp-action="Index">@L["Thông báo"]</a></li>
+                        @if (!User.IsAdmin() && (User.IsInRole(AppRoles.Director) || User.IsInRole(AppRoles.Approver))) { <li><a class="dropdown-item" asp-controller="ApprovalSettings" asp-action="Index">@L["Ủy quyền duyệt"]</a></li> }
+                        <li><a class="dropdown-item" asp-controller="Walkthrough" asp-action="Index">@L["Kịch bản nghiệp vụ"]</a></li>
+                        <li><a class="dropdown-item" asp-controller="Appearance" asp-action="Index">@L["Giao diện"]</a></li>
+                        <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">@L["Đổi mật khẩu"]</a></li>
                         <li><hr class="dropdown-divider" /></li>
-                        <li><form asp-controller="Account" asp-action="Logout" method="post"><button class="dropdown-item text-danger">Đăng xuất</button></form></li>
+                        <li><form asp-controller="Account" asp-action="Logout" method="post"><button class="dropdown-item text-danger">@L["Đăng xuất"]</button></form></li>
                     </ul>
                 </div>
             </div>

@@ -6,7 +6,7 @@
         <a class="dropdown-item @(l.Active ? "active" : "")" href="@l.Href" target="@(l.External ? "_blank" : null)">@Icon.Svg(l.Icon, 15)<span>@l.Label</span>@if (l.External) { @Icon.Svg("external", 12, "ms-auto") }</a>
     }
 }
-<nav class="hnav" aria-label="Menu chính">
+<nav class="hnav" aria-label="@L["Menu chính"]">
     <a class="hnav-brand" asp-controller="Home" asp-action="Index">e<span>Procurement</span></a>
     <ul class="hnav-menu">
         @foreach (var m in Model)
@@ -38,7 +38,7 @@
                             @if (loose.Count > 0)
                             {
                                 <div class="hnav-col">
-                                    <h6 class="dropdown-header">Khác</h6>
+                                    <h6 class="dropdown-header">@L["Khác"]</h6>
                                     @foreach (var l in loose) { await Item(l); }
                                 </div>
                             }
@@ -49,9 +49,9 @@
         }
     </ul>
     <div class="dropdown">
-        <button type="button" class="hnav-link hnav-search-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" title="Tìm chức năng" aria-label="Tìm chức năng">@Icon.Svg("search")</button>
+        <button type="button" class="hnav-link hnav-search-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" title="@L["Tìm chức năng"]" aria-label="@L["Tìm chức năng"]">@Icon.Svg("search")</button>
         <div class="dropdown-menu dropdown-menu-end p-2 hnav-search-menu">
-            <input type="search" class="form-control form-control-sm" id="hnav-search" placeholder="Tìm chức năng…" autocomplete="off" />
+            <input type="search" class="form-control form-control-sm" id="hnav-search" placeholder="@L["Tìm chức năng…"]" autocomplete="off" />
             <div id="hnav-results" class="mt-1"></div>
         </div>
     </div>

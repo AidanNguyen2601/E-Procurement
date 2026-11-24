@@ -63,7 +63,7 @@ public static class AppRoles
 
     public static readonly string[] All = { Admin, Director, Approver, Buyer, Accountant, Requester };
 
-    public static string DisplayName(string role) => role switch
+    public static string DisplayName(string role) => EProcurement.Web.Infrastructure.I18n.T(role switch
     {
         Admin => "Quản trị hệ thống",
         Director => "Ban Giám đốc",
@@ -71,7 +71,7 @@ public static class AppRoles
         Buyer => "Nhân viên mua hàng",
         Accountant => "Kế toán",
         _ => "Người đề nghị"
-    };
+    });
 }
 
 // =====================================================================

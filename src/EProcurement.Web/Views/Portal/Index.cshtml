@@ -1,60 +1,60 @@
 @model EProcurement.Web.Controllers.PortalController.Dashboard
 @{ Layout = "_PortalLayout"; }
-@if (Model.DocCount == 0) { <div class="alert alert-light border">Chưa có hồ sơ pháp lý. <a asp-action="Profile">Tải lên giấy chứng nhận đăng ký doanh nghiệp và các chứng chỉ</a> để được thẩm định.</div> }
+@if (Model.DocCount == 0) { <div class="alert alert-light border">@L["Chưa có hồ sơ pháp lý."] <a asp-action="Profile">@L["Tải lên giấy chứng nhận đăng ký doanh nghiệp và các chứng chỉ"]</a> @L["để được thẩm định."]</div> }
 @if (Model.Expiring.Any())
 {
-    <div class="alert alert-warning">Hồ sơ sắp / đã hết hiệu lực: @string.Join(", ", Model.Expiring.Select(d => $"{d.Type.GetDisplayName()} ({d.ExpiryDate.ToDate()})")). <a asp-action="Profile">Cập nhật</a></div>
+    <div class="alert alert-warning">@L["Hồ sơ sắp / đã hết hiệu lực:"] @string.Join(", ", Model.Expiring.Select(d => $"{d.Type.GetDisplayName()} ({d.ExpiryDate.ToDate()})")). <a asp-action="Profile">@L["Cập nhật"]</a></div>
 }
 <div class="row g-3">
     <div class="col-lg-7">
         @if (Model.DirectQuotes.Any())
         {
-            <div class="card mb-3 border-primary"><div class="card-header">Hồ sơ chào giá chỉ định gửi quý công ty</div><div class="card-body p-0"><table class="table mb-0 small">
-                <thead><tr><th>Số</th><th>Nội dung</th><th>Hạn nộp</th><th>Trạng thái</th></tr></thead><tbody>
+            <div class="card mb-3 border-primary"><div class="card-header">@L["Hồ sơ chào giá chỉ định gửi quý công ty"]</div><div class="card-body p-0"><table class="table mb-0 small">
+                <thead><tr><th>@L["Số"]</th><th>@L["Nội dung"]</th><th>@L["Hạn nộp"]</th><th>@L["Trạng thái"]</th></tr></thead><tbody>
                 @foreach (var d in Model.DirectQuotes)
                 {
                     var st = d.Status != DirectAwardStatus.Draft ? d.Status.GetDisplayName() : d.QuoteOpenedAt.HasValue ? "Đã mở – đang thương thảo" : d.QuoteDeadline < DateTime.Now ? "Hết hạn" : "Chờ báo giá";
                     <tr><td><a asp-controller="PortalDirectQuotes" asp-action="Details" asp-route-id="@d.Id">@d.Number</a></td><td>@d.Title</td><td>@d.QuoteDeadline.ToDateTime()</td>
-                        <td><span class="badge @(st == "Chờ báo giá" ? "bg-warning text-dark" : "bg-light text-dark border")">@st</span></td></tr>
+                        <td><span class="badge @(st == "Chờ báo giá" ? "bg-warning text-dark" : "bg-light text-dark border")">@L[st]</span></td></tr>
                 }
                 </tbody></table></div></div>
         }
-        <div class="card mb-3"><div class="card-header">Yêu cầu báo giá được mời</div><div class="card-body p-0"><table class="table mb-0 small">
-            <thead><tr><th>Số</th><th>Nội dung</th><th>Hạn nộp</th><th>Trạng thái</th></tr></thead><tbody>
+        <div class="card mb-3"><div class="card-header">@L["Yêu cầu báo giá được mời"]</div><div class="card-body p-0"><table class="table mb-0 small">
+            <thead><tr><th>@L["Số"]</th><th>@L["Nội dung"]</th><th>@L["Hạn nộp"]</th><th>@L["Trạng thái"]</th></tr></thead><tbody>
             @foreach (var x in Model.Invitations)
             {
                 var r = x.Rfq!;
                 var status = r.Status == RfqStatus.Open ? (x.Responded ? "Đã nộp" : "Chưa nộp") : r.Status == RfqStatus.Awarded ? (r.AwardedVendorId == x.VendorId ? "Được chọn" : "Không được chọn") : r.Status.GetDisplayName();
                 <tr><td><a asp-controller="PortalRfqs" asp-action="Details" asp-route-id="@r.Id">@r.Number</a></td><td>@r.Title</td><td>@r.Deadline.ToDate()</td>
-                    <td><span class="badge @(status == "Chưa nộp" ? "bg-warning text-dark" : status == "Được chọn" ? "bg-success" : "bg-light text-dark border")">@status</span></td></tr>
+                    <td><span class="badge @(status == "Chưa nộp" ? "bg-warning text-dark" : status == "Được chọn" ? "bg-success" : "bg-light text-dark border")">@L[status]</span></td></tr>
             }
-            @if (!Model.Invitations.Any()) { <tr><td colspan="4" class="text-muted">Chưa có lời mời báo giá.</td></tr> }
+            @if (!Model.Invitations.Any()) { <tr><td colspan="4" class="text-muted">@L["Chưa có lời mời báo giá."]</td></tr> }
             </tbody></table></div></div>
-        <div class="card"><div class="card-header">Đơn hàng đang thực hiện</div><div class="card-body p-0"><table class="table mb-0 small">
-            <thead><tr><th>Số PO</th><th>Ngày đặt</th><th>Hạn giao</th><th class="money">Giá trị</th><th></th></tr></thead><tbody>
+        <div class="card"><div class="card-header">@L["Đơn hàng đang thực hiện"]</div><div class="card-body p-0"><table class="table mb-0 small">
+            <thead><tr><th>@L["Số PO"]</th><th>@L["Ngày đặt"]</th><th>@L["Hạn giao"]</th><th class="money">@L["Giá trị"]</th><th></th></tr></thead><tbody>
             @foreach (var p in Model.Orders)
             {
                 <tr><td><a asp-controller="PortalOrders" asp-action="Details" asp-route-id="@p.Id">@p.Number</a></td><td>@p.OrderDate.ToDate()</td><td>@p.DeliveryDate.ToDate()</td><td class="money">@p.Total.ToMoney()</td>
-                    <td>@if (p.VendorConfirmedAt == null && p.VendorRejectedAt == null && p.Status == PoStatus.Issued) { <span class="badge bg-warning text-dark">Chờ xác nhận</span> }</td></tr>
+                    <td>@if (p.VendorConfirmedAt == null && p.VendorRejectedAt == null && p.Status == PoStatus.Issued) { <span class="badge bg-warning text-dark">@L["Chờ xác nhận"]</span> }</td></tr>
             }
-            @if (!Model.Orders.Any()) { <tr><td colspan="5" class="text-muted">Không có đơn hàng đang thực hiện.</td></tr> }
+            @if (!Model.Orders.Any()) { <tr><td colspan="5" class="text-muted">@L["Không có đơn hàng đang thực hiện."]</td></tr> }
             </tbody></table></div></div>
     </div>
     <div class="col-lg-5">
-        <div class="card mb-3"><div class="card-header">Gói thầu đã tham gia</div><div class="list-group list-group-flush small">
+        <div class="card mb-3"><div class="card-header">@L["Gói thầu đã tham gia"]</div><div class="list-group list-group-flush small">
             @foreach (var b in Model.MyTenders)
             {
                 <a class="list-group-item list-group-item-action" asp-controller="PortalTenders" asp-action="Details" asp-route-id="@b.TenderId">
-                    <b>@b.Tender!.Number</b> – @b.Tender.Title<div class="text-muted">@b.Tender.Status.GetDisplayName() · @(b.Submitted ? "đã nộp HSDT" : "chưa nộp HSDT")</div></a>
+                    <b>@b.Tender!.Number</b> – @b.Tender.Title<div class="text-muted">@b.Tender.Status.GetDisplayName() · @(b.Submitted ? L["đã nộp HSDT"] : L["chưa nộp HSDT"])</div></a>
             }
-            @if (!Model.MyTenders.Any()) { <div class="list-group-item text-muted">Chưa tham gia gói thầu nào.</div> }
+            @if (!Model.MyTenders.Any()) { <div class="list-group-item text-muted">@L["Chưa tham gia gói thầu nào."]</div> }
         </div></div>
-        <div class="card"><div class="card-header">Gói thầu đang mời thầu</div><div class="list-group list-group-flush small">
+        <div class="card"><div class="card-header">@L["Gói thầu đang mời thầu"]</div><div class="list-group list-group-flush small">
             @foreach (var t in Model.OpenTenders)
             {
-                <a class="list-group-item list-group-item-action" asp-controller="PortalTenders" asp-action="Details" asp-route-id="@t.Id"><b>@t.Number</b> – @t.Title<div class="text-muted">Đóng thầu @t.ClosingAt.ToDateTime()</div></a>
+                <a class="list-group-item list-group-item-action" asp-controller="PortalTenders" asp-action="Details" asp-route-id="@t.Id"><b>@t.Number</b> – @t.Title<div class="text-muted">@L["Đóng thầu"] @t.ClosingAt.ToDateTime()</div></a>
             }
-            @if (!Model.OpenTenders.Any()) { <div class="list-group-item text-muted">Không có gói thầu mới.</div> }
+            @if (!Model.OpenTenders.Any()) { <div class="list-group-item text-muted">@L["Không có gói thầu mới."]</div> }
         </div></div>
     </div>
 </div>

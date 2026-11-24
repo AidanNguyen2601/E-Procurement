@@ -1,3 +1,14 @@
+// ===== Song ngữ: chuỗi do JavaScript tạo (ngôn ngữ lấy từ <html lang>) =====
+window.eprocT = (function () {
+    const en = {
+        '-- Hàng ngoài danh mục --': '-- Item not in catalog --', 'Mật khẩu ký': 'Signing password', 'Nhập mật khẩu để ký xác nhận quyết định': 'Enter your password to sign this decision',
+        'Không tìm thấy chức năng': 'No matching function', 'Chưa có bộ tiêu chí phù hợp': 'No matching criteria set', 'tiêu chí': 'criteria',
+        ' (bắt buộc – đạt / không đạt)': ' (mandatory – pass / fail)', 'Tối đa 5 file tài liệu khác.': 'Up to 5 other documents.', 'điểm': 'points', 'đã hết giờ': 'time is up', 'ngày': 'days'
+    };
+    const isEn = (document.documentElement.lang || 'vi') === 'en';
+    return s => isEn && en[s] ? en[s] : s;
+})();
+
 // Xác nhận trước thao tác quan trọng: <form data-confirm="..."> hoặc <button data-confirm="..."> (ưu tiên nút được bấm)
 document.addEventListener('submit', function (e) {
     const msg = (e.submitter && e.submitter.getAttribute('data-confirm')) || e.target.getAttribute('data-confirm');
@@ -16,7 +27,7 @@ document.addEventListener('submit', function (e) {
 
     function fill(sel) {
         const cur = sel.getAttribute('data-value') || sel.value;
-        sel.innerHTML = '<option value="">-- Hàng ngoài danh mục --</option>' +
+        sel.innerHTML = '<option value="">' + eprocT('-- Hàng ngoài danh mục --') + '</option>' +
             items.map(i => `<option value="${i.id}">${i.code} – ${i.name}</option>`).join('');
         if (cur) sel.value = cur;
     }
@@ -74,7 +85,7 @@ document.addEventListener('submit', function (e) {
         if (!/\/(Decide|DecidePlan|DecideResult|DecideAmendment|Appraise)(\/\d+)?$/.test(action) || f.querySelector('[name=signPassword]')) return;
         const input = document.createElement('input');
         input.type = 'password'; input.name = 'signPassword'; input.required = true; input.autocomplete = 'current-password';
-        input.className = 'form-control form-control-sm sign-password'; input.placeholder = 'Mật khẩu ký'; input.title = 'Nhập mật khẩu để ký xác nhận quyết định';
+        input.className = 'form-control form-control-sm sign-password'; input.placeholder = eprocT('Mật khẩu ký'); input.title = eprocT('Nhập mật khẩu để ký xác nhận quyết định');
         const btn = f.querySelector('button');
         btn ? btn.before(input) : f.appendChild(input);
     });
@@ -201,7 +212,7 @@ window.eprocUi = {
         links.filter(a => a.textContent.toLocaleLowerCase('vi').includes(k)).slice(0, 12).forEach(a => {
             const c = a.cloneNode(true); c.className = 'dropdown-item'; out.appendChild(c);
         });
-        if (!out.children.length) out.innerHTML = '<div class="small text-muted px-2 py-1">Không tìm thấy chức năng</div>';
+        if (!out.children.length) out.innerHTML = '<div class="small text-muted px-2 py-1">' + eprocT('Không tìm thấy chức năng') + '</div>';
     });
     box?.addEventListener('keydown', e => {
         if (e.key === 'Enter') { const a = out.querySelector('a'); if (a) { e.preventDefault(); location.href = a.href; } }
@@ -213,7 +224,7 @@ document.querySelectorAll('.crit-picker').forEach(async box => {
     const sel = box.querySelector('select'), btn = box.querySelector('button');
     let sets = [];
     try { sets = await (await fetch(box.dataset.url + '?kinds=' + encodeURIComponent(box.dataset.kinds), { credentials: 'same-origin' })).json(); } catch (e) { }
-    if (!sets.length) { sel.options[0].text = 'Chưa có bộ tiêu chí phù hợp'; sel.disabled = true; return; }
+    if (!sets.length) { sel.options[0].text = eprocT('Chưa có bộ tiêu chí phù hợp'); sel.disabled = true; return; }
     sets.forEach(s => sel.add(new Option(s.name + ' (' + s.items.length + ' tiêu chí)', s.id)));
     sel.addEventListener('change', () => btn.disabled = !sel.value);
     btn.addEventListener('click', () => {
@@ -254,7 +265,7 @@ document.querySelectorAll('.crit-picker').forEach(async box => {
         els.forEach(el => {
             const left = Math.max(0, Math.floor(parseInt(el.getAttribute('data-countdown'), 10) - (Date.now() - start) / 1000));
             const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60;
-            el.textContent = left === 0 ? 'đã hết giờ' : (d ? d + ' ngày ' : '') + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            el.textContent = left === 0 ? eprocT('đã hết giờ') : (d ? d + ' ' + eprocT('ngày') + ' ' : '') + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
             el.classList.toggle('text-danger', left < 86400);
         });
     }

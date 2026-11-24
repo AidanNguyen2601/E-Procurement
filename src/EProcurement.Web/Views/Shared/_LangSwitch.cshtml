@@ -1,0 +1,15 @@
+@* Chọn ngôn ngữ: 2 lá cờ Việt Nam / Anh. Giữ nguyên trang đang xem sau khi đổi. *@
+@{
+    var back = Context.Request.Path + Context.Request.QueryString;
+    var en = L.IsEn;
+}
+<div class="lang-switch" role="group" aria-label="@L["Ngôn ngữ"]">
+    <a href="@Url.Action("Set", "Lang", new { lang = "vi", returnUrl = back })" class="lang-flag @(en ? "" : "on")" title="Tiếng Việt" aria-label="Tiếng Việt" aria-current="@(en ? null : "true")">
+        <svg viewBox="0 0 30 20" width="24" height="16" aria-hidden="true"><rect width="30" height="20" fill="#DA251D"/><polygon fill="#FFFF00" points="15,4 16.18,7.64 20,7.64 16.91,9.88 18.09,13.52 15,11.27 11.91,13.52 13.09,9.88 10,7.64 13.82,7.64"/></svg>
+        <span>VI</span>
+    </a>
+    <a href="@Url.Action("Set", "Lang", new { lang = "en", returnUrl = back })" class="lang-flag @(en ? "on" : "")" title="English" aria-label="English" aria-current="@(en ? "true" : null)">
+        <svg viewBox="0 0 60 30" width="24" height="16" aria-hidden="true"><clipPath id="uk-c"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="uk-t"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#uk-c)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#uk-t)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></g></svg>
+        <span>EN</span>
+    </a>
+</div>

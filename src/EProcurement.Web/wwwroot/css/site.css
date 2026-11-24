@@ -281,3 +281,11 @@ dl.info dt { color: #64748b; font-weight: 500; }
 }
 /* Chế độ gọn: không cần nút "Mở rộng tất cả" */
 html[data-accordion="1"] [data-nav-expand-all] { display: none; }
+
+/* ===== Chọn ngôn ngữ (cờ Việt / Anh) ===== */
+.lang-switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(15,23,42,.05); }
+.lang-flag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 6px; text-decoration: none; color: #475569; font-size: .72rem; font-weight: 600; opacity: .55; }
+.lang-flag svg { border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.12); }
+.lang-flag:hover { opacity: 1; color: #0f172a; }
+.lang-flag.on { opacity: 1; background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(15,23,42,.15); }
+@media (max-width: 575.98px) { .lang-flag span { display: none; } }

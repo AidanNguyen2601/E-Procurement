@@ -66,10 +66,10 @@ public static class NavMenu
         var role = user.FindFirst(ClaimTypes.Role)?.Value ?? "";
         NavItem? L(string key, string label, string icon, string controller, string action = "Index", object? route = null, bool external = false) =>
             perms != null && perms.IsDenied(controller, role) ? null :
-            new() { Key = key, Label = label, Icon = icon, Href = url.Action(action, controller, route), External = external, Controller = controller };
+            new() { Key = key, Label = I18n.T(label), Icon = icon, Href = url.Action(action, controller, route), External = external, Controller = controller };
         NavItem G(string key, string label, string icon, params NavItem?[] children)
         {
-            var g = new NavItem { Key = key, Label = label, Icon = icon };
+            var g = new NavItem { Key = key, Label = I18n.T(label), Icon = icon };
             g.Children.AddRange(children.Where(c => c != null && (!c.IsGroup || c.Children.Count > 0))!);
             return g;
         }

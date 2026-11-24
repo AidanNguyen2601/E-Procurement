@@ -7,74 +7,74 @@
 }
 <div class="card mb-3"><div class="card-body small">
     <div class="d-flex flex-wrap gap-4">
-        <div>Ngày đặt <b>@Model.OrderDate.ToDate()</b></div><div>Hạn giao <b>@Model.DeliveryDate.ToDate()</b></div>
-        <div>Địa điểm <b>@Model.DeliveryAddress</b></div><div>Thanh toán <b>@Model.PaymentTerms</b></div><div>Người phụ trách <b>@Model.Buyer?.FullName</b> @Model.Buyer?.Email</div>
-        <div>Trạng thái <b>@Model.Status.GetDisplayName()</b></div>
+        <div>@L["Ngày đặt"] <b>@Model.OrderDate.ToDate()</b></div><div>@L["Hạn giao"] <b>@Model.DeliveryDate.ToDate()</b></div>
+        <div>@L["Địa điểm"] <b>@Model.DeliveryAddress</b></div><div>@L["Thanh toán"] <b>@Model.PaymentTerms</b></div><div>@L["Người phụ trách"] <b>@Model.Buyer?.FullName</b> @Model.Buyer?.Email</div>
+        <div>@L["Trạng thái"] <b>@Model.Status.GetDisplayName()</b></div>
     </div>
     @if (!string.IsNullOrEmpty(Model.Notes)) { <div class="mt-2 pre">@Model.Notes</div> }
 </div></div>
 <div class="card mb-3"><div class="card-body p-0"><table class="table table-sm mb-0">
-    <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL đặt</th><th class="money">Đã nhận</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead><tbody>
+    <thead><tr><th>#</th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">@L["SL đặt"]</th><th class="money">@L["Đã nhận"]</th><th class="money">@L["Đơn giá"]</th><th class="money">@L["Thành tiền"]</th></tr></thead><tbody>
     @{ var n = 1; }
     @foreach (var l in Model.Lines) { <tr><td>@(n++)</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.ReceivedQuantity.ToQty()</td><td class="money">@l.UnitPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr> }
-    <tr><td colspan="6" class="text-end">Cộng</td><td class="money">@Model.SubTotal.ToMoney()</td></tr>
+    <tr><td colspan="6" class="text-end">@L["Cộng"]</td><td class="money">@Model.SubTotal.ToMoney()</td></tr>
     <tr><td colspan="6" class="text-end">VAT @Model.VatPercent.ToString("0.#")%</td><td class="money">@Model.VatAmount.ToMoney()</td></tr>
-    <tr class="fw-semibold"><td colspan="6" class="text-end">Tổng cộng</td><td class="money">@Model.Total.ToMoney()</td></tr>
+    <tr class="fw-semibold"><td colspan="6" class="text-end">@L["Tổng cộng"]</td><td class="money">@Model.Total.ToMoney()</td></tr>
 </tbody></table></div></div>
 
 <div class="row g-3">
     <div class="col-lg-6">
-        <div class="card"><div class="card-header">Xác nhận đơn hàng</div><div class="card-body small">
-            @if (Model.VendorConfirmedAt != null) { <div class="text-success">Đã xác nhận lúc @Model.VendorConfirmedAt.ToDateTime(), cam kết giao @Model.VendorPromisedDate.ToDate(). @Model.VendorResponse</div> }
-            else if (Model.VendorRejectedAt != null) { <div class="text-danger">Đã từ chối lúc @Model.VendorRejectedAt.ToDateTime(): @Model.VendorResponse</div> }
+        <div class="card"><div class="card-header">@L["Xác nhận đơn hàng"]</div><div class="card-body small">
+            @if (Model.VendorConfirmedAt != null) { <div class="text-success">@L["Đã xác nhận lúc {0}, cam kết giao {1}.", Model.VendorConfirmedAt.ToDateTime(), Model.VendorPromisedDate.ToDate()] @Model.VendorResponse</div> }
+            else if (Model.VendorRejectedAt != null) { <div class="text-danger">@L["Đã từ chối lúc {0}:", Model.VendorRejectedAt.ToDateTime()] @Model.VendorResponse</div> }
             else if (Model.Status == PoStatus.Issued)
             {
                 <form asp-action="Respond" asp-route-id="@Model.Id" method="post" class="row g-2">
-                    <div class="col-md-5"><label class="form-label small mb-0">Cam kết giao ngày</label><input name="promisedDate" type="date" value="@Model.DeliveryDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
-                    <div class="col-md-7"><label class="form-label small mb-0">Ghi chú / lý do từ chối</label><input name="response" maxlength="1000" class="form-control form-control-sm" /></div>
-                    <div class="col-12 d-flex gap-2"><button name="accept" value="true" class="btn btn-sm btn-success">Xác nhận đơn hàng</button>
-                        <button name="accept" value="false" class="btn btn-sm btn-outline-danger" data-confirm="Từ chối đơn hàng này?">Từ chối</button></div>
+                    <div class="col-md-5"><label class="form-label small mb-0">@L["Cam kết giao ngày"]</label><input name="promisedDate" type="date" value="@Model.DeliveryDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                    <div class="col-md-7"><label class="form-label small mb-0">@L["Ghi chú / lý do từ chối"]</label><input name="response" maxlength="1000" class="form-control form-control-sm" /></div>
+                    <div class="col-12 d-flex gap-2"><button name="accept" value="true" class="btn btn-sm btn-success">@L["Xác nhận đơn hàng"]</button>
+                        <button name="accept" value="false" class="btn btn-sm btn-outline-danger" data-confirm="@L["Từ chối đơn hàng này?"]">@L["Từ chối"]</button></div>
                 </form>
             }
         </div></div>
     </div>
     <div class="col-lg-6">
-        <div class="card"><div class="card-header">Giao hàng</div><div class="card-body small">
-            @foreach (var s in ships) { <div class="mb-1">@s.CreatedAt.ToDateTime(): xuất @s.ShipDate.ToDate(), dự kiến giao @s.ExpectedDate.ToDate() @s.Reference <span class="text-muted">@s.Note</span></div> }
-            @foreach (var g in receipts) { <div class="mb-1 text-success">Bên mua đã nhận hàng @g.ReceiptDate.ToDate() (@g.Number): @g.Lines.Sum(l => l.QuantityAccepted).ToQty() đạt@(g.Lines.Sum(l => l.QuantityRejected) > 0 ? $", {g.Lines.Sum(l => l.QuantityRejected).ToQty()} trả lại" : "")</div> }
+        <div class="card"><div class="card-header">@L["Giao hàng"]</div><div class="card-body small">
+            @foreach (var s in ships) { <div class="mb-1">@s.CreatedAt.ToDateTime(): @L["xuất {0}, dự kiến giao {1}", s.ShipDate.ToDate(), s.ExpectedDate.ToDate()] @s.Reference <span class="text-muted">@s.Note</span></div> }
+            @foreach (var g in receipts) { <div class="mb-1 text-success">@L["Bên mua đã nhận hàng {0} ({1}): {2} đạt", g.ReceiptDate.ToDate(), g.Number, g.Lines.Sum(l => l.QuantityAccepted).ToQty()]@(g.Lines.Sum(l => l.QuantityRejected) > 0 ? L[", {0} trả lại", g.Lines.Sum(l => l.QuantityRejected).ToQty()] : "")</div> }
             @if (Model.Status is PoStatus.Issued or PoStatus.PartiallyReceived && Model.VendorRejectedAt == null)
             {
                 <form asp-action="Ship" asp-route-id="@Model.Id" method="post" class="row g-2 mt-2">
-                    <div class="col-md-6"><label class="form-label small mb-0">Ngày xuất hàng</label><input name="shipDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
-                    <div class="col-md-6"><label class="form-label small mb-0">Dự kiến giao</label><input name="expectedDate" type="date" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
-                    <div class="col-md-6"><input name="reference" maxlength="100" placeholder="Số phiếu xuất / vận đơn" class="form-control form-control-sm" /></div>
-                    <div class="col-md-6"><input name="note" maxlength="1000" placeholder="Nội dung giao (đợt, số lượng…)" class="form-control form-control-sm" /></div>
-                    <div class="col-12"><button class="btn btn-sm btn-primary">Báo giao hàng</button></div>
+                    <div class="col-md-6"><label class="form-label small mb-0">@L["Ngày xuất hàng"]</label><input name="shipDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                    <div class="col-md-6"><label class="form-label small mb-0">@L["Dự kiến giao"]</label><input name="expectedDate" type="date" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                    <div class="col-md-6"><input name="reference" maxlength="100" placeholder="@L["Số phiếu xuất / vận đơn"]" class="form-control form-control-sm" /></div>
+                    <div class="col-md-6"><input name="note" maxlength="1000" placeholder="@L["Nội dung giao (đợt, số lượng…)"]" class="form-control form-control-sm" /></div>
+                    <div class="col-12"><button class="btn btn-sm btn-primary">@L["Báo giao hàng"]</button></div>
                 </form>
             }
         </div></div>
     </div>
 </div>
 
-<div class="card mt-3"><div class="card-header">Hóa đơn & thanh toán</div><div class="card-body small">
+<div class="card mt-3"><div class="card-header">@L["Hóa đơn & thanh toán"]</div><div class="card-body small">
     @foreach (var i in invoices)
     {
         var pay = payments.Where(p => p.InvoiceId == i.Id && p.Status != PaymentStatus.Rejected).OrderByDescending(p => p.RequestedAt).FirstOrDefault();
-        <div class="border-bottom pb-2 mb-2">HĐ <b>@i.Series @i.InvoiceNo</b> ngày @i.InvoiceDate.ToDate() · @i.Total.ToMoney() đ · <span class="badge bg-light text-dark border">@i.Status.GetDisplayName()</span> · hạn thanh toán @i.DueDate.ToDate()
-            @if (pay != null) { <span> · @pay.Status.GetDisplayName()@(pay.PaidAt != null ? $" ngày {pay.PaidAt:dd/MM/yyyy}, thực nhận {pay.NetAmount.ToMoney()} đ" : "")@(pay.PenaltyAmount > 0 ? $" (phạt chậm giao {pay.PenaltyAmount.ToMoney()} đ)" : "")</span> }
+        <div class="border-bottom pb-2 mb-2">@L["HĐ"] <b>@i.Series @i.InvoiceNo</b> @L["ngày"] @i.InvoiceDate.ToDate() · @i.Total.ToMoney() đ · <span class="badge bg-light text-dark border">@i.Status.GetDisplayName()</span> · @L["hạn thanh toán"] @i.DueDate.ToDate()
+            @if (pay != null) { <span> · @pay.Status.GetDisplayName()@(pay.PaidAt != null ? L[" ngày {0}, thực nhận {1} đ", pay.PaidAt?.ToString("dd/MM/yyyy"), pay.NetAmount.ToMoney()] : "")@(pay.PenaltyAmount > 0 ? L[" (phạt chậm giao {0} đ)", pay.PenaltyAmount.ToMoney()] : "")</span> }
             @if (i.Status is InvoiceStatus.Exception or InvoiceStatus.Rejected) { <div class="text-danger">@i.MatchNote @i.DecisionNote</div> }</div>
     }
     @if (canInvoice)
     {
         <form asp-action="SubmitInvoice" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
-            <div class="fw-semibold mb-1">Gửi hóa đơn điện tử</div>
+            <div class="fw-semibold mb-1">@L["Gửi hóa đơn điện tử"]</div>
             <div class="row g-2 mb-2">
-                <div class="col-md-2"><input name="Series" maxlength="20" placeholder="Ký hiệu" class="form-control form-control-sm" /></div>
-                <div class="col-md-3"><input name="InvoiceNo" maxlength="30" placeholder="Số hóa đơn" class="form-control form-control-sm" required /></div>
+                <div class="col-md-2"><input name="Series" maxlength="20" placeholder="@L["Ký hiệu"]" class="form-control form-control-sm" /></div>
+                <div class="col-md-3"><input name="InvoiceNo" maxlength="30" placeholder="@L["Số hóa đơn"]" class="form-control form-control-sm" required /></div>
                 <div class="col-md-3"><input name="InvoiceDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
                 <div class="col-md-4"><input name="file" type="file" class="form-control form-control-sm" required /></div>
             </div>
-            <table class="table table-sm"><thead><tr><th>Hàng hóa</th><th class="money">Đã giao (bên mua nhận đạt)</th><th class="money">Đã xuất HĐ</th><th style="width:120px">SL xuất HĐ</th><th style="width:150px">Đơn giá</th></tr></thead><tbody>
+            <table class="table table-sm"><thead><tr><th>@L["Hàng hóa"]</th><th class="money">@L["Đã giao (bên mua nhận đạt)"]</th><th class="money">@L["Đã xuất HĐ"]</th><th style="width:120px">@L["SL xuất HĐ"]</th><th style="width:150px">@L["Đơn giá"]</th></tr></thead><tbody>
             @{ var k = 0; }
             @foreach (var l in Model.Lines)
             {
@@ -85,9 +85,9 @@
                 k++;
             }
             </tbody></table>
-            <div class="d-flex gap-2 align-items-center"><input name="VatAmount" type="number" min="0" placeholder="Thuế GTGT trên HĐ (để trống = @Model.VatPercent.ToString("0.#")%)" class="form-control form-control-sm" style="max-width:320px" />
-                <button class="btn btn-sm btn-primary">Gửi hóa đơn</button></div>
+            <div class="d-flex gap-2 align-items-center"><input name="VatAmount" type="number" min="0" placeholder="@L["Thuế GTGT trên HĐ (để trống = {0}%)", Model.VatPercent.ToString("0.#")]" class="form-control form-control-sm" style="max-width:320px" />
+                <button class="btn btn-sm btn-primary">@L["Gửi hóa đơn"]</button></div>
         </form>
     }
-    else if (!invoices.Any()) { <div class="text-muted">Gửi hóa đơn sau khi bên mua đã nhận hàng.</div> }
+    else if (!invoices.Any()) { <div class="text-muted">@L["Gửi hóa đơn sau khi bên mua đã nhận hàng."]</div> }
 </div></div>

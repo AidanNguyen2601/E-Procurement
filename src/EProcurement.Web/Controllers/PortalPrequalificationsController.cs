@@ -47,12 +47,12 @@ public class PortalPrequalificationsController : PortalControllerBase
         var p = await LoadAsync(id);
         if (p == null) return NotFound();
         IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
-        if (!IsOpen(p)) return Back("Đợt sơ tuyển không còn nhận hồ sơ.");
-        if (MyVendor.Status == VendorStatus.Suspended) return Back("Nhà cung cấp đang bị tạm ngưng giao dịch.");
+        if (!CanTrade) return Back(I18n.T("Tài khoản chưa được xác nhận thuộc nhà cung cấp."));
+        if (!IsOpen(p)) return Back(I18n.T("Đợt sơ tuyển không còn nhận hồ sơ."));
+        if (MyVendor.Status == VendorStatus.Suspended) return Back(I18n.T("Nhà cung cấp đang bị tạm ngưng giao dịch."));
         var text = note?.Trim();
-        if (string.IsNullOrWhiteSpace(text)) return Back("Nhập thuyết minh năng lực, kinh nghiệm theo các tiêu chí.");
-        if (text.Length > 2000) return Back("Thuyết minh tối đa 2000 ký tự.");
+        if (string.IsNullOrWhiteSpace(text)) return Back(I18n.T("Nhập thuyết minh năng lực, kinh nghiệm theo các tiêu chí."));
+        if (text.Length > 2000) return Back(I18n.T("Thuyết minh tối đa 2000 ký tự."));
 
         var a = await Db.PrequalificationApplications.Include(x => x.Documents).FirstOrDefaultAsync(x => x.PrequalificationId == id && x.VendorId == MyVendor.Id);
         if (newDocFile is { Length: > 0 })
@@ -69,7 +69,7 @@ public class PortalPrequalificationsController : PortalControllerBase
             documentIds.Add(doc.Id);
         }
         var valid = await Db.VendorDocuments.Where(d => d.VendorId == MyVendor.Id && documentIds.Contains(d.Id)).Select(d => d.Id).ToListAsync();
-        if (valid.Count == 0) return Back("Chọn hoặc tải lên ít nhất một hồ sơ chứng minh.");
+        if (valid.Count == 0) return Back(I18n.T("Chọn hoặc tải lên ít nhất một hồ sơ chứng minh."));
         var resubmit = a != null;
         if (a == null) { a = new PrequalificationApplication { PrequalificationId = id, VendorId = MyVendor.Id }; Db.PrequalificationApplications.Add(a); }
         else { Db.PrequalificationDocuments.RemoveRange(a.Documents); a.Documents.Clear(); }
@@ -78,7 +78,7 @@ public class PortalPrequalificationsController : PortalControllerBase
         await Db.SaveChangesAsync();
         var buyer = await Db.Prequalifications.Where(x => x.Id == id).Select(x => x.CreatedById).FirstAsync();
         await NotifyBuyersAsync(new[] { buyer }, $"{MyVendor.Name} {(resubmit ? "nộp lại" : "nộp")} hồ sơ dự sơ tuyển {p.Number}", $"{valid.Count} tài liệu", $"/Prequalifications/Details/{id}");
-        TempData["Success"] = $"Đã nộp hồ sơ dự sơ tuyển lúc {a.SubmittedAt:dd/MM/yyyy HH:mm}. Có thể cập nhật trước hạn {p.Deadline:dd/MM/yyyy HH:mm}.";
+        TempData["Success"] = I18n.T("Đã nộp hồ sơ dự sơ tuyển lúc {0:dd/MM/yyyy HH:mm}. Có thể cập nhật trước hạn {1:dd/MM/yyyy HH:mm}.", a.SubmittedAt, p.Deadline);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -87,10 +87,10 @@ public class PortalPrequalificationsController : PortalControllerBase
     {
         var p = await LoadAsync(id);
         var a = await Db.PrequalificationApplications.FirstOrDefaultAsync(x => x.PrequalificationId == id && x.VendorId == MyVendor.Id);
-        if (p == null || a == null || !IsOpen(p)) { TempData["Error"] = "Không rút được hồ sơ."; return RedirectToAction(nameof(Details), new { id }); }
+        if (p == null || a == null || !IsOpen(p)) { TempData["Error"] = I18n.T("Không rút được hồ sơ."); return RedirectToAction(nameof(Details), new { id }); }
         a.Status = PrequalificationResult.Withdrawn;
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã rút hồ sơ dự sơ tuyển.";
+        TempData["Success"] = I18n.T("Đã rút hồ sơ dự sơ tuyển.");
         return RedirectToAction(nameof(Details), new { id });
     }
 }

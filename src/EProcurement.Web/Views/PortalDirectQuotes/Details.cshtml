@@ -7,48 +7,48 @@
 }
 <div class="card mb-3"><div class="card-body">
     <h5 class="mb-1">@Model.Title</h5>
-    <div class="small text-muted mb-2">Hồ sơ chào giá chỉ định @Model.Number · gửi @Model.QuoteRequestedAt.ToDateTime() · <b>Hạn nộp báo giá: @Model.QuoteDeadline.ToDateTime()</b>
-        @if (Model.QuoteDeadline > DateTime.Now && Model.QuoteOpenedAt == null) { <span>· còn <b data-countdown="@((int)(Model.QuoteDeadline!.Value - DateTime.Now).TotalSeconds)"></b></span> }</div>
-    @if (!string.IsNullOrEmpty(Model.QuoteRequirements)) { <div class="small pre"><b>Yêu cầu:</b> @Model.QuoteRequirements</div> }
-    <div class="small mt-1">Liên hệ: @Model.Buyer?.FullName – @Model.Buyer?.Email</div>
+    <div class="small text-muted mb-2">@L["Hồ sơ chào giá chỉ định"] @Model.Number · @L["gửi"] @Model.QuoteRequestedAt.ToDateTime() · <b>@L["Hạn nộp báo giá:"] @Model.QuoteDeadline.ToDateTime()</b>
+        @if (Model.QuoteDeadline > DateTime.Now && Model.QuoteOpenedAt == null) { <span>@L["· còn"] <b data-countdown="@((int)(Model.QuoteDeadline!.Value - DateTime.Now).TotalSeconds)"></b></span> }</div>
+    @if (!string.IsNullOrEmpty(Model.QuoteRequirements)) { <div class="small pre"><b>@L["Yêu cầu:"]</b> @Model.QuoteRequirements</div> }
+    <div class="small mt-1">@L["Liên hệ:"] @Model.Buyer?.FullName – @Model.Buyer?.Email</div>
 </div></div>
 
-@if (Model.Status == DirectAwardStatus.Approved) { <div class="alert alert-success">Hồ sơ đã được phê duyệt. Bộ phận mua hàng sẽ gửi đơn đặt hàng.</div> }
-else if (Model.Status == DirectAwardStatus.Cancelled) { <div class="alert alert-secondary">Hồ sơ đã bị hủy.</div> }
-else if (Model.QuoteOpenedAt.HasValue) { <div class="alert alert-info">Bên mua đã mở báo giá lúc @Model.QuoteOpenedAt.ToDateTime() và đang thương thảo.</div> }
+@if (Model.Status == DirectAwardStatus.Approved) { <div class="alert alert-success">@L["Hồ sơ đã được phê duyệt. Bộ phận mua hàng sẽ gửi đơn đặt hàng."]</div> }
+else if (Model.Status == DirectAwardStatus.Cancelled) { <div class="alert alert-secondary">@L["Hồ sơ đã bị hủy."]</div> }
+else if (Model.QuoteOpenedAt.HasValue) { <div class="alert alert-info">@L["Bên mua đã mở báo giá lúc {0} và đang thương thảo.", Model.QuoteOpenedAt.ToDateTime()]</div> }
 
 @if (latest != null)
 {
     <div class="card mb-3 border-success"><div class="card-body small">
-        <b>Biên nhận báo giá online</b> – lần @latest.Revision, nộp lúc @latest.SubmittedAt.ToString("dd/MM/yyyy HH:mm:ss")@(latest.FileName != null ? $", file {latest.FileName}" : "")<br />
-        Mã băm SHA-256: <code class="text-break">@latest.Sha256</code><br />
-        @(latest.UnsealedAt == null ? "Đang niêm phong – bên mua chưa xem được nội dung." : $"Đã mở lúc {latest.UnsealedAt:dd/MM/yyyy HH:mm}.")
-        @if (canSubmit) { <form asp-action="Withdraw" asp-route-id="@Model.Id" method="post" class="d-inline ms-2" data-confirm="Rút báo giá đã nộp?"><button class="btn btn-sm btn-link text-danger p-0">Rút báo giá</button></form> }
+        <b>@L["Biên nhận báo giá online"]</b> – @L["lần {0}, nộp lúc {1}", latest.Revision, latest.SubmittedAt.ToString("dd/MM/yyyy HH:mm:ss")]@(latest.FileName != null ? $", file {latest.FileName}" : "")<br />
+        @L["Mã băm SHA-256:"] <code class="text-break">@latest.Sha256</code><br />
+        @(latest.UnsealedAt == null ? L["Đang niêm phong – bên mua chưa xem được nội dung."] : L["Đã mở lúc {0}.", latest.UnsealedAt?.ToString("dd/MM/yyyy HH:mm")])
+        @if (canSubmit) { <form asp-action="Withdraw" asp-route-id="@Model.Id" method="post" class="d-inline ms-2" data-confirm="@L["Rút báo giá đã nộp?"]"><button class="btn btn-sm btn-link text-danger p-0">@L["Rút báo giá"]</button></form> }
     </div></div>
 }
 
 @if (canSubmit)
 {
-    <form asp-action="Submit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="card mb-3"><div class="card-header">@(latest == null ? "Nộp báo giá" : "Nộp lại báo giá (thay bản trước)")</div><div class="card-body">
+    <form asp-action="Submit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="card mb-3"><div class="card-header">@(latest == null ? L["Nộp báo giá"] : L["Nộp lại báo giá (thay bản trước)"])</div><div class="card-body">
         <div class="table-responsive"><table class="table table-sm">
-            <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">Số lượng</th><th style="width:170px">Đơn giá (chưa VAT)</th><th>Ghi chú</th></tr></thead><tbody>
+            <thead><tr><th>#</th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">@L["Số lượng"]</th><th style="width:170px">@L["Đơn giá (chưa VAT)"]</th><th>@L["Ghi chú"]</th></tr></thead><tbody>
             @for (var i = 0; i < lines.Count; i++)
             {
                 <tr><td>@(i + 1)</td><td>@lines[i].Description</td><td>@lines[i].Unit</td><td class="money">@lines[i].Quantity.ToQty()</td>
                     <td><input name="prices" type="number" min="1" step="1" class="form-control form-control-sm text-end" required /></td>
-                    <td><input name="notes" maxlength="300" class="form-control form-control-sm" placeholder="Hãng, model…" /></td></tr>
+                    <td><input name="notes" maxlength="300" class="form-control form-control-sm" placeholder="@L["Hãng, model…"]" /></td></tr>
             }
         </tbody></table></div>
         <div class="row g-2">
             <div class="col-md-2"><label class="form-label small mb-0">VAT (%)</label><input name="vatPercent" type="number" min="0" max="20" step="0.5" value="10" class="form-control form-control-sm" /></div>
-            <div class="col-md-2"><label class="form-label small mb-0">Giao hàng (ngày)</label><input name="leadTimeDays" type="number" min="0" max="365" class="form-control form-control-sm" required /></div>
-            <div class="col-md-4"><label class="form-label small mb-0">Điều khoản thanh toán</label><input name="paymentTerms" maxlength="200" class="form-control form-control-sm" /></div>
-            <div class="col-md-4"><label class="form-label small mb-0">Bảo hành</label><input name="warranty" maxlength="200" class="form-control form-control-sm" /></div>
-            <div class="col-md-8"><label class="form-label small mb-0">Ghi chú</label><input name="note" maxlength="1000" class="form-control form-control-sm" /></div>
-            <div class="col-md-4"><label class="form-label small mb-0">File báo giá (tùy chọn)</label><input name="file" type="file" class="form-control form-control-sm" /></div>
+            <div class="col-md-2"><label class="form-label small mb-0">@L["Giao hàng (ngày)"]</label><input name="leadTimeDays" type="number" min="0" max="365" class="form-control form-control-sm" required /></div>
+            <div class="col-md-4"><label class="form-label small mb-0">@L["Điều khoản thanh toán"]</label><input name="paymentTerms" maxlength="200" class="form-control form-control-sm" /></div>
+            <div class="col-md-4"><label class="form-label small mb-0">@L["Bảo hành"]</label><input name="warranty" maxlength="200" class="form-control form-control-sm" /></div>
+            <div class="col-md-8"><label class="form-label small mb-0">@L["Ghi chú"]</label><input name="note" maxlength="1000" class="form-control form-control-sm" /></div>
+            <div class="col-md-4"><label class="form-label small mb-0">@L["File báo giá (tùy chọn)"]</label><input name="file" type="file" class="form-control form-control-sm" /></div>
         </div>
-        <button class="btn btn-primary mt-3" data-confirm="Nộp báo giá? Nội dung được niêm phong đến khi bên mua mở báo giá.">Nộp báo giá</button>
+        <button class="btn btn-primary mt-3" data-confirm="@L["Nộp báo giá? Nội dung được niêm phong đến khi bên mua mở báo giá."]">@L["Nộp báo giá"]</button>
     </div></form>
 }
-else if (Model.Status == DirectAwardStatus.Draft && Model.QuoteOpenedAt == null && !(bool)ViewBag.CanQuote) { <div class="alert alert-warning">Tài khoản / nhà cung cấp chưa được phê duyệt nên chưa nộp được báo giá.</div> }
-else if (Model.Status == DirectAwardStatus.Draft && Model.QuoteOpenedAt == null) { <div class="alert alert-secondary">Đã hết hạn nộp báo giá.</div> }
+else if (Model.Status == DirectAwardStatus.Draft && Model.QuoteOpenedAt == null && !(bool)ViewBag.CanQuote) { <div class="alert alert-warning">@L["Tài khoản / nhà cung cấp chưa được phê duyệt nên chưa nộp được báo giá."]</div> }
+else if (Model.Status == DirectAwardStatus.Draft && Model.QuoteOpenedAt == null) { <div class="alert alert-secondary">@L["Đã hết hạn nộp báo giá."]</div> }

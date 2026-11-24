@@ -40,12 +40,12 @@ public class PortalDirectQuotesController : PortalControllerBase
         var d = await LoadAsync(id);
         if (d == null) return NotFound();
         IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (!CanQuote) return Back("Tài khoản / NCC chưa được phê duyệt để báo giá.");
-        if (!IsOpen(d)) return Back("Hồ sơ không còn nhận báo giá (đã hết hạn hoặc đã mở).");
+        if (!CanQuote) return Back(I18n.T("Tài khoản / NCC chưa được phê duyệt để báo giá."));
+        if (!IsOpen(d)) return Back(I18n.T("Hồ sơ không còn nhận báo giá (đã hết hạn hoặc đã mở)."));
         var lines = d.Lines.OrderBy(l => l.SortOrder).ToList();
-        if (prices.Count != lines.Count || prices.Any(p => p <= 0)) return Back("Nhập đơn giá cho tất cả các dòng.");
-        if (vatPercent is < 0 or > 20) return Back("VAT không hợp lệ.");
-        if (leadTimeDays is < 0 or > 365) return Back("Thời gian giao không hợp lệ.");
+        if (prices.Count != lines.Count || prices.Any(p => p <= 0)) return Back(I18n.T("Nhập đơn giá cho tất cả các dòng."));
+        if (vatPercent is < 0 or > 20) return Back(I18n.T("VAT không hợp lệ."));
+        if (leadTimeDays is < 0 or > 365) return Back(I18n.T("Thời gian giao không hợp lệ."));
         if (CheckFile(file) is string ferr) return Back(ferr);
 
         var payload = new DirectQuotePayload(d.Id, leadTimeDays, paymentTerms?.Trim(), warranty?.Trim(), vatPercent, note?.Trim(),
@@ -59,7 +59,7 @@ public class PortalDirectQuotesController : PortalControllerBase
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { d.BuyerId }, $"{MyVendor.Name} đã nộp báo giá cho hồ sơ chào giá chỉ định {d.Number}" + (sub.Revision > 1 ? $" (lần {sub.Revision})" : ""),
             "Báo giá được niêm phong – mở báo giá trên hồ sơ để thương thảo.", $"/DirectAwards/Details/{d.Id}");
-        TempData["Success"] = $"Đã nộp báo giá lúc {sub.SubmittedAt:dd/MM/yyyy HH:mm:ss}. Mã biên nhận: {sub.Sha256}.";
+        TempData["Success"] = I18n.T("Đã nộp báo giá lúc {0:dd/MM/yyyy HH:mm:ss}. Mã biên nhận: {1}.", sub.SubmittedAt, sub.Sha256);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -68,11 +68,11 @@ public class PortalDirectQuotesController : PortalControllerBase
     {
         var d = await LoadAsync(id);
         if (d == null) return NotFound();
-        if (!IsOpen(d)) { TempData["Error"] = "Không rút được báo giá."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!IsOpen(d)) { TempData["Error"] = I18n.T("Không rút được báo giá."); return RedirectToAction(nameof(Details), new { id }); }
         foreach (var s in await Db.VendorSubmissions.Where(s => s.DirectAwardId == id && !s.IsWithdrawn && s.UnsealedAt == null).ToListAsync()) s.IsWithdrawn = true;
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { d.BuyerId }, $"{MyVendor.Name} đã rút báo giá hồ sơ {d.Number}", null, $"/DirectAwards/Details/{d.Id}");
-        TempData["Success"] = "Đã rút báo giá.";
+        TempData["Success"] = I18n.T("Đã rút báo giá.");
         return RedirectToAction(nameof(Details), new { id });
     }
 }

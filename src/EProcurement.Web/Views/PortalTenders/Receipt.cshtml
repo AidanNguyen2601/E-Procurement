@@ -3,21 +3,21 @@
     Layout = "_PortalLayout";
     var t = Model.TenderBidder!.Tender!; var v = (Vendor)ViewBag.Vendor;
 }
-<div class="toolbar no-print mb-2"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button>
-    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-link">Quay lại gói thầu</a></div>
+<div class="toolbar no-print mb-2"><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button>
+    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-link">@L["Quay lại gói thầu"]</a></div>
 <div class="card paper"><div class="card-body p-4">
-    <h4 class="mb-0">BIÊN NHẬN HỒ SƠ DỰ THẦU NỘP QUA MẠNG</h4>
-    <div class="text-muted mb-3">Gói thầu @t.Number – @t.Title</div>
+    <h4 class="mb-0">@L["BIÊN NHẬN HỒ SƠ DỰ THẦU NỘP QUA MẠNG"]</h4>
+    <div class="text-muted mb-3">@L["Gói thầu"] @t.Number – @t.Title</div>
     <table class="table table-sm">
-        <tr><th style="width:240px">Nhà thầu</th><td>@v.Name – MST @v.TaxCode</td></tr>
-        <tr><th>Người nộp</th><td>@Model.VendorUser?.FullName (@Model.VendorUser?.Email)</td></tr>
-        <tr><th>Lần nộp</th><td>@Model.Revision</td></tr>
-        <tr><th>Thời điểm hệ thống nhận</th><td>@Model.SubmittedAt.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
-        <tr><th>Thời điểm đóng thầu</th><td>@t.ClosingAt.ToDateTime()</td></tr>
-        <tr><th>Thành phần</th><td>@Model.FileName (@((Model.FileSize / 1024m).ToString("N0")) KB)</td></tr>
-        <tr><th>Mã băm SHA-256</th><td><code class="text-break">@Model.Sha256</code></td></tr>
-        <tr><th>Tình trạng</th><td>@(Model.IsWithdrawn ? "Đã rút" : !Model.IsLatest ? "Đã được thay thế bởi lần nộp sau" : Model.UnsealedAt != null ? $"Đã mở lúc {Model.UnsealedAt:dd/MM/yyyy HH:mm}" : "Hiện hành – niêm phong đến thời điểm mở thầu")</td></tr>
+        <tr><th style="width:240px">@L["Nhà thầu"]</th><td>@v.Name – MST @v.TaxCode</td></tr>
+        <tr><th>@L["Người nộp"]</th><td>@Model.VendorUser?.FullName (@Model.VendorUser?.Email)</td></tr>
+        <tr><th>@L["Lần nộp"]</th><td>@Model.Revision</td></tr>
+        <tr><th>@L["Thời điểm hệ thống nhận"]</th><td>@Model.SubmittedAt.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
+        <tr><th>@L["Thời điểm đóng thầu"]</th><td>@t.ClosingAt.ToDateTime()</td></tr>
+        <tr><th>@L["Thành phần"]</th><td>@Model.FileName (@((Model.FileSize / 1024m).ToString("N0")) KB)</td></tr>
+        <tr><th>@L["Mã băm SHA-256"]</th><td><code class="text-break">@Model.Sha256</code></td></tr>
+        <tr><th>@L["Tình trạng"]</th><td>@(Model.IsWithdrawn ? L["Đã rút"] : !Model.IsLatest ? L["Đã được thay thế bởi lần nộp sau"] : Model.UnsealedAt != null ? L["Đã mở lúc {0}", Model.UnsealedAt?.ToString("dd/MM/yyyy HH:mm")] : L["Hiện hành – niêm phong đến thời điểm mở thầu"])</td></tr>
     </table>
-    <p class="small text-muted mb-0">HSDT được mã hóa niêm phong ngay khi nhận; bên mời thầu không xem được nội dung trước thời điểm mở thầu.
-        Khi mở thầu, hệ thống tính lại mã băm và đối chiếu với mã trên biên nhận này để chứng minh HSDT không bị thay đổi.</p>
+    <p class="small text-muted mb-0">@L["HSDT được mã hóa niêm phong ngay khi nhận; bên mời thầu không xem được nội dung trước thời điểm mở thầu."]
+        @L["Khi mở thầu, hệ thống tính lại mã băm và đối chiếu với mã trên biên nhận này để chứng minh HSDT không bị thay đổi."]</p>
 </div></div>

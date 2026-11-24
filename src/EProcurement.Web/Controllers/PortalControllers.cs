@@ -66,7 +66,7 @@ public class PortalAccountController : Controller
                 if (LoginGuard.Fail(ref f, ref until)) ModelState.AddModelError("", LoginGuard.LockedMessage(until!.Value));
                 u.FailedLogins = f; u.LockoutEnd = until; await _db.SaveChangesAsync();
             }
-            ModelState.AddModelError("", "Email hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa.");
+            ModelState.AddModelError("", I18n.T("Email hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa."));
             return View(vm);
         }
         u.FailedLogins = 0; u.LockoutEnd = null; u.LastLoginAt = DateTime.Now;
@@ -100,9 +100,9 @@ public class PortalAccountController : Controller
     public async Task<IActionResult> Register(PortalRegisterModel vm)
     {
         vm.Email = vm.Email.Trim().ToLowerInvariant(); vm.TaxCode = vm.TaxCode.Trim();
-        if (await _db.VendorUsers.AnyAsync(x => x.Email == vm.Email)) ModelState.AddModelError(nameof(vm.Email), "Email đã được đăng ký – đăng nhập hoặc dùng email khác.");
+        if (await _db.VendorUsers.AnyAsync(x => x.Email == vm.Email)) ModelState.AddModelError(nameof(vm.Email), I18n.T("Email đã được đăng ký – đăng nhập hoặc dùng email khác."));
         var vendor = await _db.Vendors.FirstOrDefaultAsync(v => v.TaxCode == vm.TaxCode);
-        if (vendor is { Status: VendorStatus.Blacklisted }) ModelState.AddModelError(nameof(vm.TaxCode), "Nhà cung cấp này không được đăng ký trên hệ thống.");
+        if (vendor is { Status: VendorStatus.Blacklisted }) ModelState.AddModelError(nameof(vm.TaxCode), I18n.T("Nhà cung cấp này không được đăng ký trên hệ thống."));
         if (!ModelState.IsValid) { ViewBag.Categories = await _db.Categories.OrderBy(c => c.Name).ToListAsync(); return View(vm); }
 
         var isNew = vendor == null;
@@ -187,8 +187,8 @@ public abstract class PortalControllerBase : Controller
     protected string? CheckFile(IFormFile? f)
     {
         if (f == null || f.Length == 0) return null;
-        if (f.Length > MaxFileBytes) return $"File vượt quá {MaxFileBytes / 1024 / 1024} MB.";
-        if (!AllowedExt.Contains(Path.GetExtension(f.FileName).ToLowerInvariant())) return "Định dạng file không được hỗ trợ (pdf, doc(x), xls(x), zip, rar, 7z, jpg, png).";
+        if (f.Length > MaxFileBytes) return I18n.T("File vượt quá {0} MB.", MaxFileBytes / 1024 / 1024);
+        if (!AllowedExt.Contains(Path.GetExtension(f.FileName).ToLowerInvariant())) return I18n.T("Định dạng file không được hỗ trợ (pdf, doc(x), xls(x), zip, rar, 7z, jpg, png).");
         return null;
     }
 
@@ -257,7 +257,7 @@ public class PortalController : PortalControllerBase
         v.BankName = T(bankName, 100); v.BankAccount = T(bankAccount, 30); v.PaymentTerms = T(paymentTerms, 200);
         if (email != null && new EmailAddressAttribute().IsValid(email)) v.Email = T(email, 150);
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã cập nhật thông tin công ty.";
+        TempData["Success"] = I18n.T("Đã cập nhật thông tin công ty.");
         return RedirectToAction(nameof(Profile));
     }
 
@@ -265,9 +265,9 @@ public class PortalController : PortalControllerBase
     [RequestSizeLimit(60 * 1024 * 1024)]
     public async Task<IActionResult> UploadDocument(VendorDocumentType type, string? number, DateTime? issueDate, DateTime? expiryDate, string? note, IFormFile? file)
     {
-        if (file == null || file.Length == 0) { TempData["Error"] = "Chọn file hồ sơ."; return RedirectToAction(nameof(Profile)); }
+        if (file == null || file.Length == 0) { TempData["Error"] = I18n.T("Chọn file hồ sơ."); return RedirectToAction(nameof(Profile)); }
         if (CheckFile(file) is string err) { TempData["Error"] = err; return RedirectToAction(nameof(Profile)); }
-        if (expiryDate.HasValue && issueDate.HasValue && expiryDate < issueDate) { TempData["Error"] = "Ngày hết hiệu lực phải sau ngày cấp."; return RedirectToAction(nameof(Profile)); }
+        if (expiryDate.HasValue && issueDate.HasValue && expiryDate < issueDate) { TempData["Error"] = I18n.T("Ngày hết hiệu lực phải sau ngày cấp."); return RedirectToAction(nameof(Profile)); }
         Db.VendorDocuments.Add(new VendorDocument
         {
             VendorId = MyVendor.Id, Type = type, Number = number?.Trim(), IssueDate = issueDate, ExpiryDate = expiryDate, Note = note?.Trim(),
@@ -277,7 +277,7 @@ public class PortalController : PortalControllerBase
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(await Db.Users.Where(u => u.IsActive && u.Role == AppRoles.Buyer).Select(u => u.Id).ToListAsync(),
             $"{MyVendor.Name} tải lên hồ sơ: {type.GetDisplayName()}", "Xác minh hồ sơ trong trang nhà cung cấp.", $"/Vendors/Details/{MyVendor.Id}");
-        TempData["Success"] = "Đã tải lên hồ sơ – chờ bộ phận mua hàng xác minh.";
+        TempData["Success"] = I18n.T("Đã tải lên hồ sơ – chờ bộ phận mua hàng xác minh.");
         return RedirectToAction(nameof(Profile));
     }
 
@@ -291,20 +291,20 @@ public class PortalController : PortalControllerBase
     public async Task<IActionResult> DeleteDocument(int id)
     {
         var d = await Db.VendorDocuments.FirstOrDefaultAsync(x => x.Id == id && x.VendorId == MyVendor.Id && x.Status != VendorDocumentStatus.Verified);
-        if (d == null) { TempData["Error"] = "Chỉ xóa được hồ sơ chưa xác minh."; return RedirectToAction(nameof(Profile)); }
+        if (d == null) { TempData["Error"] = I18n.T("Chỉ xóa được hồ sơ chưa xác minh."); return RedirectToAction(nameof(Profile)); }
         Db.VendorDocuments.Remove(d);
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã xóa hồ sơ.";
+        TempData["Success"] = I18n.T("Đã xóa hồ sơ.");
         return RedirectToAction(nameof(Profile));
     }
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(string currentPassword, string newPassword, string confirmPassword)
     {
-        if (_hasher.VerifyHashedPassword(Me, Me.PasswordHash, currentPassword ?? "") == PasswordVerificationResult.Failed) TempData["Error"] = "Mật khẩu hiện tại không đúng.";
-        else if (string.IsNullOrEmpty(newPassword) || newPassword.Length < 8) TempData["Error"] = "Mật khẩu mới tối thiểu 8 ký tự.";
-        else if (newPassword != confirmPassword) TempData["Error"] = "Mật khẩu nhập lại không khớp.";
-        else { Me.PasswordHash = _hasher.HashPassword(Me, newPassword); await Db.SaveChangesAsync(); TempData["Success"] = "Đã đổi mật khẩu."; }
+        if (_hasher.VerifyHashedPassword(Me, Me.PasswordHash, currentPassword ?? "") == PasswordVerificationResult.Failed) TempData["Error"] = I18n.T("Mật khẩu hiện tại không đúng.");
+        else if (string.IsNullOrEmpty(newPassword) || newPassword.Length < 8) TempData["Error"] = I18n.T("Mật khẩu mới tối thiểu 8 ký tự.");
+        else if (newPassword != confirmPassword) TempData["Error"] = I18n.T("Mật khẩu nhập lại không khớp.");
+        else { Me.PasswordHash = _hasher.HashPassword(Me, newPassword); await Db.SaveChangesAsync(); TempData["Success"] = I18n.T("Đã đổi mật khẩu."); }
         return RedirectToAction(nameof(Profile));
     }
 }
@@ -343,13 +343,13 @@ public class PortalRfqsController : PortalControllerBase
         if (rv == null) return NotFound();
         var r = rv.Rfq!;
         IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (!CanQuote) return Back("Tài khoản / NCC chưa được phê duyệt để báo giá.");
-        if (r.Status != RfqStatus.Open || DateTime.Now >= CloseAt(r)) return Back("Đã hết hạn nộp báo giá.");
+        if (!CanQuote) return Back(I18n.T("Tài khoản / NCC chưa được phê duyệt để báo giá."));
+        if (r.Status != RfqStatus.Open || DateTime.Now >= CloseAt(r)) return Back(I18n.T("Đã hết hạn nộp báo giá."));
         var lines = r.Lines.OrderBy(l => l.SortOrder).ToList();
-        if (prices.Count != lines.Count || prices.Any(p => p < 0)) return Back("Đơn giá không hợp lệ.");
-        if (prices.All(p => p == 0)) return Back("Nhập đơn giá cho ít nhất một dòng.");
-        if (vatPercent is < 0 or > 20) return Back("VAT không hợp lệ.");
-        if (leadTimeDays is < 0 or > 365) return Back("Thời gian giao không hợp lệ.");
+        if (prices.Count != lines.Count || prices.Any(p => p < 0)) return Back(I18n.T("Đơn giá không hợp lệ."));
+        if (prices.All(p => p == 0)) return Back(I18n.T("Nhập đơn giá cho ít nhất một dòng."));
+        if (vatPercent is < 0 or > 20) return Back(I18n.T("VAT không hợp lệ."));
+        if (leadTimeDays is < 0 or > 365) return Back(I18n.T("Thời gian giao không hợp lệ."));
         if (CheckFile(file) is string ferr) return Back(ferr);
 
         var payload = new QuotePayload(rv.Id, leadTimeDays, paymentTerms?.Trim(), warranty?.Trim(), vatPercent, note?.Trim(),
@@ -364,7 +364,7 @@ public class PortalRfqsController : PortalControllerBase
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { r.BuyerId }, $"{MyVendor.Name} đã nộp báo giá online cho {r.Number}" + (sub.Revision > 1 ? $" (lần {sub.Revision})" : ""),
             "Báo giá được niêm phong đến khi mở báo giá.", $"/Rfqs/Details/{r.Id}");
-        TempData["Success"] = $"Đã nộp báo giá lúc {sub.SubmittedAt:dd/MM/yyyy HH:mm:ss}. Mã biên nhận: {sub.Sha256}. Báo giá được niêm phong đến khi mở.";
+        TempData["Success"] = I18n.T("Đã nộp báo giá lúc {0:dd/MM/yyyy HH:mm:ss}. Mã biên nhận: {1}. Báo giá được niêm phong đến khi mở.", sub.SubmittedAt, sub.Sha256);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -373,13 +373,13 @@ public class PortalRfqsController : PortalControllerBase
     {
         var rv = await LoadAsync(id);
         if (rv == null) return NotFound();
-        if (rv.Rfq!.Status != RfqStatus.Open || DateTime.Now >= CloseAt(rv.Rfq)) { TempData["Error"] = "Đã hết hạn – không rút được."; return RedirectToAction(nameof(Details), new { id }); }
+        if (rv.Rfq!.Status != RfqStatus.Open || DateTime.Now >= CloseAt(rv.Rfq)) { TempData["Error"] = I18n.T("Đã hết hạn – không rút được."); return RedirectToAction(nameof(Details), new { id }); }
         var subs = await Db.VendorSubmissions.Where(s => s.RfqVendorId == rv.Id && !s.IsWithdrawn).ToListAsync();
         foreach (var s in subs) s.IsWithdrawn = true;
         rv.Responded = false; rv.RespondedAt = null;
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { rv.Rfq.BuyerId }, $"{MyVendor.Name} đã rút báo giá {rv.Rfq.Number}", null, $"/Rfqs/Details/{rv.RfqId}");
-        TempData["Success"] = "Đã rút báo giá.";
+        TempData["Success"] = I18n.T("Đã rút báo giá.");
         return RedirectToAction(nameof(Details), new { id });
     }
 }
@@ -497,15 +497,15 @@ public class PortalTendersController : PortalControllerBase
     public async Task<IActionResult> Register(int id)
     {
         var t = await Db.Tenders.FirstOrDefaultAsync(x => x.Id == id && x.Status == TenderStatus.Published);
-        if (t == null || DateTime.Now >= t.ClosingAt) { TempData["Error"] = "Gói thầu không còn nhận đăng ký."; return RedirectToAction(nameof(Details), new { id }); }
-        if (!CanTrade) { TempData["Error"] = "Tài khoản chưa được xác nhận thuộc nhà cung cấp."; return RedirectToAction(nameof(Details), new { id }); }
+        if (t == null || DateTime.Now >= t.ClosingAt) { TempData["Error"] = I18n.T("Gói thầu không còn nhận đăng ký."); return RedirectToAction(nameof(Details), new { id }); }
+        if (!CanTrade) { TempData["Error"] = I18n.T("Tài khoản chưa được xác nhận thuộc nhà cung cấp."); return RedirectToAction(nameof(Details), new { id }); }
         if (!await Db.TenderBidders.AnyAsync(b => b.TenderId == id && b.VendorId == MyVendor.Id))
         {
             Db.TenderBidders.Add(new TenderBidder { TenderId = id, VendorId = MyVendor.Id, RegisteredAt = DateTime.Now, VatPercent = 10 });
             await Db.SaveChangesAsync();
             await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} nhận HSMT gói thầu {t.Number} qua cổng NCC", null, $"/Tenders/Details/{t.Id}");
         }
-        TempData["Success"] = "Đã đăng ký nhận HSMT. Bạn có thể tải HSMT, gửi đề nghị làm rõ và nộp HSDT online trước thời điểm đóng thầu.";
+        TempData["Success"] = I18n.T("Đã đăng ký nhận HSMT. Bạn có thể tải HSMT, gửi đề nghị làm rõ và nộp HSDT online trước thời điểm đóng thầu.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -516,18 +516,18 @@ public class PortalTendersController : PortalControllerBase
         var t = await Db.Tenders.FirstOrDefaultAsync(x => x.Id == id);
         var b = await Db.TenderBidders.AnyAsync(x => x.TenderId == id && x.VendorId == MyVendor.Id);
         IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (t == null || !b) return Back("Đăng ký nhận HSMT trước khi gửi đề nghị làm rõ.");
-        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
+        if (t == null || !b) return Back(I18n.T("Đăng ký nhận HSMT trước khi gửi đề nghị làm rõ."));
+        if (!CanTrade) return Back(I18n.T("Tài khoản chưa được xác nhận thuộc nhà cung cấp."));
         var deadline = TenderEvaluation.QuestionDeadline(t, Settings.TenderQuestionMinDays);
         if (t.Status != TenderStatus.Published || DateTime.Now > deadline)
-            return Back($"Đã hết hạn gửi đề nghị làm rõ HSMT ({deadline.ToDateTime()} – {Settings.TenderQuestionMinDays} ngày trước đóng thầu).");
-        if (string.IsNullOrWhiteSpace(content)) return Back("Nhập nội dung đề nghị làm rõ.");
+            return Back(I18n.T("Đã hết hạn gửi đề nghị làm rõ HSMT ({0} – {1} ngày trước đóng thầu).", deadline.ToDateTime(), Settings.TenderQuestionMinDays));
+        if (string.IsNullOrWhiteSpace(content)) return Back(I18n.T("Nhập nội dung đề nghị làm rõ."));
         var text = content.Trim();
-        if (text.Length > 2000) return Back("Nội dung tối đa 2000 ký tự.");
+        if (text.Length > 2000) return Back(I18n.T("Nội dung tối đa 2000 ký tự."));
         Db.TenderQuestions.Add(new TenderQuestion { TenderId = id, VendorId = MyVendor.Id, VendorUserId = Me.Id, Content = text, AskedAt = DateTime.Now });
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} đề nghị làm rõ HSMT gói {t.Number}", text, $"/Tenders/Details/{t.Id}");
-        TempData["Success"] = "Đã gửi đề nghị làm rõ. Nội dung trả lời được đăng công khai cho mọi nhà thầu (không nêu tên nhà thầu hỏi).";
+        TempData["Success"] = I18n.T("Đã gửi đề nghị làm rõ. Nội dung trả lời được đăng công khai cho mọi nhà thầu (không nêu tên nhà thầu hỏi).");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -541,17 +541,17 @@ public class PortalTendersController : PortalControllerBase
         var t = await Db.Tenders.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id);
         var b = await Db.TenderBidders.FirstOrDefaultAsync(x => x.TenderId == id && x.VendorId == MyVendor.Id);
         IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (t == null || b == null) return Back("Đăng ký nhận HSMT trước khi nộp HSDT.");
-        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
-        if (t.Status != TenderStatus.Published || DateTime.Now >= t.ClosingAt) return Back($"Đã quá thời điểm đóng thầu {t.ClosingAt:dd/MM/yyyy HH:mm} – không nhận HSDT.");
+        if (t == null || b == null) return Back(I18n.T("Đăng ký nhận HSMT trước khi nộp HSDT."));
+        if (!CanTrade) return Back(I18n.T("Tài khoản chưa được xác nhận thuộc nhà cung cấp."));
+        if (t.Status != TenderStatus.Published || DateTime.Now >= t.ClosingAt) return Back(I18n.T("Đã quá thời điểm đóng thầu {0:dd/MM/yyyy HH:mm} – không nhận HSDT.", t.ClosingAt));
         var lines = t.Lines.OrderBy(l => l.SortOrder).ToList();
-        if (prices.Count != lines.Count || prices.Any(p => p <= 0)) return Back("Nhập đơn giá dự thầu cho tất cả các dòng.");
-        if (discountPercent is < 0 or >= 100 || vatPercent is < 0 or > 20) return Back("Giảm giá / VAT không hợp lệ.");
-        if (leadTimeDays is null or < 0 or > 3650) return Back("Nhập tiến độ thực hiện (ngày).");
+        if (prices.Count != lines.Count || prices.Any(p => p <= 0)) return Back(I18n.T("Nhập đơn giá dự thầu cho tất cả các dòng."));
+        if (discountPercent is < 0 or >= 100 || vatPercent is < 0 or > 20) return Back(I18n.T("Giảm giá / VAT không hợp lệ."));
+        if (leadTimeDays is null or < 0 or > 3650) return Back(I18n.T("Nhập tiến độ thực hiện (ngày)."));
         var problems = TenderEvaluation.BidProblems(t, bidSecurityAmount, bidSecurityRef, bidSecurityExpiry, validityDays);
-        if (problems.Count > 0) return Back("HSDT chưa đáp ứng HSMT: " + string.Join("; ", problems) + ".");
+        if (problems.Count > 0) return Back(I18n.T("HSDT chưa đáp ứng HSMT: ") + string.Join("; ", problems) + ".");
 
-        if (techFile == null || techFile.Length == 0) return Back("Đính kèm file đề xuất kỹ thuật.");
+        if (techFile == null || techFile.Length == 0) return Back(I18n.T("Đính kèm file đề xuất kỹ thuật."));
         var parts = new List<(BidFileKind Kind, IFormFile File)> { (BidFileKind.Technical, techFile) };
         if (finFile is { Length: > 0 }) parts.Add((BidFileKind.Financial, finFile));
         if (securityFile is { Length: > 0 }) parts.Add((BidFileKind.BidSecurity, securityFile));
@@ -573,7 +573,7 @@ public class PortalTendersController : PortalControllerBase
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} đã nộp HSDT online gói {t.Number}" + (sub.Revision > 1 ? $" (lần {sub.Revision})" : ""),
             "HSDT được niêm phong đến thời điểm mở thầu.", $"/Tenders/Details/{t.Id}");
-        TempData["Success"] = $"Đã nộp HSDT lúc {sub.SubmittedAt:dd/MM/yyyy HH:mm:ss} ({files.Count} file). Mã biên nhận: {sub.Sha256}. HSDT được niêm phong đến khi mở thầu.";
+        TempData["Success"] = I18n.T("Đã nộp HSDT lúc {0:dd/MM/yyyy HH:mm:ss} ({1} file). Mã biên nhận: {2}. HSDT được niêm phong đến khi mở thầu.", sub.SubmittedAt, files.Count, sub.Sha256);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -582,12 +582,12 @@ public class PortalTendersController : PortalControllerBase
     {
         var t = await Db.Tenders.FindAsync(id);
         var b = await Db.TenderBidders.FirstOrDefaultAsync(x => x.TenderId == id && x.VendorId == MyVendor.Id);
-        if (t == null || b == null || t.Status != TenderStatus.Published || DateTime.Now >= t.ClosingAt) { TempData["Error"] = "Không rút được HSDT."; return RedirectToAction(nameof(Details), new { id }); }
+        if (t == null || b == null || t.Status != TenderStatus.Published || DateTime.Now >= t.ClosingAt) { TempData["Error"] = I18n.T("Không rút được HSDT."); return RedirectToAction(nameof(Details), new { id }); }
         foreach (var s in await Db.VendorSubmissions.Where(s => s.TenderBidderId == b.Id && !s.IsWithdrawn).ToListAsync()) s.IsWithdrawn = true;
         b.Submitted = false; b.SubmittedAt = null;
         await Db.SaveChangesAsync();
         await NotifyBuyersAsync(new[] { t.BuyerId }, $"{MyVendor.Name} đã rút HSDT gói {t.Number}", null, $"/Tenders/Details/{t.Id}");
-        TempData["Success"] = "Đã rút HSDT.";
+        TempData["Success"] = I18n.T("Đã rút HSDT.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -625,17 +625,17 @@ public class PortalTendersController : PortalControllerBase
         var b = await Db.TenderBidders.AsNoTracking().FirstOrDefaultAsync(x => x.TenderId == id && x.VendorId == MyVendor.Id);
         IActionResult Back(string err) { TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
         if (t == null || b == null) return NotFound();
-        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
+        if (!CanTrade) return Back(I18n.T("Tài khoản chưa được xác nhận thuộc nhà cung cấp."));
         if (!TenderEvaluation.CanComplain(t, b, DateTime.Now))
-            return Back(t.ComplaintDeadline.HasValue && DateTime.Now > t.ComplaintDeadline ? $"Đã hết thời hạn kiến nghị ({t.ComplaintDeadline.ToDateTime()})." : "Chỉ nhà thầu đã nộp HSDT được kiến nghị sau khi công bố kết quả.");
-        if (string.IsNullOrWhiteSpace(content)) return Back("Nhập nội dung kiến nghị.");
+            return Back(t.ComplaintDeadline.HasValue && DateTime.Now > t.ComplaintDeadline ? I18n.T("Đã hết thời hạn kiến nghị ({0}).", t.ComplaintDeadline.ToDateTime()) : I18n.T("Chỉ nhà thầu đã nộp HSDT được kiến nghị sau khi công bố kết quả."));
+        if (string.IsNullOrWhiteSpace(content)) return Back(I18n.T("Nhập nội dung kiến nghị."));
         var text = content.Trim();
-        if (text.Length > 2000) return Back("Nội dung tối đa 2000 ký tự.");
+        if (text.Length > 2000) return Back(I18n.T("Nội dung tối đa 2000 ký tự."));
         Db.TenderComplaints.Add(new TenderComplaint { TenderId = id, VendorId = MyVendor.Id, Content = text, ReceivedAt = DateTime.Now });
         await Db.SaveChangesAsync();
         var directors = await Db.Users.Where(u => u.IsActive && u.Role == AppRoles.Director).Select(u => u.Id).ToListAsync();
         await NotifyBuyersAsync(directors.Append(t.BuyerId), $"{MyVendor.Name} kiến nghị kết quả gói thầu {t.Number}", text, $"/Tenders/Details/{t.Id}");
-        TempData["Success"] = "Đã gửi kiến nghị. Hợp đồng chưa được ký cho tới khi kiến nghị được giải quyết.";
+        TempData["Success"] = I18n.T("Đã gửi kiến nghị. Hợp đồng chưa được ký cho tới khi kiến nghị được giải quyết.");
         return RedirectToAction(nameof(Details), new { id });
     }
 }
@@ -650,13 +650,13 @@ public class PortalOrdersController : PortalControllerBase
     /// <summary>Trạng thái đơn theo góc nhìn nhà cung cấp</summary>
     public static (string Key, string Text, string Css) VendorStatus(PurchaseOrder p, bool shipped) => p.Status switch
     {
-        PoStatus.Cancelled => ("cancelled", "Đã hủy", "vstatus-muted"),
-        PoStatus.Received => ("done", "Hoàn thành giao hàng", "vstatus-ok"),
-        PoStatus.PartiallyReceived => ("partial", "Giao một phần", "vstatus-info"),
-        _ when p.VendorRejectedAt != null => ("rejected", "Đã từ chối", "vstatus-bad"),
-        _ when p.VendorConfirmedAt != null && shipped => ("shipping", "Đang giao hàng", "vstatus-info"),
-        _ when p.VendorConfirmedAt != null => ("confirmed", "Đã xác nhận", "vstatus-info"),
-        _ => ("waiting", "Chờ xác nhận", "vstatus-wait")
+        PoStatus.Cancelled => ("cancelled", I18n.T("Đã hủy"), "vstatus-muted"),
+        PoStatus.Received => ("done", I18n.T("Hoàn thành giao hàng"), "vstatus-ok"),
+        PoStatus.PartiallyReceived => ("partial", I18n.T("Giao một phần"), "vstatus-info"),
+        _ when p.VendorRejectedAt != null => ("rejected", I18n.T("Đã từ chối"), "vstatus-bad"),
+        _ when p.VendorConfirmedAt != null && shipped => ("shipping", I18n.T("Đang giao hàng"), "vstatus-info"),
+        _ when p.VendorConfirmedAt != null => ("confirmed", I18n.T("Đã xác nhận"), "vstatus-info"),
+        _ => ("waiting", I18n.T("Chờ xác nhận"), "vstatus-wait")
     };
 
     public static readonly (string Key, string Text)[] StatusOptions =
@@ -685,7 +685,7 @@ public class PortalOrdersController : PortalControllerBase
         {
             p.Lines = p.Lines.OrderBy(l => l.SortOrder).ToList();
             var name = p.PurchaseRequest?.Title ?? p.Package?.Title ?? p.Contract?.Title
-                       ?? (p.Lines.Count > 0 ? p.Lines.First().Description + (p.Lines.Count > 1 ? $" và {p.Lines.Count - 1} mặt hàng khác" : "") : p.Number);
+                       ?? (p.Lines.Count > 0 ? p.Lines.First().Description + (p.Lines.Count > 1 ? I18n.T(" và {0} mặt hàng khác", p.Lines.Count - 1) : "") : p.Number);
             var st = VendorStatus(p, shipped.Contains(p.Id));
             return new OrderRow(p, name, p.PurchaseRequest?.Requester?.FullName ?? p.Buyer?.FullName, st,
                 st.Key is "waiting" or "confirmed" or "shipping" or "partial" && p.DeliveryDate < DateTime.Today);
@@ -722,10 +722,10 @@ public class PortalOrdersController : PortalControllerBase
         var po = await LoadAsync(id, track: true);
         if (po == null) return NotFound();
         IActionResult Back(string? err = null) { if (err != null) TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
-        if (po.Status != PoStatus.Issued || po.VendorConfirmedAt != null || po.VendorRejectedAt != null) return Back("Đơn hàng đã được phản hồi.");
-        if (!accept && string.IsNullOrWhiteSpace(response)) return Back("Nhập lý do từ chối.");
-        if (accept && promisedDate.HasValue && promisedDate < DateTime.Today) return Back("Ngày cam kết giao không hợp lệ.");
+        if (!CanTrade) return Back(I18n.T("Tài khoản chưa được xác nhận thuộc nhà cung cấp."));
+        if (po.Status != PoStatus.Issued || po.VendorConfirmedAt != null || po.VendorRejectedAt != null) return Back(I18n.T("Đơn hàng đã được phản hồi."));
+        if (!accept && string.IsNullOrWhiteSpace(response)) return Back(I18n.T("Nhập lý do từ chối."));
+        if (accept && promisedDate.HasValue && promisedDate < DateTime.Today) return Back(I18n.T("Ngày cam kết giao không hợp lệ."));
         var text = response?.Trim();
         if (text?.Length > 1000) text = text[..1000];
         if (accept) { po.VendorConfirmedAt = DateTime.Now; po.VendorPromisedDate = promisedDate ?? po.DeliveryDate; }
@@ -747,7 +747,7 @@ public class PortalOrdersController : PortalControllerBase
             Message = text
         });
         await Db.SaveChangesAsync();
-        TempData["Success"] = accept ? "Đã xác nhận đơn hàng." : "Đã gửi từ chối đơn hàng.";
+        TempData["Success"] = accept ? I18n.T("Đã xác nhận đơn hàng.") : I18n.T("Đã gửi từ chối đơn hàng.");
         return Back();
     }
 
@@ -758,9 +758,9 @@ public class PortalOrdersController : PortalControllerBase
         var po = await Db.PurchaseOrders.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == id && p.VendorId == MyVendor.Id && p.IssuedAt != null);
         if (po == null) return NotFound();
         IActionResult Back(string? err = null) { if (err != null) TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (!CanTrade) return Back("Tài khoản chưa được xác nhận thuộc nhà cung cấp.");
-        if (po.Status is not (PoStatus.PartiallyReceived or PoStatus.Received)) return Back("Chỉ gửi hóa đơn sau khi bên mua đã nhận hàng.");
-        if (file == null || file.Length == 0) return Back("Đính kèm file hóa đơn điện tử (pdf / xml).");
+        if (!CanTrade) return Back(I18n.T("Tài khoản chưa được xác nhận thuộc nhà cung cấp."));
+        if (po.Status is not (PoStatus.PartiallyReceived or PoStatus.Received)) return Back(I18n.T("Chỉ gửi hóa đơn sau khi bên mua đã nhận hàng."));
+        if (file == null || file.Length == 0) return Back(I18n.T("Đính kèm file hóa đơn điện tử (pdf / xml)."));
         f.PurchaseOrderId = id;
         var fin = HttpContext.RequestServices.GetRequiredService<FinanceService>();
         var (inv, match, err) = await InvoiceFactory.CreateAsync(Db, fin, po, f, file, MaxFileBytes, null, Me.Id);
@@ -772,7 +772,7 @@ public class PortalOrdersController : PortalControllerBase
             Action = match!.Ok ? "Đối chiếu 3 bên: khớp" : "Đối chiếu 3 bên: lệch", Comment = inv.MatchNote });
         await NotifyBuyersAsync(await Db.Users.Where(u => u.IsActive && u.Role == AppRoles.Accountant).Select(u => u.Id).ToListAsync(),
             $"Hóa đơn mới từ {MyVendor.Name}: {inv.InvoiceNo} – {(match.Ok ? "khớp 3 bên" : "LỆCH")}", inv.MatchNote, $"/Invoices/Details/{inv.Id}");
-        TempData[match.Ok ? "Success" : "Error"] = match.Ok ? $"Đã gửi hóa đơn {inv.InvoiceNo} – khớp với đơn hàng và số lượng đã giao. Hạn thanh toán dự kiến {inv.DueDate:dd/MM/yyyy}."
+        TempData[match.Ok ? "Success" : "Error"] = match.Ok ? I18n.T("Đã gửi hóa đơn {0} – khớp với đơn hàng và số lượng đã giao. Hạn thanh toán dự kiến {1:dd/MM/yyyy}.", inv.InvoiceNo, inv.DueDate)
             : $"Đã gửi hóa đơn {inv.InvoiceNo} nhưng chưa khớp: {inv.MatchNote}. Bộ phận kế toán sẽ liên hệ.";
         return Back();
     }
@@ -783,8 +783,8 @@ public class PortalOrdersController : PortalControllerBase
         var po = await LoadAsync(id);
         if (po == null) return NotFound();
         IActionResult Back(string? err = null) { if (err != null) TempData["Error"] = err; return RedirectToAction(nameof(Details), new { id }); }
-        if (!CanTrade || po.Status is not (PoStatus.Issued or PoStatus.PartiallyReceived) || po.VendorRejectedAt != null) return Back("Đơn hàng không ở trạng thái giao hàng.");
-        if (expectedDate < shipDate) return Back("Ngày dự kiến giao phải từ ngày xuất hàng.");
+        if (!CanTrade || po.Status is not (PoStatus.Issued or PoStatus.PartiallyReceived) || po.VendorRejectedAt != null) return Back(I18n.T("Đơn hàng không ở trạng thái giao hàng."));
+        if (expectedDate < shipDate) return Back(I18n.T("Ngày dự kiến giao phải từ ngày xuất hàng."));
         Db.PoShipments.Add(new PoShipment { PurchaseOrderId = id, ShipDate = shipDate.Date, ExpectedDate = expectedDate.Date, Reference = reference?.Trim(), Note = note?.Trim(), VendorUserId = Me.Id });
         Db.Notifications.Add(new Notification
         {
@@ -792,7 +792,7 @@ public class PortalOrdersController : PortalControllerBase
             Title = $"{MyVendor.Name} báo giao hàng {po.Number}: dự kiến {expectedDate:dd/MM/yyyy}", Message = string.Join(" · ", new[] { reference, note }.Where(s => !string.IsNullOrWhiteSpace(s)))
         });
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã gửi thông báo giao hàng.";
+        TempData["Success"] = I18n.T("Đã gửi thông báo giao hàng.");
         return Back();
     }
 }

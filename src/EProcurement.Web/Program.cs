@@ -42,7 +42,10 @@ builder.Services.AddControllersWithViews(o =>
     var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
     o.Conventions.Add(new EProcurement.Web.Infrastructure.InternalAuthConvention(new AuthorizeFilter(policy)));
     o.Filters.Add<EProcurement.Web.Infrastructure.RolePermissionFilter>(); // Thiết lập → phân quyền theo vai trò
-});
+}).AddDataAnnotationsLocalization(o => o.DataAnnotationLocalizerProvider = (_, f) => f.Create(typeof(EProcurement.Web.Infrastructure.I18n)));
+// Song ngữ Việt – Anh: từ điển trong I18n.En; chỉ đổi ngôn ngữ hiển thị, định dạng số / ngày giữ kiểu Việt Nam
+builder.Services.AddSingleton<Microsoft.Extensions.Localization.IStringLocalizerFactory, EProcurement.Web.Infrastructure.DictionaryStringLocalizerFactory>();
+builder.Services.AddSingleton<EProcurement.Web.Infrastructure.Localizer>();
 
 // Lưu khóa mã hóa cookie ra thư mục (volume Docker) để restart container không bị đăng xuất
 var keysPath = builder.Configuration["DataProtection:KeysPath"];
@@ -91,6 +94,13 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+// Ngôn ngữ hiển thị theo cookie (cờ Việt / Anh); chỉ đổi UI culture, không đổi định dạng số / ngày khi nhập liệu
+app.Use(async (ctx, next) =>
+{
+    System.Globalization.CultureInfo.CurrentUICulture = ctx.Request.Cookies[EProcurement.Web.Infrastructure.I18n.CookieName] == EProcurement.Web.Infrastructure.I18n.EnCode
+        ? EProcurement.Web.Infrastructure.I18n.EnCulture : EProcurement.Web.Infrastructure.I18n.ViCulture;
+    await next();
+});
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();

@@ -6,30 +6,30 @@
 }
 <form method="get" class="d-flex flex-wrap gap-2 mb-3">
     <div class="btn-group btn-group-sm">
-        <a asp-route-tab="all" asp-route-q="@q" class="btn btn-outline-secondary @(tab == "all" ? "active" : "")">Tất cả</a>
-        <a asp-route-tab="open" asp-route-q="@q" class="btn btn-outline-secondary @(tab == "open" ? "active" : "")">Đang nhận HSDT</a>
-        <a asp-route-tab="mine" asp-route-q="@q" class="btn btn-outline-secondary @(tab == "mine" ? "active" : "")">Đã tham gia</a>
+        <a asp-route-tab="all" asp-route-q="@q" class="btn btn-outline-secondary @(tab == "all" ? "active" : "")">@L["Tất cả"]</a>
+        <a asp-route-tab="open" asp-route-q="@q" class="btn btn-outline-secondary @(tab == "open" ? "active" : "")">@L["Đang nhận HSDT"]</a>
+        <a asp-route-tab="mine" asp-route-q="@q" class="btn btn-outline-secondary @(tab == "mine" ? "active" : "")">@L["Đã tham gia"]</a>
     </div>
     <input type="hidden" name="tab" value="@tab" />
-    <input name="q" value="@q" class="form-control form-control-sm" style="max-width:260px" placeholder="Tìm số / tên gói thầu" />
-    <button class="btn btn-sm btn-outline-primary">Tìm</button>
+    <input name="q" value="@q" class="form-control form-control-sm" style="max-width:260px" placeholder="@L["Tìm số / tên gói thầu"]" />
+    <button class="btn btn-sm btn-outline-primary">@L["Tìm"]</button>
 </form>
 <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-    <thead><tr><th>Số</th><th>Tên gói thầu</th><th>Đóng thầu</th><th>Trạng thái</th><th>Quý công ty</th></tr></thead><tbody>
+    <thead><tr><th>@L["Số"]</th><th>@L["Tên gói thầu"]</th><th>@L["Đóng thầu"]</th><th>@L["Trạng thái"]</th><th>@L["Quý công ty"]</th></tr></thead><tbody>
     @foreach (var row in Model)
     {
         var t = row.Tender; var b = row.Bidder;
         var open = t.Status == TenderStatus.Published && t.ClosingAt > now;
         <tr><td><a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold">@t.Number</a></td><td>@t.Title</td>
-            <td class="small">@t.ClosingAt.ToDateTime()@if (open) { <div class="text-muted">còn <span data-countdown="@((int)(t.ClosingAt - now).TotalSeconds)"></span></div> }</td>
+            <td class="small">@t.ClosingAt.ToDateTime()@if (open) { <div class="text-muted">@L["còn"] <span data-countdown="@((int)(t.ClosingAt - now).TotalSeconds)"></span></div> }</td>
             <td><span class="badge bg-light text-dark border">@t.Status.GetDisplayName()</span></td>
             <td class="small">
-                @if (b == null) { @if (open) { <span class="text-muted">Chưa đăng ký</span> } }
-                else if (t.AwardedVendorId == myVendor && t.Status is TenderStatus.Awarded or TenderStatus.Contracted) { <span class="badge bg-success">Trúng thầu</span> }
-                else if (b.Submitted) { <span class="badge bg-primary-subtle text-primary">Đã nộp HSDT</span> }
-                else { <span class="badge bg-secondary-subtle text-secondary">Đã nhận HSMT@(open ? " – chưa nộp" : "")</span> }
-                @if (open && row.AmendedAfterSubmit) { <div><span class="badge bg-warning text-dark">HSMT sửa đổi sau khi nộp</span></div> }
+                @if (b == null) { @if (open) { <span class="text-muted">@L["Chưa đăng ký"]</span> } }
+                else if (t.AwardedVendorId == myVendor && t.Status is TenderStatus.Awarded or TenderStatus.Contracted) { <span class="badge bg-success">@L["Trúng thầu"]</span> }
+                else if (b.Submitted) { <span class="badge bg-primary-subtle text-primary">@L["Đã nộp HSDT"]</span> }
+                else { <span class="badge bg-secondary-subtle text-secondary">@L["Đã nhận HSMT"]@(open ? " – " + L["chưa nộp"] : "")</span> }
+                @if (open && row.AmendedAfterSubmit) { <div><span class="badge bg-warning text-dark">@L["HSMT sửa đổi sau khi nộp"]</span></div> }
             </td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">Không có gói thầu.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">@L["Không có gói thầu."]</td></tr> }
 </tbody></table></div></div></div>

@@ -30,15 +30,15 @@ public static class TenderEvaluation
         var results = t.Bidders.Where(b => b.Submitted).Select(b =>
         {
             var r = new BidResult { Bid = b, ScoreCount = b.Scores.Count };
-            if (b.Valid == null) r.Issues.Add("Chưa đánh giá tính hợp lệ");
-            else if (b.Valid == false) r.Issues.Add("Không hợp lệ" + (string.IsNullOrEmpty(b.ValidNote) ? "" : ": " + b.ValidNote));
-            if (b.Valid == true && b.Qualified == null) r.Issues.Add("Chưa đánh giá năng lực");
-            else if (b.Qualified == false) r.Issues.Add("Không đạt năng lực" + (string.IsNullOrEmpty(b.QualifiedNote) ? "" : ": " + b.QualifiedNote));
+            if (b.Valid == null) r.Issues.Add(I18n.T("Chưa đánh giá tính hợp lệ"));
+            else if (b.Valid == false) r.Issues.Add(I18n.T("Không hợp lệ") + (string.IsNullOrEmpty(b.ValidNote) ? "" : ": " + b.ValidNote));
+            if (b.Valid == true && b.Qualified == null) r.Issues.Add(I18n.T("Chưa đánh giá năng lực"));
+            else if (b.Qualified == false) r.Issues.Add(I18n.T("Không đạt năng lực") + (string.IsNullOrEmpty(b.QualifiedNote) ? "" : ": " + b.QualifiedNote));
             if (r.Responsive)
             {
                 if (r.ScoreCount > 0) r.TechnicalAverage = Math.Round((decimal)b.Scores.Average(s => s.TechnicalScore), 2);
-                if (r.ScoreCount < committee) r.Issues.Add($"Mới có {r.ScoreCount}/{committee} thành viên chấm kỹ thuật");
-                else if (r.TechnicalAverage < t.MinTechnicalScore) r.Issues.Add($"Điểm kỹ thuật {r.TechnicalAverage:0.##} < tối thiểu {t.MinTechnicalScore}");
+                if (r.ScoreCount < committee) r.Issues.Add(I18n.T("Mới có {0}/{1} thành viên chấm kỹ thuật", r.ScoreCount, committee));
+                else if (r.TechnicalAverage < t.MinTechnicalScore) r.Issues.Add(I18n.T("Điểm kỹ thuật {0:0.##} < tối thiểu {1}", r.TechnicalAverage, t.MinTechnicalScore));
                 r.TechnicalPass = committee > 0 && r.ScoreCount >= committee && r.TechnicalAverage >= t.MinTechnicalScore;
             }
             return r;

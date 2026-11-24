@@ -4,10 +4,10 @@
 {
     var cls = h.Action.Contains("từ chối") || h.Action.Contains("Hủy") || h.Action.Contains("trả lại") ? "bad" : h.Action.Contains("duyệt") || h.Action.Contains("Hoàn tất") || h.Action.Contains("Chọn NCC") ? "good" : "";
     <li class="@cls">
-        <div class="fw-semibold">@h.Action</div>
+        <div class="fw-semibold">@L[h.Action]</div>
         <div class="small text-muted">@h.User?.FullName · @h.CreatedAt.ToDateTime()</div>
         @if (!string.IsNullOrEmpty(h.Comment)) { <div class="small fst-italic">"@h.Comment"</div> }
     </li>
 }
-@if (!Model.Any()) { <li class="text-muted small">Chưa có thao tác.</li> }
+@if (!Model.Any()) { <li class="text-muted small">@L["Chưa có thao tác."]</li> }
 </ul>
