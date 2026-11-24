@@ -5,36 +5,36 @@
     var approved = Model.Status == SelectionPlanStatus.Approved;
     var pk = Model.Packages.OrderBy(p => p.PlannedStart).ToList();
 }
-<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button></div>
 
 <div class="card paper mb-4"><div class="card-body p-4">@{ var printCfg = await SettingsDb.GetAsync(SettingsStore.Print, () => new PrintSettings()); }<partial name="_PrintHeader" model="printCfg" />
-    <div class="text-center mb-3"><h4 class="mb-0">@(approved ? "QUYẾT ĐỊNH" : "TỜ TRÌNH")</h4>
-        <div>V/v phê duyệt kế hoạch lựa chọn nhà cung cấp</div>
-        <div class="text-muted">Số: @Model.Number · Ngày: @((approved ? Model.DecidedAt : Model.SubmittedAt ?? Model.CreatedAt)?.ToDate())</div></div>
+    <div class="text-center mb-3"><h4 class="mb-0">@(approved ? L["QUYẾT ĐỊNH"] : L["TỜ TRÌNH"])</h4>
+        <div>@L["V/v phê duyệt kế hoạch lựa chọn nhà cung cấp"]</div>
+        <div class="text-muted">@L["Số:"] @Model.Number @L["· Ngày:"] @((approved ? Model.DecidedAt : Model.SubmittedAt ?? Model.CreatedAt)?.ToDate())</div></div>
     <p><b>@Model.Title</b></p>
-    @if (!string.IsNullOrEmpty(Model.Basis)) { <p class="mb-1"><b>Căn cứ:</b></p><div class="pre mb-3">@Model.Basis</div> }
-    <p>@(approved ? "Phê duyệt" : "Đề nghị phê duyệt") kế hoạch lựa chọn nhà cung cấp gồm @pk.Count gói, tổng giá các gói <b>@pk.Sum(p => p.Budget).ToMoney() đồng</b> (chưa bao gồm VAT), chi tiết như sau:</p>
+    @if (!string.IsNullOrEmpty(Model.Basis)) { <p class="mb-1"><b>@L["Căn cứ:"]</b></p><div class="pre mb-3">@Model.Basis</div> }
+    <p>@(approved ? L["Phê duyệt"] : L["Đề nghị phê duyệt"]) @L["kế hoạch lựa chọn nhà cung cấp gồm"] @pk.Count @L["gói, tổng giá các gói"] <b>@pk.Sum(p => p.Budget).ToMoney() @L["đồng"]</b> @L["(chưa bao gồm VAT), chi tiết như sau:"]</p>
     <table class="table table-bordered table-sm small">
-        <thead><tr><th>TT</th><th>Tên gói</th><th class="money">Giá gói (đồng)</th><th>Nguồn vốn</th><th>Hình thức lựa chọn NCC</th><th>Phương thức</th><th>Thời gian bắt đầu tổ chức LCNT</th><th>Loại hợp đồng</th><th>Thời gian thực hiện HĐ</th></tr></thead>
+        <thead><tr><th>TT</th><th>@L["Tên gói"]</th><th class="money">@L["Giá gói (đồng)"]</th><th>@L["Nguồn vốn"]</th><th>@L["Hình thức lựa chọn NCC"]</th><th>@L["Phương thức"]</th><th>@L["Thời gian bắt đầu tổ chức LCNT"]</th><th>@L["Loại hợp đồng"]</th><th>@L["Thời gian thực hiện HĐ"]</th></tr></thead>
         <tbody>
         @for (var i = 0; i < pk.Count; i++)
         {
             var p = pk[i];
             <tr><td>@(i + 1)</td><td>@p.Title <div class="text-muted">@p.Number</div></td><td class="money">@p.Budget.ToMoney()</td><td>@p.FundingSource</td>
                 <td>@p.Method.GetDisplayName()</td><td>@(p.Method == ProcurementMethod.OpenTender ? p.EnvelopeMethod.GetDisplayName() : "–")</td>
-                <td>@p.PlannedStart.ToString("dd/MM/yyyy")</td><td>@p.ContractType</td><td>@p.ContractDurationDays ngày</td></tr>
+                <td>@p.PlannedStart.ToString("dd/MM/yyyy")</td><td>@p.ContractType</td><td>@p.ContractDurationDays @L["ngày"]</td></tr>
         }
         </tbody>
-        <tfoot><tr class="fw-bold"><td colspan="2" class="text-end">Tổng cộng</td><td class="money">@pk.Sum(p => p.Budget).ToMoney()</td><td colspan="6"></td></tr></tfoot>
+        <tfoot><tr class="fw-bold"><td colspan="2" class="text-end">@L["Tổng cộng"]</td><td class="money">@pk.Sum(p => p.Budget).ToMoney()</td><td colspan="6"></td></tr></tfoot>
     </table>
     @if (pk.Any(p => !string.IsNullOrEmpty(p.MethodReason)))
     {
-        <p class="mb-1"><b>Thuyết minh lựa chọn hình thức:</b></p>
+        <p class="mb-1"><b>@L["Thuyết minh lựa chọn hình thức:"]</b></p>
         <ul class="small">@foreach (var p in pk.Where(p => !string.IsNullOrEmpty(p.MethodReason))) { <li>@p.Title: @p.MethodReason</li> }</ul>
     }
     <div class="row text-center mt-4 small">
-        <div class="col">NGƯỜI LẬP<br /><br /><br /><br />@Model.CreatedBy?.FullName</div>
-        <div class="col">@(approved ? "GIÁM ĐỐC" : "PHÊ DUYỆT CỦA GIÁM ĐỐC")<br />@(approved ? $"(đã ký điện tử {Model.DecidedAt:dd/MM/yyyy HH:mm})" : "")<br /><br /><br />@Model.DecidedBy?.FullName</div>
+        <div class="col">@L["NGƯỜI LẬP"]<br /><br /><br /><br />@Model.CreatedBy?.FullName</div>
+        <div class="col">@(approved ? L["GIÁM ĐỐC"] : L["PHÊ DUYỆT CỦA GIÁM ĐỐC"])<br />@(approved ? L["(đã ký điện tử {0:dd/MM/yyyy HH:mm})", Model.DecidedAt] : "")<br /><br /><br />@Model.DecidedBy?.FullName</div>
     </div>
     @if (printCfg.Footer != null) { <div class="small text-muted text-end border-top mt-4 pt-1">@printCfg.Footer</div> }
 </div></div>

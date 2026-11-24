@@ -1,25 +1,25 @@
 @model List<Tender>
 @{ ViewData["Title"] = "Báo cáo thẩm định kết quả LCNT"; var meId = User.GetUserId(); }
 <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-    <thead><tr><th>Gói thầu</th><th>Đề xuất trúng thầu</th><th>Người thẩm định</th><th>Kết luận</th><th>Trạng thái gói</th><th></th></tr></thead>
+    <thead><tr><th>@L["Gói thầu"]</th><th>@L["Đề xuất trúng thầu"]</th><th>@L["Người thẩm định"]</th><th>@L["Kết luận"]</th><th>@L["Trạng thái gói"]</th><th></th></tr></thead>
     <tbody>
     @foreach (var t in Model)
     {
         var a = TenderEvaluation.CurrentAppraisal(t.Appraisals) ?? t.Appraisals.OrderByDescending(x => x.AssignedAt).FirstOrDefault();
         var mine = a != null && !a.IsVoid && a.CompletedAt == null && a.AppraiserId == meId;
         <tr class="@(mine ? "table-warning" : "")"><td><a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold">@t.Number</a><div class="small">@t.Title</div></td>
-            <td class="small">@(t.AwardedVendor != null ? $"{t.AwardedVendor.Name} – {t.AwardPrice?.ToMoney()} đ" : "")</td>
-            <td class="small">@(a?.Appraiser?.FullName ?? "Chưa giao")</td>
-            <td class="small">@if (a == null) { <span class="badge bg-secondary">Chưa giao thẩm định</span> }
-                else if (a.IsVoid) { <span class="badge bg-light text-muted border">Hết hiệu lực</span> }
-                else if (a.CompletedAt == null) { <span class="badge bg-warning text-dark">Đang thẩm định</span> }
-                else { <span class="badge @(a.Agree == true ? "bg-success" : "bg-danger")">@(a.Agree == true ? "Thống nhất" : "Không thống nhất")</span> <span class="text-muted">@a.CompletedAt.ToDateTime()</span> }</td>
+            <td class="small">@(t.AwardedVendor != null ? L["{0} – {1} đ", t.AwardedVendor.Name, t.AwardPrice?.ToMoney()] : "")</td>
+            <td class="small">@(a?.Appraiser?.FullName ?? L["Chưa giao"])</td>
+            <td class="small">@if (a == null) { <span class="badge bg-secondary">@L["Chưa giao thẩm định"]</span> }
+                else if (a.IsVoid) { <span class="badge bg-light text-muted border">@L["Hết hiệu lực"]</span> }
+                else if (a.CompletedAt == null) { <span class="badge bg-warning text-dark">@L["Đang thẩm định"]</span> }
+                else { <span class="badge @(a.Agree == true ? "bg-success" : "bg-danger")">@(a.Agree == true ? L["Thống nhất"] : L["Không thống nhất"])</span> <span class="text-muted">@a.CompletedAt.ToDateTime()</span> }</td>
             <td><partial name="_Badge" model="t.Status" /></td>
             <td class="text-end text-nowrap">
-                @if (mine) { <a asp-action="Details" asp-route-id="@t.Id" asp-fragment="appraisal" class="btn btn-sm btn-primary">Lập báo cáo thẩm định</a> }
-                else if (User.IsPurchasing() && t.Status == TenderStatus.PendingResultApproval && a?.CompletedAt == null) { <a asp-action="Details" asp-route-id="@t.Id" asp-fragment="appraisal" class="btn btn-sm btn-outline-primary">@(a == null ? "Giao thẩm định" : "Xem")</a> }
-                @if (t.Appraisals.Any(x => x.CompletedAt != null)) { <a asp-action="AppraisalReport" asp-route-id="@t.Id" target="_blank" class="btn btn-sm btn-outline-secondary">Báo cáo</a> }</td></tr>
+                @if (mine) { <a asp-action="Details" asp-route-id="@t.Id" asp-fragment="appraisal" class="btn btn-sm btn-primary">@L["Lập báo cáo thẩm định"]</a> }
+                else if (User.IsPurchasing() && t.Status == TenderStatus.PendingResultApproval && a?.CompletedAt == null) { <a asp-action="Details" asp-route-id="@t.Id" asp-fragment="appraisal" class="btn btn-sm btn-outline-primary">@(a == null ? L["Giao thẩm định"] : "Xem")</a> }
+                @if (t.Appraisals.Any(x => x.CompletedAt != null)) { <a asp-action="AppraisalReport" asp-route-id="@t.Id" target="_blank" class="btn btn-sm btn-outline-secondary">@L["Báo cáo"]</a> }</td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="6" class="text-muted p-3">Chưa có gói thầu chờ thẩm định kết quả.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="6" class="text-muted p-3">@L["Chưa có gói thầu chờ thẩm định kết quả."]</td></tr> }
     </tbody>
 </table></div></div></div>

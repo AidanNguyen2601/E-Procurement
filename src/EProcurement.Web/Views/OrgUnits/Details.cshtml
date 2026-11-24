@@ -7,16 +7,16 @@
     int usage = ViewBag.Usage;
 }
 <div class="toolbar d-flex flex-wrap gap-2 align-items-center">
-    <a asp-action="Index" class="btn btn-sm btn-light">← Cơ cấu tổ chức</a>
+    <a asp-action="Index" class="btn btn-sm btn-light">@L["← Cơ cấu tổ chức"]</a>
     <span class="small text-muted">@ViewBag.Path</span>
     @if (admin)
     {
         <div class="ms-auto d-flex gap-2">
-            <a asp-action="Create" asp-route-parentId="@Model.Id" class="btn btn-sm btn-outline-primary">+ Đơn vị cấp dưới</a>
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-secondary">Sửa</a>
+            <a asp-action="Create" asp-route-parentId="@Model.Id" class="btn btn-sm btn-outline-primary">@L["+ Đơn vị cấp dưới"]</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-secondary">@L["Sửa"]</a>
             @if (Model.ParentId != null && children.Count == 0 && usage == 0)
             {
-                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-confirm="Xóa đơn vị @Model.Name?"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-confirm="@L["Xóa đơn vị {0}?", Model.Name]"><button class="btn btn-sm btn-outline-danger">@L["Xóa"]</button></form>
             }
         </div>
     }
@@ -30,29 +30,29 @@
                 <div>
                     <div class="small text-muted">@Model.Type.GetDisplayName() · <code>@Model.Code</code></div>
                     <h5 class="mb-1">@Model.Name</h5>
-                    @if (Model.IsActive) { <span class="badge bg-success-subtle text-success">Hoạt động</span> } else { <span class="badge bg-secondary">Ngừng hoạt động</span> }
+                    @if (Model.IsActive) { <span class="badge bg-success-subtle text-success">@L["Hoạt động"]</span> } else { <span class="badge bg-secondary">@L["Ngừng hoạt động"]</span> }
                 </div>
             </div>
             <dl class="row small mt-3 mb-0">
-                <dt class="col-5">Trưởng đơn vị</dt><dd class="col-7">@(Model.Manager?.FullName ?? "—")@if (Model.Manager != null) { <div class="text-muted">@AppRoles.DisplayName(Model.Manager.Role) · @Model.Manager.Department</div> }</dd>
-                <dt class="col-5">Trung tâm chi phí</dt><dd class="col-7">@(Model.CostCenter ?? "—")</dd>
-                <dt class="col-5">Điện thoại</dt><dd class="col-7">@(Model.Phone ?? "—")</dd>
-                <dt class="col-5">Địa chỉ</dt><dd class="col-7">@(Model.Address ?? "—")</dd>
-                <dt class="col-5">Ghi chú</dt><dd class="col-7">@(Model.Note ?? "—")</dd>
+                <dt class="col-5">@L["Trưởng đơn vị"]</dt><dd class="col-7">@(Model.Manager?.FullName ?? "—")@if (Model.Manager != null) { <div class="text-muted">@AppRoles.DisplayName(Model.Manager.Role) · @Model.Manager.Department</div> }</dd>
+                <dt class="col-5">@L["Trung tâm chi phí"]</dt><dd class="col-7">@(Model.CostCenter ?? "—")</dd>
+                <dt class="col-5">@L["Điện thoại"]</dt><dd class="col-7">@(Model.Phone ?? "—")</dd>
+                <dt class="col-5">@L["Địa chỉ"]</dt><dd class="col-7">@(Model.Address ?? "—")</dd>
+                <dt class="col-5">@L["Ghi chú"]</dt><dd class="col-7">@(Model.Note ?? "—")</dd>
             </dl>
         </div></div>
-        <div class="card"><div class="card-header">Số liệu @(children.Count > 0 ? "(gồm đơn vị cấp dưới)" : "")</div><div class="card-body small">
-            <div class="d-flex justify-content-between"><span>Nhân sự đang hoạt động</span><b>@ViewBag.SubtreeHeadcount</b></div>
-            <div class="d-flex justify-content-between"><span>Đề nghị mua hàng</span><b>@stats.Prs</b></div>
-            <div class="d-flex justify-content-between"><span>Ngân sách năm @DateTime.Today.Year</span><b>@(((decimal)stats.Budget).ToString("N0"))</b></div>
-            <div class="d-flex justify-content-between"><span>Đã đặt hàng năm @DateTime.Today.Year</span><b>@(((decimal)stats.Spend).ToString("N0"))</b></div>
-            <div class="mt-2"><a asp-controller="Reports" asp-action="Show" asp-route-id="spend" asp-route-department="@Model.Name">Xem báo cáo của đơn vị →</a></div>
+        <div class="card"><div class="card-header">@L["Số liệu"] @(children.Count > 0 ? L["(gồm đơn vị cấp dưới)"] : "")</div><div class="card-body small">
+            <div class="d-flex justify-content-between"><span>@L["Nhân sự đang hoạt động"]</span><b>@ViewBag.SubtreeHeadcount</b></div>
+            <div class="d-flex justify-content-between"><span>@L["Đề nghị mua hàng"]</span><b>@stats.Prs</b></div>
+            <div class="d-flex justify-content-between"><span>@L["Ngân sách năm"] @DateTime.Today.Year</span><b>@(((decimal)stats.Budget).ToString("N0"))</b></div>
+            <div class="d-flex justify-content-between"><span>@L["Đã đặt hàng năm"] @DateTime.Today.Year</span><b>@(((decimal)stats.Spend).ToString("N0"))</b></div>
+            <div class="mt-2"><a asp-controller="Reports" asp-action="Show" asp-route-id="spend" asp-route-department="@Model.Name">@L["Xem báo cáo của đơn vị →"]</a></div>
         </div></div>
     </div>
 
     <div class="col-lg-8">
-        <div class="card mb-3"><div class="card-header d-flex">Đơn vị cấp dưới <span class="badge bg-secondary-subtle text-secondary ms-2">@children.Count</span></div>
-            @if (children.Count == 0) { <div class="card-body small text-muted">Không có.</div> }
+        <div class="card mb-3"><div class="card-header d-flex">@L["Đơn vị cấp dưới"] <span class="badge bg-secondary-subtle text-secondary ms-2">@children.Count</span></div>
+            @if (children.Count == 0) { <div class="card-body small text-muted">@L["Không có."]</div> }
             else
             {
                 <div class="list-group list-group-flush">
@@ -60,38 +60,38 @@
                     {
                         <a asp-action="Details" asp-route-id="@c.Id" class="list-group-item list-group-item-action d-flex justify-content-between @(c.IsActive ? "" : "text-muted")">
                             <span>@c.Name <span class="small text-muted">· @c.Type.GetDisplayName() · @c.Code</span></span>
-                            @if (!c.IsActive) { <span class="badge bg-secondary">Ngừng</span> }
+                            @if (!c.IsActive) { <span class="badge bg-secondary">@L["Ngừng"]</span> }
                         </a>
                     }
                 </div>
             }
         </div>
 
-        <div class="card"><div class="card-header d-flex">Nhân sự <span class="badge bg-secondary-subtle text-secondary ms-2">@members.Count</span></div>
+        <div class="card"><div class="card-header d-flex">@L["Nhân sự"] <span class="badge bg-secondary-subtle text-secondary ms-2">@members.Count</span></div>
             @if (admin)
             {
                 <div class="card-body border-bottom">
                     <form asp-action="AddMember" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-center">
-                        <div class="col-md-7"><select name="userId" asp-items="(SelectList)ViewBag.Users" class="form-select form-select-sm" required><option value="">-- Chuyển người dùng vào đơn vị --</option></select></div>
-                        <div class="col-md-3"><div class="form-check"><input type="checkbox" name="makeManager" value="true" class="form-check-input" id="mk" /><label for="mk" class="form-check-label small">Làm trưởng đơn vị</label></div></div>
-                        <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Chuyển</button></div>
+                        <div class="col-md-7"><select name="userId" asp-items="(SelectList)ViewBag.Users" class="form-select form-select-sm" required><option value="">@L["-- Chuyển người dùng vào đơn vị --"]</option></select></div>
+                        <div class="col-md-3"><div class="form-check"><input type="checkbox" name="makeManager" value="true" class="form-check-input" id="mk" /><label for="mk" class="form-check-label small">@L["Làm trưởng đơn vị"]</label></div></div>
+                        <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">@L["Chuyển"]</button></div>
                     </form>
-                    <div class="form-text">Chuyển người dùng = đổi phòng ban của họ; đề nghị mới sẽ do Trưởng bộ phận của đơn vị này duyệt.</div>
+                    <div class="form-text">@L["Chuyển người dùng = đổi phòng ban của họ; đề nghị mới sẽ do Trưởng bộ phận của đơn vị này duyệt."]</div>
                 </div>
             }
-            @if (members.Count == 0) { <div class="card-body small text-muted">Chưa có người dùng thuộc đơn vị này.</div> }
+            @if (members.Count == 0) { <div class="card-body small text-muted">@L["Chưa có người dùng thuộc đơn vị này."]</div> }
             else
             {
                 <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
-                    <thead><tr><th>Họ tên</th><th>Vai trò</th><th>Email</th><th>Trạng thái</th></tr></thead>
+                    <thead><tr><th>@L["Họ tên"]</th><th>@L["Vai trò"]</th><th>Email</th><th>@L["Trạng thái"]</th></tr></thead>
                     <tbody>
                     @foreach (var m in members)
                     {
                         <tr class="@(m.IsActive ? "" : "text-muted")">
-                            <td>@m.FullName @if (m.Id == Model.ManagerId) { <span class="badge bg-primary-subtle text-primary">Trưởng đơn vị</span> }</td>
+                            <td>@m.FullName @if (m.Id == Model.ManagerId) { <span class="badge bg-primary-subtle text-primary">@L["Trưởng đơn vị"]</span> }</td>
                             <td>@AppRoles.DisplayName(m.Role)</td>
                             <td class="small">@m.Email</td>
-                            <td>@(m.IsActive ? "Hoạt động" : "Đã khóa")</td>
+                            <td>@(m.IsActive ? L["Hoạt động"] : L["Đã khóa"])</td>
                         </tr>
                     }
                     </tbody>

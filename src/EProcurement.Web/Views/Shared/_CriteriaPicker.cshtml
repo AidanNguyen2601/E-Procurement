@@ -1,7 +1,7 @@
 @model (string Kinds, string Mode, string Target)
 @* Chèn tiêu chí từ thư viện "Bộ tiêu chí đánh giá". Mode: table (điền vào bảng tiêu chí) | text (chèn văn bản vào ô textarea) *@
 <span class="crit-picker d-inline-flex gap-1 align-items-center" data-kinds="@Model.Kinds" data-mode="@Model.Mode" data-target="@Model.Target" data-url="@Url.Action("Pick", "CriteriaSets")">
-    <select class="form-select form-select-sm" style="max-width:280px" aria-label="Chọn bộ tiêu chí"><option value="">Chèn từ bộ tiêu chí…</option></select>
-    <button type="button" class="btn btn-sm btn-outline-primary" disabled>Chèn</button>
-    <a href="@Url.Action("Index", "CriteriaSets")" target="_blank" class="small ms-1">Quản lý</a>
+    <select class="form-select form-select-sm" style="max-width:280px" aria-label="@L["Chọn bộ tiêu chí"]"><option value="">@L["Chèn từ bộ tiêu chí…"]</option></select>
+    <button type="button" class="btn btn-sm btn-outline-primary" disabled>@L["Chèn"]</button>
+    <a href="@Url.Action("Index", "CriteriaSets")" target="_blank" class="small ms-1">@L["Quản lý"]</a>
 </span>

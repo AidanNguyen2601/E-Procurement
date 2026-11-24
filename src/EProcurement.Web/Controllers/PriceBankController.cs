@@ -61,16 +61,16 @@ public class PriceBankController : ProcControllerBase
     {
         if (!await Db.Items.AnyAsync(i => i.Id == itemId)) return NotFound();
         IActionResult Back(string? err = null) { if (err != null) TempData["Error"] = err; return RedirectToAction(nameof(Item), new { id = itemId }); }
-        if (unitPrice <= 0) return Back("Nhập đơn giá > 0.");
-        if (vendorId == null && string.IsNullOrWhiteSpace(supplierName)) return Back("Chọn nhà cung cấp hoặc nhập tên đơn vị cung cấp.");
-        if (priceDate == null || priceDate > DateTime.Today) return Back("Ngày giá không hợp lệ.");
+        if (unitPrice <= 0) return Back(I18n.T("Nhập đơn giá > 0."));
+        if (vendorId == null && string.IsNullOrWhiteSpace(supplierName)) return Back(I18n.T("Chọn nhà cung cấp hoặc nhập tên đơn vị cung cấp."));
+        if (priceDate == null || priceDate > DateTime.Today) return Back(I18n.T("Ngày giá không hợp lệ."));
         Db.PriceRecords.Add(new PriceRecord
         {
             ItemId = itemId, VendorId = vendorId, SupplierName = vendorId == null ? supplierName?.Trim() : null, Source = source, SourceNote = sourceNote?.Trim(),
             UnitPrice = Math.Round(unitPrice, 0), PriceDate = priceDate.Value, CreatedById = Me, CreatedAt = DateTime.Now
         });
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã ghi nhận giá vào ngân hàng giá.";
+        TempData["Success"] = I18n.T("Đã ghi nhận giá vào ngân hàng giá.");
         return Back();
     }
 
@@ -82,7 +82,7 @@ public class PriceBankController : ProcControllerBase
         if (r == null) return NotFound();
         Db.PriceRecords.Remove(r);
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã xóa giá khảo sát.";
+        TempData["Success"] = I18n.T("Đã xóa giá khảo sát.");
         return RedirectToAction(nameof(Item), new { id = r.ItemId });
     }
 }

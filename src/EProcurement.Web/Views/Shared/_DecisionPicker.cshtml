@@ -4,7 +4,7 @@
 @if (decisions.Any())
 {
     <select class="form-select form-select-sm mt-1 decision-picker" data-target="@Model" style="max-width:520px">
-        <option value="">+ Chèn căn cứ từ danh mục Quyết định…</option>
+        <option value="">@L["+ Chèn căn cứ từ danh mục Quyết định…"]</option>
         @foreach (var d in decisions)
         {
             var text = string.Join(" ", new[] { d.Code, d.Name }.Where(x => !string.IsNullOrWhiteSpace(x))) + (string.IsNullOrWhiteSpace(d.Note) ? "" : $" ({d.Note})");
@@ -14,5 +14,5 @@
 }
 else
 {
-    <div class="small text-muted mt-1">Chưa có quyết định trong <a asp-controller="Catalogs" asp-action="Index" asp-route-type="@CatalogType.Decision">danh mục Quyết định</a> để chèn nhanh.</div>
+    <div class="small text-muted mt-1">@L["Chưa có quyết định trong"] <a asp-controller="Catalogs" asp-action="Index" asp-route-type="@CatalogType.Decision">@L["danh mục Quyết định"]</a> @L["để chèn nhanh."]</div>
 }

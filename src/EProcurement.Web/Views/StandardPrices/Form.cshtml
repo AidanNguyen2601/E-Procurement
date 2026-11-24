@@ -5,8 +5,8 @@
 }
 @if (Model.Id == 0)
 {
-    <form asp-action="Create" method="get" class="toolbar"><span class="small">Lấy danh sách mặt hàng theo nhóm:</span>
-        <select name="categoryId" class="form-select form-select-sm" style="width:auto" asp-items="ViewBag.Categories" onchange="this.form.submit()"><option value="">-- Mọi nhóm hàng --</option></select></form>
+    <form asp-action="Create" method="get" class="toolbar"><span class="small">@L["Lấy danh sách mặt hàng theo nhóm:"]</span>
+        <select name="categoryId" class="form-select form-select-sm" style="width:auto" asp-items="ViewBag.Categories" onchange="this.form.submit()"><option value="">@L["-- Mọi nhóm hàng --"]</option></select></form>
 }
 <form asp-action="Save" method="post">
     <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="CategoryId" />
@@ -17,26 +17,26 @@
         <div class="col-md-3"><label asp-for="EffectiveTo" class="form-label"></label><input asp-for="EffectiveTo" type="date" class="form-control" /></div>
         <div class="col-12"><label asp-for="Basis" class="form-label"></label><input asp-for="Basis" class="form-control" /><partial name="_DecisionPicker" model="@("Basis")" /></div>
     </div></div>
-    <div class="card mb-3"><div class="card-header">Mặt hàng (@Model.Lines.Count) <span class="small fw-normal text-muted">– đề xuất: giá chuẩn = trung vị đơn giá thực tế 12 tháng (làm tròn nghìn), giá trần = +@pct.ToString("0.#")%</span></div>
+    <div class="card mb-3"><div class="card-header">@L["Mặt hàng ("]@Model.Lines.Count) <span class="small fw-normal text-muted">@L["– đề xuất: giá chuẩn = trung vị đơn giá thực tế 12 tháng (làm tròn nghìn), giá trần = +"]@pct.ToString("0.#")%</span></div>
     <div class="table-responsive"><table class="table table-sm mb-0 align-middle" id="sp-table">
-        <thead><tr><th></th><th>Hàng hóa</th><th>ĐVT</th><th class="money">Ngân hàng giá 12 tháng</th><th class="money">Hiện hành</th><th style="width:150px">Giá tiêu chuẩn</th><th style="width:150px">Giá trần</th><th>Căn cứ</th></tr></thead><tbody>
+        <thead><tr><th></th><th>@L["Hàng hóa"]</th><th>@L["ĐVT"]</th><th class="money">@L["Ngân hàng giá 12 tháng"]</th><th class="money">@L["Hiện hành"]</th><th style="width:150px">@L["Giá tiêu chuẩn"]</th><th style="width:150px">@L["Giá trần"]</th><th>@L["Căn cứ"]</th></tr></thead><tbody>
         @for (var i = 0; i < Model.Lines.Count; i++)
         {
             var l = Model.Lines[i];
             <tr><td><input type="hidden" name="Lines[@i].ItemId" value="@l.ItemId" /><input type="checkbox" name="Lines[@i].Include" value="true" class="form-check-input" @(l.Include ? "checked" : "") /><input type="hidden" name="Lines[@i].Include" value="false" /></td>
                 <td><b>@l.Code</b> @l.Name</td><td class="small">@l.Unit</td>
-                <td class="money small">@if (l.Stats != null) { <span>@l.Stats.Min.ToShortMoney() – @l.Stats.Max.ToShortMoney()</span><div class="text-muted">TB @l.Stats.Avg.ToShortMoney() · @l.Stats.Count giá</div> } else { <span class="text-muted">chưa có</span> }</td>
-                <td class="money small">@(l.Current?.ToMoney() ?? l.Reference.ToMoney())<div class="text-muted">@(l.Current.HasValue ? "tiêu chuẩn" : "tham khảo")</div></td>
+                <td class="money small">@if (l.Stats != null) { <span>@l.Stats.Min.ToShortMoney() – @l.Stats.Max.ToShortMoney()</span><div class="text-muted">TB @l.Stats.Avg.ToShortMoney() · @l.Stats.Count @L["giá"]</div> } else { <span class="text-muted">@L["chưa có"]</span> }</td>
+                <td class="money small">@(l.Current?.ToMoney() ?? l.Reference.ToMoney())<div class="text-muted">@(l.Current.HasValue ? L["tiêu chuẩn"] : L["tham khảo"])</div></td>
                 <td><input name="Lines[@i].StandardPrice" type="number" min="0" step="1" value="@l.StandardPrice.ToString("0")" class="form-control form-control-sm text-end sp-std" /></td>
                 <td><input name="Lines[@i].CeilingPrice" type="number" min="0" step="1" value="@l.CeilingPrice.ToString("0")" class="form-control form-control-sm text-end sp-ceil" /></td>
                 <td><input name="Lines[@i].Basis" value="@l.Basis" maxlength="300" class="form-control form-control-sm" /></td></tr>
         }
-        @if (!Model.Lines.Any()) { <tr><td colspan="8" class="text-muted p-3">Không có mặt hàng.</td></tr> }
+        @if (!Model.Lines.Any()) { <tr><td colspan="8" class="text-muted p-3">@L["Không có mặt hàng."]</td></tr> }
     </tbody></table></div></div>
     <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary">Lưu nháp</button>
-        <button name="submit" value="true" class="btn btn-primary" data-confirm="Trình Giám đốc phê duyệt bảng giá?">Lưu & trình duyệt</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
+        <button class="btn btn-outline-primary">@L["Lưu nháp"]</button>
+        <button name="submit" value="true" class="btn btn-primary" data-confirm="@L["Trình Giám đốc phê duyệt bảng giá?"]">@L["Lưu & trình duyệt"]</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">@L["Quay lại"]</a>
     </div>
 </form>
 @section Scripts {

@@ -73,9 +73,9 @@ public class CriteriaSetsController : Controller
     public async Task<IActionResult> Save(CriteriaForm f)
     {
         f.Items = f.Items.Where(i => !string.IsNullOrWhiteSpace(i.Name)).ToList();
-        if (string.IsNullOrWhiteSpace(f.Name)) ModelState.AddModelError(nameof(f.Name), "Nhập tên bộ tiêu chí.");
-        if (f.Items.Count == 0) ModelState.AddModelError(nameof(f.Items), "Nhập ít nhất một tiêu chí.");
-        if (f.Items.Any(i => i.MaxScore is < 0 or > 100)) ModelState.AddModelError(nameof(f.Items), "Điểm tối đa từ 0 đến 100.");
+        if (string.IsNullOrWhiteSpace(f.Name)) ModelState.AddModelError(nameof(f.Name), I18n.T("Nhập tên bộ tiêu chí."));
+        if (f.Items.Count == 0) ModelState.AddModelError(nameof(f.Items), I18n.T("Nhập ít nhất một tiêu chí."));
+        if (f.Items.Any(i => i.MaxScore is < 0 or > 100)) ModelState.AddModelError(nameof(f.Items), I18n.T("Điểm tối đa từ 0 đến 100."));
         foreach (var k in ModelState.Keys.Where(k => k.StartsWith("Items[")).ToList()) ModelState.Remove(k);
         if (!ModelState.IsValid) { if (f.Items.Count == 0) f.Items.Add(new CriteriaItem()); await LoadAsync(f.CategoryId); return View("Form", f); }
 
@@ -93,7 +93,7 @@ public class CriteriaSetsController : Controller
         foreach (var i in f.Items)
             s.Items.Add(new CriteriaItem { Name = T(i.Name, 200)!, Requirement = T(i.Requirement, 1000), IsMandatory = i.IsMandatory, MaxScore = i.IsMandatory ? 0 : i.MaxScore, DocumentType = i.DocumentType, SortOrder = ++order });
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu bộ tiêu chí \"{s.Name}\" ({s.Items.Count} tiêu chí).";
+        TempData["Success"] = I18n.T("Đã lưu bộ tiêu chí \"{0}\" ({1} tiêu chí).", s.Name, s.Items.Count);
         return RedirectToAction(nameof(Index), new { group = TenderKinds.Contains(s.Kind) ? "tender" : null });
     }
 
@@ -105,7 +105,7 @@ public class CriteriaSetsController : Controller
         _db.CriteriaItems.RemoveRange(s.Items);
         _db.CriteriaSets.Remove(s);
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã xóa bộ tiêu chí \"{s.Name}\".";
+        TempData["Success"] = I18n.T("Đã xóa bộ tiêu chí \"{0}\".", s.Name);
         return RedirectToAction(nameof(Index));
     }
 

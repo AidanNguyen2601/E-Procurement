@@ -1,8 +1,7 @@
 @model List<EProcurement.Web.Controllers.PlanGroup>
 @{ int year = ViewBag.Year; decimal cqMax = ViewBag.CqMax; var pending = (List<string>)ViewBag.Pending; var canCreate = User.IsPurchasing(); }
-@if (pending.Any()) { <div class="alert alert-light border small">Chưa tổng hợp (kế hoạch chưa duyệt): @string.Join(", ", pending)</div> }
-<p class="small text-muted">Nhu cầu cùng mặt hàng trong kế hoạch đã duyệt của các phòng ban được cộng dồn. Chọn các dòng (thường cùng nhóm hàng) để tạo một đề nghị mua hàng tập trung –
-    giá trị gộp lớn hơn @cqMax.ToMoney() đ nên tổ chức đấu thầu rộng rãi; mặt hàng nhiều phòng dùng, giao nhiều đợt phù hợp hợp đồng khung.</p>
+@if (pending.Any()) { <div class="alert alert-light border small">@L["Chưa tổng hợp (kế hoạch chưa duyệt):"] @string.Join(", ", pending)</div> }
+<p class="small text-muted">@L["Nhu cầu cùng mặt hàng trong kế hoạch đã duyệt của các phòng ban được cộng dồn. Chọn các dòng (thường cùng nhóm hàng) để tạo một đề nghị mua hàng tập trung – giá trị gộp lớn hơn"] @cqMax.ToMoney() @L["đ nên tổ chức đấu thầu rộng rãi; mặt hàng nhiều phòng dùng, giao nhiều đợt phù hợp hợp đồng khung."]</p>
 <form asp-action="CreatePr" method="post">
     <input type="hidden" name="year" value="@year" />
     @foreach (var cat in Model.GroupBy(g => g.Category).OrderByDescending(c => c.Sum(g => g.Value)))
@@ -10,10 +9,10 @@
         var total = cat.Sum(g => g.Value);
         <div class="card mb-3"><div class="card-header d-flex flex-wrap justify-content-between gap-2">
             <span><label><input type="checkbox" class="me-1" onclick="this.closest('.card').querySelectorAll('input[name=keys]').forEach(x => x.checked = this.checked)" /> <b>@cat.Key</b></label>
-                <span class="small text-muted">· @cat.Count() mặt hàng · @cat.SelectMany(g => g.Departments).Distinct().Count() phòng ban</span></span>
-            <span class="small">@total.ToMoney() đ · gợi ý: <b>@(total > cqMax ? "Đấu thầu rộng rãi" : "Chào hàng cạnh tranh")</b>@(cat.Any(g => g.Departments.Count > 1) ? " · cân nhắc hợp đồng khung" : "")</span></div>
+                <span class="small text-muted">· @cat.Count() @L["mặt hàng"] · @cat.SelectMany(g => g.Departments).Distinct().Count() @L["phòng ban"]</span></span>
+            <span class="small">@total.ToMoney() @L["đ ·"] @L["gợi ý:"] <b>@(total > cqMax ? L["Đấu thầu rộng rãi"] : L["Chào hàng cạnh tranh"])</b>@(cat.Any(g => g.Departments.Count > 1) ? " · " + L["cân nhắc hợp đồng khung"] : "")</span></div>
             <div class="card-body p-0"><table class="table table-sm mb-0 small align-middle">
-                <thead><tr><th style="width:30px"></th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">Tổng SL</th><th class="money">Giá trị</th><th>Phòng ban</th><th>Quý</th></tr></thead><tbody>
+                <thead><tr><th style="width:30px"></th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">@L["Tổng SL"]</th><th class="money">@L["Giá trị"]</th><th>@L["Phòng ban"]</th><th>@L["Quý"]</th></tr></thead><tbody>
                 @foreach (var g in cat)
                 {
                     <tr><td><input type="checkbox" name="keys" value="@EProcurement.Web.Controllers.PlansController.Key(g)" /></td><td>@g.Description</td><td>@g.Unit</td><td class="money">@g.Quantity.ToQty()</td><td class="money">@g.Value.ToMoney()</td>
@@ -21,10 +20,10 @@
                 }
             </tbody></table></div></div>
     }
-    @if (!Model.Any()) { <div class="alert alert-light border">Không còn nhu cầu nào chưa gom trong kế hoạch đã duyệt năm @year.</div> }
+    @if (!Model.Any()) { <div class="alert alert-light border">@L["Không còn nhu cầu nào chưa gom trong kế hoạch đã duyệt năm"] @year.</div> }
     else if (canCreate)
     {
-        <div class="card"><div class="card-body d-flex gap-2"><input name="title" maxlength="200" class="form-control form-control-sm" placeholder="Tên đề nghị mua hàng tập trung (để trống = tự đặt)" />
-            <button class="btn btn-sm btn-primary text-nowrap" data-confirm="Tạo đề nghị mua hàng tập trung từ các dòng đã chọn?">Tạo đề nghị mua hàng tập trung</button></div></div>
+        <div class="card"><div class="card-body d-flex gap-2"><input name="title" maxlength="200" class="form-control form-control-sm" placeholder="@L["Tên đề nghị mua hàng tập trung (để trống = tự đặt)"]" />
+            <button class="btn btn-sm btn-primary text-nowrap" data-confirm="@L["Tạo đề nghị mua hàng tập trung từ các dòng đã chọn?"]">@L["Tạo đề nghị mua hàng tập trung"]</button></div></div>
     }
 </form>

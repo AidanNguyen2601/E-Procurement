@@ -4,15 +4,15 @@
     ViewData["Title"] = $"Đánh giá hợp lệ & năng lực – {t.Number}";
 }
 <div class="alert alert-info py-2 small">
-    <b>Bước 1 – Hợp lệ:</b> đủ thành phần HSDT, có đơn dự thầu hợp lệ, bảo đảm dự thầu đúng yêu cầu (@t.BidSecurityAmount.ToMoney() đ), hiệu lực HSDT ≥ @t.BidValidityDays ngày.<br />
-    <b>Bước 2 – Năng lực, kinh nghiệm:</b> <span class="pre">@t.QualificationCriteria</span><br />
-    HSDT không hợp lệ / không đạt năng lực bị loại, không chấm kỹ thuật (bắt buộc ghi lý do).
+    <b>@L["Bước 1 – Hợp lệ:"]</b> @L["đủ thành phần HSDT, có đơn dự thầu hợp lệ, bảo đảm dự thầu đúng yêu cầu ("]@t.BidSecurityAmount.ToMoney() @L["đ), hiệu lực HSDT ≥"] @t.BidValidityDays @L["ngày."]<br />
+    <b>@L["Bước 2 – Năng lực, kinh nghiệm:"]</b> <span class="pre">@t.QualificationCriteria</span><br />
+    @L["HSDT không hợp lệ / không đạt năng lực bị loại, không chấm kỹ thuật (bắt buộc ghi lý do)."]
 </div>
 <form asp-action="Screen" method="post">
     <input type="hidden" asp-for="TenderId" />
     <div asp-validation-summary="All" class="text-danger"></div>
     <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0 align-middle">
-        <thead><tr><th>Nhà thầu</th><th>Kiểm tra tự động</th><th style="width:170px">Hợp lệ</th><th>Lý do</th><th style="width:170px">Năng lực</th><th>Lý do</th></tr></thead>
+        <thead><tr><th>@L["Nhà thầu"]</th><th>@L["Kiểm tra tự động"]</th><th style="width:170px">@L["Hợp lệ"]</th><th>@L["Lý do"]</th><th style="width:170px">@L["Năng lực"]</th><th>@L["Lý do"]</th></tr></thead>
         <tbody>
         @for (var i = 0; i < Model.Lines.Count; i++)
         {
@@ -21,20 +21,20 @@
             var auto = TenderEvaluation.SecurityProblems(t, b);
             <tr>
                 <td>@l.VendorName<input type="hidden" asp-for="Lines[i].TenderBidderId" /><input type="hidden" asp-for="Lines[i].VendorName" />
-                    <div class="small text-muted">BĐDT @b.BidSecurityAmount.ToMoney() · @b.BidSecurityRef · đến @b.BidSecurityExpiry.ToDate() · hiệu lực @b.ValidityDays ngày</div></td>
-                <td class="small">@if (auto.Any()) { <span class="text-danger">@string.Join("; ", auto)</span> } else { <span class="text-success">Bảo đảm & hiệu lực đạt</span> }</td>
+                    <div class="small text-muted">@L["BĐDT"] @b.BidSecurityAmount.ToMoney() · @b.BidSecurityRef @L["· đến"] @b.BidSecurityExpiry.ToDate() @L["· hiệu lực"] @b.ValidityDays @L["ngày"]</div></td>
+                <td class="small">@if (auto.Any()) { <span class="text-danger">@string.Join("; ", auto)</span> } else { <span class="text-success">@L["Bảo đảm & hiệu lực đạt"]</span> }</td>
                 <td class="text-nowrap">
-                    <label class="me-2"><input type="radio" name="Lines[@i].Valid" value="true" class="form-check-input" checked="@(l.Valid == true)" /> Hợp lệ</label>
-                    <label><input type="radio" name="Lines[@i].Valid" value="false" class="form-check-input" checked="@(l.Valid == false)" /> Không</label></td>
+                    <label class="me-2"><input type="radio" name="Lines[@i].Valid" value="true" class="form-check-input" checked="@(l.Valid == true)" /> @L["Hợp lệ"]</label>
+                    <label><input type="radio" name="Lines[@i].Valid" value="false" class="form-check-input" checked="@(l.Valid == false)" /> @L["Không"]</label></td>
                 <td><input asp-for="Lines[i].ValidNote" class="form-control form-control-sm" value="@(l.ValidNote ?? (auto.Any() ? string.Join("; ", auto) : null))" /></td>
                 <td class="text-nowrap">
-                    <label class="me-2"><input type="radio" name="Lines[@i].Qualified" value="true" class="form-check-input" checked="@(l.Qualified == true)" /> Đạt</label>
-                    <label><input type="radio" name="Lines[@i].Qualified" value="false" class="form-check-input" checked="@(l.Qualified == false)" /> Không</label></td>
+                    <label class="me-2"><input type="radio" name="Lines[@i].Qualified" value="true" class="form-check-input" checked="@(l.Qualified == true)" /> @L["Đạt"]</label>
+                    <label><input type="radio" name="Lines[@i].Qualified" value="false" class="form-check-input" checked="@(l.Qualified == false)" /> @L["Không"]</label></td>
                 <td><input asp-for="Lines[i].QualifiedNote" class="form-control form-control-sm" /></td>
             </tr>
         }
         </tbody>
     </table></div></div>
-    <button class="btn btn-primary">Lưu đánh giá</button>
-    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">Quay lại</a>
+    <button class="btn btn-primary">@L["Lưu đánh giá"]</button>
+    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">@L["Quay lại"]</a>
 </form>

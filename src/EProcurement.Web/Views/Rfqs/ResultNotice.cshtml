@@ -5,27 +5,26 @@
     var won = Model.AwardedVendorId == q.VendorId;
     ViewData["Title"] = $"Thông báo kết quả {Model.Number} – {q.Vendor?.Name}";
 }
-<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button></div>
 <div class="card paper"><div class="card-body p-4">
-    <div class="mb-3"><h4 class="mb-0">THÔNG BÁO KẾT QUẢ LỰA CHỌN NHÀ CUNG CẤP</h4>
-        <div class="text-muted">Chào hàng cạnh tranh số @Model.Number · Ngày: @DateTime.Today.ToDate()</div></div>
-    <p>Kính gửi: <b>@q.Vendor?.Name</b><br />Người nhận: @q.Vendor?.ContactPerson – @q.Vendor?.Email</p>
-    <p>Cảm ơn Quý công ty đã gửi báo giá ngày @q.RespondedAt.ToDate() cho gói mua sắm <b>@Model.Title</b>
-        (giá chào @q.GrandTotal.ToMoney() đ đã gồm VAT).</p>
+    <div class="mb-3"><h4 class="mb-0">@L["THÔNG BÁO KẾT QUẢ LỰA CHỌN NHÀ CUNG CẤP"]</h4>
+        <div class="text-muted">@L["Chào hàng cạnh tranh số"] @Model.Number @L["· Ngày:"] @DateTime.Today.ToDate()</div></div>
+    <p>@L["Kính gửi:"] <b>@q.Vendor?.Name</b><br />@L["Người nhận:"] @q.Vendor?.ContactPerson – @q.Vendor?.Email</p>
+    <p>@L["Cảm ơn Quý công ty đã gửi báo giá ngày"] @q.RespondedAt.ToDate() @L["cho gói mua sắm"] <b>@Model.Title</b>
+        @L["(giá chào"] @q.GrandTotal.ToMoney() @L["đ đã gồm VAT)."]</p>
     @if (won)
     {
-        <p>Chúng tôi trân trọng thông báo Quý công ty đã được <b>lựa chọn</b> cung cấp hàng hóa / dịch vụ cho gói mua sắm này.
-            Đơn đặt hàng chính thức sẽ được gửi tới Quý công ty trong thời gian tới.</p>
+        <p>@L["Chúng tôi trân trọng thông báo Quý công ty đã được"] <b>@L["lựa chọn"]</b> @L["cung cấp hàng hóa / dịch vụ cho gói mua sắm này. Đơn đặt hàng chính thức sẽ được gửi tới Quý công ty trong thời gian tới."]</p>
     }
     else
     {
-        <p>Chúng tôi rất tiếc thông báo báo giá của Quý công ty <b>chưa được lựa chọn</b> lần này.</p>
+        <p>@L["Chúng tôi rất tiếc thông báo báo giá của Quý công ty"] <b>@L["chưa được lựa chọn"]</b> @L["lần này."]</p>
         <ul>
-            <li>Nhà cung cấp được lựa chọn: <b>@Model.AwardedVendor?.Name</b></li>
-            @if (score?.Rank != null) { <li>Xếp hạng báo giá của Quý công ty: @score.Rank</li> }
-            else if (score != null) { <li>Lý do: @string.Join("; ", score.Issues)</li> }
+            <li>@L["Nhà cung cấp được lựa chọn:"] <b>@Model.AwardedVendor?.Name</b></li>
+            @if (score?.Rank != null) { <li>@L["Xếp hạng báo giá của Quý công ty:"] @score.Rank</li> }
+            else if (score != null) { <li>@L["Lý do:"] @string.Join("; ", score.Issues)</li> }
         </ul>
-        <p>Rất mong tiếp tục nhận được sự hợp tác của Quý công ty trong các đợt mua sắm sau.</p>
+        <p>@L["Rất mong tiếp tục nhận được sự hợp tác của Quý công ty trong các đợt mua sắm sau."]</p>
     }
-    <p class="mt-4">Mọi thắc mắc xin liên hệ: @Model.Buyer?.FullName – @Model.Buyer?.Email</p>
+    <p class="mt-4">@L["Mọi thắc mắc xin liên hệ:"] @Model.Buyer?.FullName – @Model.Buyer?.Email</p>
 </div></div>

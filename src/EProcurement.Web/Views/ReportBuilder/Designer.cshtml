@@ -24,46 +24,46 @@
     <input type="hidden" name="Id" value="@Model.Id" />
     <input type="hidden" name="DesignJson" id="designJson" />
     @if (Model.Errors.Any()) { <div class="alert alert-danger py-2"><ul class="mb-0">@foreach (var e in Model.Errors) { <li>@e</li> }</ul></div> }
-    @if (Model.Id.HasValue && !Model.CanEdit) { <div class="alert alert-info py-2 small">Báo cáo được chia sẻ – bạn có thể chạy, chỉnh và lưu thành bản sao của mình.</div> }
+    @if (Model.Id.HasValue && !Model.CanEdit) { <div class="alert alert-info py-2 small">@L["Báo cáo được chia sẻ – bạn có thể chạy, chỉnh và lưu thành bản sao của mình."]</div> }
 
     <div class="row g-3">
         <div class="col-xl-4">
-            <div class="card mb-3"><div class="card-header">1. Nguồn dữ liệu</div><div class="card-body">
+            <div class="card mb-3"><div class="card-header">@L["1. Nguồn dữ liệu"]</div><div class="card-body">
                 <select id="dataset" class="form-select form-select-sm"></select>
                 <div id="datasetDesc" class="small text-muted mt-1"></div>
             </div></div>
-            <div class="card mb-3"><div class="card-header d-flex justify-content-between">2. Cột hiển thị <button type="button" class="btn btn-sm btn-link p-0" id="addCol">+ Thêm cột</button></div>
+            <div class="card mb-3"><div class="card-header d-flex justify-content-between">@L["2. Cột hiển thị"] <button type="button" class="btn btn-sm btn-link p-0" id="addCol">@L["+ Thêm cột"]</button></div>
                 <div class="card-body" id="cols"></div>
-                <div class="card-footer small text-muted">Có cột tổng hợp (tổng / đếm / TB…) → các cột còn lại tự động làm cột nhóm (GROUP BY).</div></div>
-            <div class="card mb-3"><div class="card-header d-flex justify-content-between">3. Điều kiện lọc <button type="button" class="btn btn-sm btn-link p-0" id="addFilter">+ Thêm điều kiện</button></div>
+                <div class="card-footer small text-muted">@L["Có cột tổng hợp (tổng / đếm / TB…) → các cột còn lại tự động làm cột nhóm (GROUP BY)."]</div></div>
+            <div class="card mb-3"><div class="card-header d-flex justify-content-between">@L["3. Điều kiện lọc"] <button type="button" class="btn btn-sm btn-link p-0" id="addFilter">@L["+ Thêm điều kiện"]</button></div>
                 <div class="card-body" id="filters"></div></div>
-            <div class="card mb-3"><div class="card-header d-flex justify-content-between">4. Sắp xếp & hiển thị <button type="button" class="btn btn-sm btn-link p-0" id="addSort">+ Sắp xếp</button></div>
+            <div class="card mb-3"><div class="card-header d-flex justify-content-between">@L["4. Sắp xếp & hiển thị"] <button type="button" class="btn btn-sm btn-link p-0" id="addSort">@L["+ Sắp xếp"]</button></div>
                 <div class="card-body">
                     <div id="sorts"></div>
                     <div class="row g-2 mt-1">
-                        <div class="col-4"><label class="form-label small mb-0">Số dòng tối đa</label><input type="number" id="top" min="1" max="5000" class="form-control form-control-sm" /></div>
-                        <div class="col-8"><label class="form-label small mb-0">Biểu đồ</label>
-                            <select id="chart" class="form-select form-select-sm"><option value="none">Không</option><option value="bar">Thanh ngang (xếp hạng)</option><option value="column">Cột đứng (theo thời gian)</option></select></div>
-                        <div class="col-6 chartOpt"><label class="form-label small mb-0">Cột nhãn</label><select id="chartLabel" class="form-select form-select-sm"></select></div>
-                        <div class="col-6 chartOpt"><label class="form-label small mb-0">Cột giá trị</label><select id="chartValue" class="form-select form-select-sm"></select></div>
+                        <div class="col-4"><label class="form-label small mb-0">@L["Số dòng tối đa"]</label><input type="number" id="top" min="1" max="5000" class="form-control form-control-sm" /></div>
+                        <div class="col-8"><label class="form-label small mb-0">@L["Biểu đồ"]</label>
+                            <select id="chart" class="form-select form-select-sm"><option value="none">@L["Không"]</option><option value="bar">@L["Thanh ngang (xếp hạng)"]</option><option value="column">@L["Cột đứng (theo thời gian)"]</option></select></div>
+                        <div class="col-6 chartOpt"><label class="form-label small mb-0">@L["Cột nhãn"]</label><select id="chartLabel" class="form-select form-select-sm"></select></div>
+                        <div class="col-6 chartOpt"><label class="form-label small mb-0">@L["Cột giá trị"]</label><select id="chartValue" class="form-select form-select-sm"></select></div>
                     </div>
                 </div></div>
-            <div class="card mb-3"><div class="card-header">5. Lưu thiết kế</div><div class="card-body">
-                <input name="Name" value="@Model.Name" class="form-control form-control-sm mb-2" placeholder="Tên báo cáo" maxlength="150" />
-                <textarea name="Description" class="form-control form-control-sm mb-2" rows="2" placeholder="Mô tả (tùy chọn)" maxlength="500">@Model.Description</textarea>
-                <label class="small"><input type="checkbox" name="IsShared" value="true" class="form-check-input" checked="@Model.IsShared" /> Chia sẻ cho bộ phận mua hàng & Ban Giám đốc</label>
+            <div class="card mb-3"><div class="card-header">@L["5. Lưu thiết kế"]</div><div class="card-body">
+                <input name="Name" value="@Model.Name" class="form-control form-control-sm mb-2" placeholder="@L["Tên báo cáo"]" maxlength="150" />
+                <textarea name="Description" class="form-control form-control-sm mb-2" rows="2" placeholder="@L["Mô tả (tùy chọn)"]" maxlength="500">@Model.Description</textarea>
+                <label class="small"><input type="checkbox" name="IsShared" value="true" class="form-check-input" checked="@Model.IsShared" /> @L["Chia sẻ cho bộ phận mua hàng & Ban Giám đốc"]</label>
             </div></div>
         </div>
 
         <div class="col-xl-8">
             <div class="toolbar">
-                <button class="btn btn-primary" formaction="@Url.Action("Run")">▶ Chạy báo cáo</button>
-                <button class="btn btn-outline-success" formaction="@Url.Action("ExportExcel")">Xuất Excel</button>
-                <button class="btn btn-outline-secondary" formaction="@Url.Action("ExportSql")">Xuất SQL</button>
-                <button class="btn btn-outline-primary" formaction="@Url.Action("Save")">@(Model.Id.HasValue && Model.CanEdit ? "Lưu thiết kế" : "Lưu thành báo cáo mới")</button>
-                @if (Model.Id.HasValue && Model.CanEdit) { <button class="btn btn-outline-primary" formaction="@Url.Action("Save", new { asCopy = true })">Lưu bản sao</button> }
-                <button class="btn btn-outline-secondary" formaction="@Url.Action("ExportDesign")">Xuất thiết kế (JSON)</button>
-                <a asp-action="Index" class="btn btn-light ms-auto">Danh sách báo cáo</a>
+                <button class="btn btn-primary" formaction="@Url.Action("Run")">@L["▶ Chạy báo cáo"]</button>
+                <button class="btn btn-outline-success" formaction="@Url.Action("ExportExcel")">@L["Xuất Excel"]</button>
+                <button class="btn btn-outline-secondary" formaction="@Url.Action("ExportSql")">@L["Xuất SQL"]</button>
+                <button class="btn btn-outline-primary" formaction="@Url.Action("Save")">@(Model.Id.HasValue && Model.CanEdit ? L["Lưu thiết kế"] : L["Lưu thành báo cáo mới"])</button>
+                @if (Model.Id.HasValue && Model.CanEdit) { <button class="btn btn-outline-primary" formaction="@Url.Action("Save", new { asCopy = true })">@L["Lưu bản sao"]</button> }
+                <button class="btn btn-outline-secondary" formaction="@Url.Action("ExportDesign")">@L["Xuất thiết kế (JSON)"]</button>
+                <a asp-action="Index" class="btn btn-light ms-auto">@L["Danh sách báo cáo"]</a>
             </div>
             @if (table != null)
             {
@@ -71,11 +71,11 @@
             }
             else
             {
-                <div class="card"><div class="card-body text-muted">Chọn nguồn dữ liệu, cột và điều kiện ở bên trái rồi bấm <b>Chạy báo cáo</b>.</div></div>
+                <div class="card"><div class="card-body text-muted">@L["Chọn nguồn dữ liệu, cột và điều kiện ở bên trái rồi bấm"] <b>@L["Chạy báo cáo"]</b>.</div></div>
             }
             @if (!string.IsNullOrEmpty(Model.Sql))
             {
-                <details class="card mt-3"><summary class="card-header">Câu lệnh SQL được sinh (chỉ đọc, có tham số)</summary>
+                <details class="card mt-3"><summary class="card-header">@L["Câu lệnh SQL được sinh (chỉ đọc, có tham số)"]</summary>
                     <pre class="card-body small mb-0" style="white-space:pre-wrap">@Model.Sql</pre></details>
             }
         </div>

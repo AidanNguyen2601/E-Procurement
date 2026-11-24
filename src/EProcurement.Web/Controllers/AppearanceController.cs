@@ -31,15 +31,15 @@ public class AppearanceController : Controller
             case "default":
                 if (!User.IsAdmin()) return Forbid();
                 await _themes.SaveDefaultAsync(p);
-                TempData["Success"] = "Đã lưu giao diện mặc định cho người dùng chưa tự chọn giao diện riêng.";
+                TempData["Success"] = I18n.T("Đã lưu giao diện mặc định cho người dùng chưa tự chọn giao diện riêng.");
                 break;
             case "reset":
                 await _themes.SaveOwnAsync(User.GetUserId(), null);
-                TempData["Success"] = "Đã chuyển về giao diện mặc định của hệ thống.";
+                TempData["Success"] = I18n.T("Đã chuyển về giao diện mặc định của hệ thống.");
                 break;
             default:
                 await _themes.SaveOwnAsync(User.GetUserId(), p);
-                TempData["Success"] = "Đã lưu giao diện của bạn.";
+                TempData["Success"] = I18n.T("Đã lưu giao diện của bạn.");
                 break;
         }
         return RedirectToAction(nameof(Index));

@@ -3,16 +3,16 @@
 <form asp-action="Create" method="post" enctype="multipart/form-data">
     <input type="hidden" name="PurchaseOrderId" value="@po.Id" />
     <div class="card mb-3"><div class="card-body">
-        <div class="small mb-2"><b>@po.Vendor?.Name</b> · PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id">@po.Number</a> ngày @po.OrderDate.ToDate() · VAT @po.VatPercent.ToString("0.#")% · @po.PaymentTerms</div>
+        <div class="small mb-2"><b>@po.Vendor?.Name</b> · PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id">@po.Number</a> @L["ngày"] @po.OrderDate.ToDate() · VAT @po.VatPercent.ToString("0.#")% · @po.PaymentTerms</div>
         <div class="row g-2">
-            <div class="col-md-2"><label class="form-label small mb-0">Ký hiệu</label><input name="Series" maxlength="20" class="form-control form-control-sm" placeholder="1C26TAA" /></div>
-            <div class="col-md-3"><label class="form-label small mb-0">Số hóa đơn</label><input name="InvoiceNo" maxlength="30" class="form-control form-control-sm" required /></div>
-            <div class="col-md-3"><label class="form-label small mb-0">Ngày hóa đơn</label><input name="InvoiceDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
-            <div class="col-md-4"><label class="form-label small mb-0">File hóa đơn điện tử (pdf / xml)</label><input name="file" type="file" class="form-control form-control-sm" /></div>
+            <div class="col-md-2"><label class="form-label small mb-0">@L["Ký hiệu"]</label><input name="Series" maxlength="20" class="form-control form-control-sm" placeholder="1C26TAA" /></div>
+            <div class="col-md-3"><label class="form-label small mb-0">@L["Số hóa đơn"]</label><input name="InvoiceNo" maxlength="30" class="form-control form-control-sm" required /></div>
+            <div class="col-md-3"><label class="form-label small mb-0">@L["Ngày hóa đơn"]</label><input name="InvoiceDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
+            <div class="col-md-4"><label class="form-label small mb-0">@L["File hóa đơn điện tử (pdf / xml)"]</label><input name="file" type="file" class="form-control form-control-sm" /></div>
         </div>
     </div></div>
     <div class="card mb-3"><div class="card-body p-0"><table class="table table-sm mb-0 align-middle">
-        <thead><tr><th>Hàng hóa / dịch vụ</th><th class="money">SL đặt</th><th class="money">Đã nhận đạt</th><th class="money">Đã có HĐ</th><th class="money">Giá PO</th><th style="width:120px">SL trên HĐ</th><th style="width:150px">Đơn giá HĐ</th></tr></thead><tbody>
+        <thead><tr><th>@L["Hàng hóa / dịch vụ"]</th><th class="money">@L["SL đặt"]</th><th class="money">@L["Đã nhận đạt"]</th><th class="money">@L["Đã có HĐ"]</th><th class="money">@L["Giá PO"]</th><th style="width:120px">@L["SL trên HĐ"]</th><th style="width:150px">@L["Đơn giá HĐ"]</th></tr></thead><tbody>
         @for (var i = 0; i < lines.Count; i++)
         {
             var l = lines[i];
@@ -23,8 +23,8 @@
         }
         </tbody></table></div></div>
     <div class="card mb-3"><div class="card-body row g-2 align-items-end">
-        <div class="col-md-4"><label class="form-label small mb-0">Thuế GTGT trên hóa đơn (để trống = @po.VatPercent.ToString("0.#")% tiền hàng)</label><input name="VatAmount" type="number" min="0" step="1" class="form-control form-control-sm" /></div>
-        <div class="col-md-8 small text-muted">Hệ thống đối chiếu 3 bên: số lượng lũy kế trên hóa đơn ≤ số lượng đã nhận đạt, đơn giá ≤ giá PO, thuế GTGT đúng tỷ lệ (sai số làm tròn ≤ 1.000 đ), không trùng số hóa đơn.</div>
+        <div class="col-md-4"><label class="form-label small mb-0">@L["Thuế GTGT trên hóa đơn (để trống ="] @po.VatPercent.ToString("0.#")@L["% tiền hàng)"]</label><input name="VatAmount" type="number" min="0" step="1" class="form-control form-control-sm" /></div>
+        <div class="col-md-8 small text-muted">@L["Hệ thống đối chiếu 3 bên: số lượng lũy kế trên hóa đơn ≤ số lượng đã nhận đạt, đơn giá ≤ giá PO, thuế GTGT đúng tỷ lệ (sai số làm tròn ≤ 1.000 đ), không trùng số hóa đơn."]</div>
     </div></div>
-    <button class="btn btn-primary">Ghi nhận & đối chiếu</button> <a asp-action="Index" class="btn btn-light">Hủy</a>
+    <button class="btn btn-primary">@L["Ghi nhận & đối chiếu"]</button> <a asp-action="Index" class="btn btn-light">@L["Hủy"]</a>
 </form>

@@ -4,16 +4,16 @@
     var counts = (Dictionary<string, int>)ViewBag.Counts; var state = ViewBag.State as string;
     var labels = new (string Key, string Label, string Css)[]
     {
-        ("waiting", "Chờ NCC báo giá", "bg-secondary"), ("late", "Quá hạn chưa có báo giá", "bg-danger"), ("sealed", "Đã nộp – niêm phong", "bg-primary"),
-        ("opened", "Đã mở", "bg-success"), ("manual", "Nhập tay", "bg-light text-dark border"), ("none", "Chưa có báo giá", "bg-light text-muted border")
+        ("waiting", L["Chờ NCC báo giá"], "bg-secondary"), ("late", L["Quá hạn chưa có báo giá"], "bg-danger"), ("sealed", L["Đã nộp – niêm phong"], "bg-primary"),
+        ("opened", L["Đã mở"], "bg-success"), ("manual", L["Nhập tay"], "bg-light text-dark border"), ("none", L["Chưa có báo giá"], "bg-light text-muted border")
     };
 }
 <div class="toolbar">
-    <a asp-action="Direct" class="btn btn-sm @(string.IsNullOrEmpty(state) ? "btn-primary" : "btn-outline-secondary")">Tất cả (@counts.Values.Sum())</a>
+    <a asp-action="Direct" class="btn btn-sm @(string.IsNullOrEmpty(state) ? "btn-primary" : "btn-outline-secondary")">@L["Tất cả ("]@counts.Values.Sum())</a>
     @foreach (var l in labels) { <a asp-action="Direct" asp-route-state="@l.Key" class="btn btn-sm @(state == l.Key ? "btn-primary" : "btn-outline-secondary")">@l.Label (@counts.GetValueOrDefault(l.Key))</a> }
 </div>
 <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-    <thead><tr><th>Hồ sơ chào giá chỉ định</th><th>Gói</th><th>Nhà cung cấp</th><th>Gửi yêu cầu / hạn</th><th>Báo giá</th><th class="money">Giá NCC chào</th><th class="money">Sau thương thảo</th><th>Hồ sơ</th></tr></thead>
+    <thead><tr><th>@L["Hồ sơ chào giá chỉ định"]</th><th>@L["Gói"]</th><th>@L["Nhà cung cấp"]</th><th>@L["Gửi yêu cầu / hạn"]</th><th>@L["Báo giá"]</th><th class="money">@L["Giá NCC chào"]</th><th class="money">@L["Sau thương thảo"]</th><th>@L["Hồ sơ"]</th></tr></thead>
     <tbody>
     @foreach (var r in Model)
     {
@@ -22,11 +22,11 @@
             <td class="small">@if (d.Package != null) { <a asp-controller="Packages" asp-action="Details" asp-route-id="@d.PackageId">@d.Package.Number</a> }</td>
             <td>@d.Vendor?.Name</td>
             <td class="small">@(d.QuoteRequestedAt.HasValue ? $"{d.QuoteRequestedAt:dd/MM HH:mm} → {d.QuoteDeadline:dd/MM HH:mm}" : "—")</td>
-            <td><span class="badge @lb.Css">@lb.Label</span>@if (r.Latest != null) { <div class="small text-muted">lần @r.Latest.Revision · @r.Latest.SubmittedAt.ToString("dd/MM HH:mm")</div> }</td>
+            <td><span class="badge @lb.Css">@lb.Label</span>@if (r.Latest != null) { <div class="small text-muted">@L["lần"] @r.Latest.Revision · @r.Latest.SubmittedAt.ToString("dd/MM HH:mm")</div> }</td>
             <td class="money">@(d.ProposedTotal > 0 ? d.ProposedTotal.ToMoney() : "")</td>
             <td class="money">@(d.NegotiatedTotal > 0 ? d.NegotiatedTotal.ToMoney() : "")@if (d.SavingPercent > 0) { <div class="small text-success">−@d.SavingPercent.ToString("0.#")%</div> }</td>
             <td><partial name="_Badge" model="d.Status" /></td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">Không có báo giá.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">@L["Không có báo giá."]</td></tr> }
     </tbody>
 </table></div></div></div>

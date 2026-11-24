@@ -7,15 +7,15 @@
 }
 @if (unplanned > 0 && User.IsPurchasing())
 {
-    <div class="alert alert-info d-flex flex-wrap align-items-center gap-2">@Icon.Svg("clipboard", 16) <span><b>@unplanned</b> gói mua sắm chưa được đưa vào kế hoạch lựa chọn NCC.</span>
-        <a asp-action="Create" class="btn btn-sm btn-primary ms-auto">Lập KHLCNT</a></div>
+    <div class="alert alert-info d-flex flex-wrap align-items-center gap-2">@Icon.Svg("clipboard", 16) <span><b>@unplanned</b> @L["gói mua sắm chưa được đưa vào kế hoạch lựa chọn NCC."]</span>
+        <a asp-action="Create" class="btn btn-sm btn-primary ms-auto">@L["Lập KHLCNT"]</a></div>
 }
 <form method="get" class="toolbar">
-    <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="statusItems" onchange="this.form.submit()"><option value="">-- Mọi trạng thái --</option></select>
-    @if (User.IsPurchasing()) { <a asp-action="Create" class="btn btn-sm btn-primary ms-auto">@Icon.Svg("plus", 14) Lập KHLCNT</a> }
+    <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="statusItems" onchange="this.form.submit()"><option value="">@L["-- Mọi trạng thái --"]</option></select>
+    @if (User.IsPurchasing()) { <a asp-action="Create" class="btn btn-sm btn-primary ms-auto">@Icon.Svg("plus", 14) @L["Lập KHLCNT"]</a> }
 </form>
 <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-    <thead><tr><th>Số</th><th>Tên kế hoạch</th><th class="money">Số gói</th><th class="money">Tổng giá gói</th><th>Người lập</th><th>Phê duyệt</th><th>Trạng thái</th></tr></thead>
+    <thead><tr><th>@L["Số"]</th><th>@L["Tên kế hoạch"]</th><th class="money">@L["Số gói"]</th><th class="money">@L["Tổng giá gói"]</th><th>@L["Người lập"]</th><th>@L["Phê duyệt"]</th><th>@L["Trạng thái"]</th></tr></thead>
     <tbody>
     @foreach (var p in Model)
     {
@@ -24,6 +24,6 @@
             <td class="small">@p.CreatedBy?.FullName</td><td class="small">@p.DecidedAt?.ToString("dd/MM/yyyy")</td>
             <td><partial name="_Badge" model="p.Status" /></td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Chưa có kế hoạch lựa chọn nhà cung cấp.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">@L["Chưa có kế hoạch lựa chọn nhà cung cấp."]</td></tr> }
     </tbody>
 </table></div></div></div>

@@ -95,7 +95,7 @@ public class DirectAwardsController : ProcControllerBase
     {
         var d = await Db.DirectAwards.Include(x => x.Lines).Include(x => x.PurchaseRequest).FirstOrDefaultAsync(x => x.Id == id);
         if (d == null) return NotFound();
-        if (d.Status != DirectAwardStatus.Draft) { TempData["Error"] = "Chỉ sửa tờ trình ở trạng thái Nháp."; return RedirectToAction(nameof(Details), new { id }); }
+        if (d.Status != DirectAwardStatus.Draft) { TempData["Error"] = I18n.T("Chỉ sửa tờ trình ở trạng thái Nháp."); return RedirectToAction(nameof(Details), new { id }); }
         if (d.PackageId.HasValue) ViewBag.Package = await Packages.LoadAsync(Db, d.PackageId.Value);
         var vm = new DirectAwardFormViewModel
         {
@@ -139,15 +139,15 @@ public class DirectAwardsController : ProcControllerBase
         if (pr == null) return NotFound();
         var vendor = vm.VendorId.HasValue ? await Db.Vendors.FindAsync(vm.VendorId) : null;
         if (vendor != null && vendor.Status != VendorStatus.Approved)
-            ModelState.AddModelError(nameof(vm.VendorId), $"NCC đang ở trạng thái \"{vendor.Status.GetDisplayName()}\", không được chỉ định.");
+            ModelState.AddModelError(nameof(vm.VendorId), I18n.T("NCC đang ở trạng thái \"{0}\", không được chỉ định.", vendor.Status.GetDisplayName()));
         // Dòng hàng lấy theo gói (hoặc PR với tờ trình cũ) – không thêm / bớt; chỉ nhận đơn giá chào & thương thảo từ form
         var prLines = pkg != null ? Packages.Lines(pkg) : pr.Lines.OrderBy(l => l.SortOrder).ToList();
-        if (vm.Lines.Count != prLines.Count) ModelState.AddModelError(string.Empty, "Dòng hàng không khớp với đề nghị.");
+        if (vm.Lines.Count != prLines.Count) ModelState.AddModelError(string.Empty, I18n.T("Dòng hàng không khớp với đề nghị."));
         for (var i = 0; i < Math.Min(vm.Lines.Count, prLines.Count); i++)
         {
             var l = vm.Lines[i];
             if (l.NegotiatedPrice > 0 && l.ProposedPrice > 0 && l.NegotiatedPrice > l.ProposedPrice)
-                ModelState.AddModelError(string.Empty, $"\"{prLines[i].Description}\": giá thương thảo không được cao hơn giá NCC chào.");
+                ModelState.AddModelError(string.Empty, I18n.T("\"{0}\": giá thương thảo không được cao hơn giá NCC chào.", prLines[i].Description));
         }
         if (!ModelState.IsValid)
         {
@@ -199,7 +199,7 @@ public class DirectAwardsController : ProcControllerBase
             await Db.SaveChangesAsync();
         }
         if (submit) return await Submit(d.Id);
-        TempData["Success"] = $"Đã lưu {d.Number}. Đính kèm tài liệu chứng minh rồi trình Giám đốc.";
+        TempData["Success"] = I18n.T("Đã lưu {0}. Đính kèm tài liệu chứng minh rồi trình Giám đốc.", d.Number);
         return RedirectToAction(nameof(Details), new { id = d.Id });
     }
 
@@ -214,7 +214,7 @@ public class DirectAwardsController : ProcControllerBase
         var problems = await SubmitProblemsAsync(d);
         if (problems.Count > 0)
         {
-            TempData["Error"] = "Chưa trình được: " + string.Join(" ", problems);
+            TempData["Error"] = I18n.T("Chưa trình được: ") + string.Join(" ", problems);
             return RedirectToAction(nameof(Details), new { id });
         }
         d.SplitWarning = await ProcurementRules.SplitWarningAsync(Db, d, Settings);
@@ -223,7 +223,7 @@ public class DirectAwardsController : ProcControllerBase
         Log(DocType.DirectAward, id, "Trình Giám đốc duyệt",
             $"Giá chào {d.ProposedTotal.ToMoney()} → thương thảo {d.NegotiatedTotal.ToMoney()} đ (giảm {d.SavingPercent:0.#}%)" + (d.SplitWarning != null ? ". CẢNH BÁO: " + d.SplitWarning : ""));
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã trình {d.Number} lên Giám đốc." + (d.SplitWarning != null ? " Lưu ý: có cảnh báo nghi chia nhỏ gói." : "");
+        TempData["Success"] = I18n.T("Đã trình {0} lên Giám đốc.", d.Number) + (d.SplitWarning != null ? I18n.T(" Lưu ý: có cảnh báo nghi chia nhỏ gói.") : "");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -239,11 +239,11 @@ public class DirectAwardsController : ProcControllerBase
         IActionResult Back() => !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
         if (!approve)
         {
-            if (string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do trả lại."; return RedirectToAction(nameof(Details), new { id }); }
+            if (string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = I18n.T("Nhập lý do trả lại."); return RedirectToAction(nameof(Details), new { id }); }
             d.Status = DirectAwardStatus.Draft;
             Log(DocType.DirectAward, id, "Giám đốc trả lại tờ trình", comment);
             await Db.SaveChangesAsync();
-            TempData["Success"] = $"Đã trả lại {d.Number} để bổ sung.";
+            TempData["Success"] = I18n.T("Đã trả lại {0} để bổ sung.", d.Number);
             return Back();
         }
         d.Status = DirectAwardStatus.Approved;
@@ -264,7 +264,7 @@ public class DirectAwardsController : ProcControllerBase
         await Db.SaveChangesAsync();
         Log(DocType.PO, po.Id, $"Tạo từ tờ trình {d.Number}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã duyệt {d.Number}, tạo đơn mua hàng nháp {po.Number}.";
+        TempData["Success"] = I18n.T("Đã duyệt {0}, tạo đơn mua hàng nháp {1}.", d.Number, po.Number);
         return Back();
     }
 
@@ -275,11 +275,11 @@ public class DirectAwardsController : ProcControllerBase
         var d = await Db.DirectAwards.FindAsync(id);
         if (d == null) return NotFound();
         if (d.Status is not (DirectAwardStatus.Draft or DirectAwardStatus.PendingApproval)) return BadRequest();
-        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = "Nhập lý do hủy."; return RedirectToAction(nameof(Details), new { id }); }
+        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = I18n.T("Nhập lý do hủy."); return RedirectToAction(nameof(Details), new { id }); }
         d.Status = DirectAwardStatus.Cancelled;
         Log(DocType.DirectAward, id, "Hủy tờ trình", reason);
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã hủy {d.Number}.";
+        TempData["Success"] = I18n.T("Đã hủy {0}.", d.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -293,17 +293,17 @@ public class DirectAwardsController : ProcControllerBase
         var d = await Db.DirectAwards.Include(x => x.Vendor).FirstOrDefaultAsync(x => x.Id == id);
         if (d == null) return NotFound();
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
-        if (d.Status != DirectAwardStatus.Draft) return Fail("Chỉ gửi yêu cầu báo giá khi hồ sơ đang soạn.");
-        if (deadline == null || deadline <= DateTime.Now) return Fail("Hạn nộp báo giá phải ở tương lai.");
+        if (d.Status != DirectAwardStatus.Draft) return Fail(I18n.T("Chỉ gửi yêu cầu báo giá khi hồ sơ đang soạn."));
+        if (deadline == null || deadline <= DateTime.Now) return Fail(I18n.T("Hạn nộp báo giá phải ở tương lai."));
         if (!await Db.VendorUsers.AnyAsync(u => u.VendorId == d.VendorId && u.IsActive && u.IsApproved))
-            return Fail($"{d.Vendor?.Name} chưa có tài khoản cổng NCC được xác nhận – nhập giá NCC chào thủ công trên hồ sơ.");
+            return Fail(I18n.T("{0} chưa có tài khoản cổng NCC được xác nhận – nhập giá NCC chào thủ công trên hồ sơ.", d.Vendor?.Name));
         var round = d.QuoteRequestedAt.HasValue;
         foreach (var s in await Db.VendorSubmissions.Where(s => s.DirectAwardId == id && s.IsLatest).ToListAsync()) s.IsLatest = false;
         d.QuoteRequestedAt = DateTime.Now; d.QuoteDeadline = deadline; d.QuoteOpenedAt = null;
         d.QuoteRequirements = string.IsNullOrWhiteSpace(requirements) ? null : requirements.Trim();
         Log(DocType.DirectAward, id, round ? "Gửi lại yêu cầu báo giá cho NCC (vòng mới)" : "Gửi hồ sơ chào giá chỉ định cho NCC qua cổng", $"Hạn nộp {deadline.ToDateTime()}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã gửi yêu cầu báo giá tới {d.Vendor?.Name}. NCC nộp báo giá niêm phong trên cổng NCC trước {deadline.ToDateTime()}.";
+        TempData["Success"] = I18n.T("Đã gửi yêu cầu báo giá tới {0}. NCC nộp báo giá niêm phong trên cổng NCC trước {1}.", d.Vendor?.Name, deadline.ToDateTime());
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -316,10 +316,10 @@ public class DirectAwardsController : ProcControllerBase
         if (d == null) return NotFound();
         if (d.Status != DirectAwardStatus.Draft) return BadRequest();
         var note = await HttpContext.RequestServices.GetRequiredService<SealingService>().UnsealDirectQuoteAsync(d, Me);
-        if (note == null) { TempData["Error"] = "NCC chưa nộp báo giá online."; return RedirectToAction(nameof(Details), new { id }); }
+        if (note == null) { TempData["Error"] = I18n.T("NCC chưa nộp báo giá online."); return RedirectToAction(nameof(Details), new { id }); }
         Log(DocType.DirectAward, id, "Mở báo giá NCC", note);
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã mở báo giá: giá NCC chào {d.ProposedTotal.ToMoney()} đ (trước VAT). Thương thảo và cập nhật giá sau thương thảo.";
+        TempData["Success"] = I18n.T("Đã mở báo giá: giá NCC chào {0} đ (trước VAT). Thương thảo và cập nhật giá sau thương thảo.", d.ProposedTotal.ToMoney());
         return RedirectToAction(nameof(Details), new { id });
     }
 

@@ -4,21 +4,21 @@
     var obs = (List<PriceObservation>)ViewBag.Observations; var manual = (List<PriceRecord>)ViewBag.Manual;
 }
 <div class="row g-3 mb-3">
-    <div class="col-6 col-md-2"><div class="card stat"><div class="label">Số đơn giá</div><div class="value">@(s?.Count ?? 0)</div></div></div>
-    <div class="col-6 col-md-2"><div class="card stat"><div class="label">Thấp nhất</div><div class="value">@s?.Min.ToShortMoney()</div></div></div>
-    <div class="col-6 col-md-2"><div class="card stat"><div class="label">Trung vị</div><div class="value">@s?.Median.ToShortMoney()</div></div></div>
-    <div class="col-6 col-md-2"><div class="card stat"><div class="label">Cao nhất</div><div class="value">@s?.Max.ToShortMoney()</div></div></div>
-    <div class="col-6 col-md-2"><div class="card stat"><div class="label">Gần nhất</div><div class="value">@s?.Last.ToShortMoney()</div><div class="small text-muted">@s?.LastDate.ToDate()</div></div></div>
-    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@(std != null ? "Giá tiêu chuẩn" : "Giá tham khảo")</div><div class="value">@((std?.Price ?? Model.ReferencePrice).ToShortMoney())</div>
-        @if (std != null) { <div class="small text-muted">trần @std.Ceiling.ToShortMoney() · <a asp-controller="StandardPrices" asp-action="Details" asp-route-id="@std.ListId">@std.ListNumber</a></div> }</div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Số đơn giá"]</div><div class="value">@(s?.Count ?? 0)</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Thấp nhất"]</div><div class="value">@s?.Min.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Trung vị"]</div><div class="value">@s?.Median.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Cao nhất"]</div><div class="value">@s?.Max.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Gần nhất"]</div><div class="value">@s?.Last.ToShortMoney()</div><div class="small text-muted">@s?.LastDate.ToDate()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@(std != null ? L["Giá tiêu chuẩn"] : L["Giá tham khảo"])</div><div class="value">@((std?.Price ?? Model.ReferencePrice).ToShortMoney())</div>
+        @if (std != null) { <div class="small text-muted">@L["trần"] @std.Ceiling.ToShortMoney() · <a asp-controller="StandardPrices" asp-action="Details" asp-route-id="@std.ListId">@std.ListNumber</a></div> }</div></div>
 </div>
 <div class="row g-3">
 <div class="col-lg-8">
     <form method="get" class="toolbar"><input type="hidden" name="id" value="@Model.Id" />
-        <select name="months" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">@foreach (var m in new[] { 6, 12, 24, 36, 60 }) { <option value="@m" selected="@(m == months)">@m tháng gần nhất</option> }</select>
+        <select name="months" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">@foreach (var m in new[] { 6, 12, 24, 36, 60 }) { <option value="@m" selected="@(m == months)">@m @L["tháng gần nhất"]</option> }</select>
         <span class="small text-muted">@Model.Category?.Name · ĐVT @Model.Unit@(string.Join("", new[] { Model.Brand, Model.Origin, Model.Specification }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => " · " + x)))</span></form>
     <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
-        <thead><tr><th>Ngày</th><th>Nguồn</th><th>Chứng từ</th><th>Nhà cung cấp</th><th class="money">SL</th><th class="money">Đơn giá</th><th class="money">So với chuẩn</th></tr></thead><tbody>
+        <thead><tr><th>@L["Ngày"]</th><th>@L["Nguồn"]</th><th>@L["Chứng từ"]</th><th>@L["Nhà cung cấp"]</th><th class="money">SL</th><th class="money">@L["Đơn giá"]</th><th class="money">@L["So với chuẩn"]</th></tr></thead><tbody>
         @foreach (var o in obs)
         {
             var basePrice = std?.Price ?? Model.ReferencePrice;
@@ -26,33 +26,33 @@
             <tr class="@(over ? "table-warning" : "")"><td class="small">@o.Date.ToDate()</td><td class="small">@o.Source</td>
                 <td class="small">@if (o.Url != null) { <a href="@o.Url">@o.DocNumber</a> } else { @o.DocNumber }</td>
                 <td class="small">@o.Vendor</td><td class="money">@(o.Quantity > 0 ? o.Quantity.ToQty() : "")</td><td class="money">@o.UnitPrice.ToMoney()</td>
-                <td class="money small">@(basePrice > 0 ? ((o.UnitPrice - basePrice) * 100 / basePrice).ToString("+0.#;-0.#;0") + "%" : "")@if (over) { <span class="badge bg-danger ms-1">vượt trần</span> }</td></tr>
+                <td class="money small">@(basePrice > 0 ? ((o.UnitPrice - basePrice) * 100 / basePrice).ToString("+0.#;-0.#;0") + "%" : "")@if (over) { <span class="badge bg-danger ms-1">@L["vượt trần"]</span> }</td></tr>
         }
-        @if (!obs.Any()) { <tr><td colspan="7" class="text-muted p-3">Chưa có đơn giá trong kỳ.</td></tr> }
+        @if (!obs.Any()) { <tr><td colspan="7" class="text-muted p-3">@L["Chưa có đơn giá trong kỳ."]</td></tr> }
     </tbody></table></div></div></div>
 </div>
 <div class="col-lg-4">
     @if (User.IsPurchasing())
     {
-        <form asp-action="AddRecord" method="post" class="card mb-3"><div class="card-header">Ghi nhận giá khảo sát</div><div class="card-body row g-2 small">
+        <form asp-action="AddRecord" method="post" class="card mb-3"><div class="card-header">@L["Ghi nhận giá khảo sát"]</div><div class="card-body row g-2 small">
             <input type="hidden" name="itemId" value="@Model.Id" />
-            <div class="col-12"><select name="vendorId" class="form-select form-select-sm" asp-items="ViewBag.Vendors"><option value="">-- NCC trong danh sách (tùy chọn) --</option></select></div>
-            <div class="col-12"><input name="supplierName" maxlength="200" class="form-control form-control-sm" placeholder="hoặc tên đơn vị cung cấp khác" /></div>
+            <div class="col-12"><select name="vendorId" class="form-select form-select-sm" asp-items="ViewBag.Vendors"><option value="">@L["-- NCC trong danh sách (tùy chọn) --"]</option></select></div>
+            <div class="col-12"><input name="supplierName" maxlength="200" class="form-control form-control-sm" placeholder="@L["hoặc tên đơn vị cung cấp khác"]" /></div>
             <div class="col-6"><select name="source" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<PriceSource>()"></select></div>
             <div class="col-6"><input name="priceDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
-            <div class="col-6"><input name="unitPrice" type="number" min="1" step="1" class="form-control form-control-sm" placeholder="Đơn giá trước VAT" required /></div>
-            <div class="col-6"><input name="sourceNote" maxlength="300" class="form-control form-control-sm" placeholder="Số báo giá / đường dẫn" /></div>
-            <div class="col-12"><button class="btn btn-sm btn-primary">Lưu</button></div>
+            <div class="col-6"><input name="unitPrice" type="number" min="1" step="1" class="form-control form-control-sm" placeholder="@L["Đơn giá trước VAT"]" required /></div>
+            <div class="col-6"><input name="sourceNote" maxlength="300" class="form-control form-control-sm" placeholder="@L["Số báo giá / đường dẫn"]" /></div>
+            <div class="col-12"><button class="btn btn-sm btn-primary">@L["Lưu"]</button></div>
         </div></form>
     }
-    <div class="card"><div class="card-header">Giá khảo sát đã ghi nhận (@manual.Count)</div><ul class="list-group list-group-flush small">
+    <div class="card"><div class="card-header">@L["Giá khảo sát đã ghi nhận ("]@manual.Count)</div><ul class="list-group list-group-flush small">
         @foreach (var r in manual)
         {
             <li class="list-group-item d-flex justify-content-between gap-2"><span><b>@r.UnitPrice.ToMoney()</b> · @r.PriceDate.ToDate() · @(r.Vendor?.Name ?? r.SupplierName)
                 <div class="text-muted">@r.Source.GetDisplayName()@(string.IsNullOrEmpty(r.SourceNote) ? "" : " – " + r.SourceNote) · @r.CreatedBy?.FullName</div></span>
-                @if (User.IsPurchasing()) { <form asp-action="DeleteRecord" asp-route-id="@r.Id" method="post" data-confirm="Xóa giá khảo sát này?"><button class="btn btn-sm btn-link text-danger p-0">Xóa</button></form> }</li>
+                @if (User.IsPurchasing()) { <form asp-action="DeleteRecord" asp-route-id="@r.Id" method="post" data-confirm="@L["Xóa giá khảo sát này?"]"><button class="btn btn-sm btn-link text-danger p-0">@L["Xóa"]</button></form> }</li>
         }
-        @if (!manual.Any()) { <li class="list-group-item text-muted">Chưa có.</li> }
+        @if (!manual.Any()) { <li class="list-group-item text-muted">@L["Chưa có."]</li> }
     </ul></div>
 </div>
 </div>

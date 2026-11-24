@@ -6,17 +6,17 @@
 <input type="hidden" name="Id" value="@Model.Id" />
 <div asp-validation-summary="All" class="text-danger small"></div>
 <div class="card mb-3"><div class="card-body row g-3">
-    <div class="col-md-6"><label class="form-label">Tên bộ tiêu chí *</label><input name="Name" value="@Model.Name" maxlength="200" class="form-control" required /></div>
-    <div class="col-md-3"><label class="form-label">Dùng cho</label>
+    <div class="col-md-6"><label class="form-label">@L["Tên bộ tiêu chí *"]</label><input name="Name" value="@Model.Name" maxlength="200" class="form-control" required /></div>
+    <div class="col-md-3"><label class="form-label">@L["Dùng cho"]</label>
         <select name="Kind" class="form-select" asp-items="Html.GetEnumSelectList<CriteriaKind>().Select(i => { i.Selected = i.Value == ((int)Model.Kind).ToString(); return i; })"></select></div>
-    <div class="col-md-3"><label class="form-label">Nhóm hàng áp dụng</label><select name="CategoryId" class="form-select" asp-items="(SelectList)ViewBag.Categories"><option value="">-- Mọi nhóm --</option></select></div>
-    <div class="col-md-9"><label class="form-label">Mô tả</label><input name="Description" value="@Model.Description" maxlength="1000" class="form-control" /></div>
-    <div class="col-md-3 d-flex align-items-end"><div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="IsActive" value="true" id="act" checked="@Model.IsActive" /><input type="hidden" name="IsActive" value="false" /><label for="act" class="form-check-label">Đang sử dụng</label></div></div>
+    <div class="col-md-3"><label class="form-label">@L["Nhóm hàng áp dụng"]</label><select name="CategoryId" class="form-select" asp-items="(SelectList)ViewBag.Categories"><option value="">@L["-- Mọi nhóm --"]</option></select></div>
+    <div class="col-md-9"><label class="form-label">@L["Mô tả"]</label><input name="Description" value="@Model.Description" maxlength="1000" class="form-control" /></div>
+    <div class="col-md-3 d-flex align-items-end"><div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="IsActive" value="true" id="act" checked="@Model.IsActive" /><input type="hidden" name="IsActive" value="false" /><label for="act" class="form-check-label">@L["Đang sử dụng"]</label></div></div>
 </div></div>
 
-<div class="card"><div class="card-header d-flex">Tiêu chí <span class="ms-auto small text-muted">Tổng điểm: <b id="c-total">0</b></span></div>
+<div class="card"><div class="card-header d-flex">@L["Tiêu chí"] <span class="ms-auto small text-muted">@L["Tổng điểm:"] <b id="c-total">0</b></span></div>
     <div class="table-responsive"><table class="table table-sm align-middle mb-0" id="c-table">
-        <thead><tr><th style="width:24%">Tiêu chí *</th><th>Yêu cầu / cách đánh giá</th><th style="width:90px">Bắt buộc</th><th style="width:100px">Điểm tối đa</th><th style="width:190px">Hồ sơ chứng minh</th><th style="width:70px"></th></tr></thead>
+        <thead><tr><th style="width:24%">@L["Tiêu chí *"]</th><th>@L["Yêu cầu / cách đánh giá"]</th><th style="width:90px">@L["Bắt buộc"]</th><th style="width:100px">@L["Điểm tối đa"]</th><th style="width:190px">@L["Hồ sơ chứng minh"]</th><th style="width:70px"></th></tr></thead>
         <tbody>
         @for (var i = 0; i < Model.Items.Count; i++)
         {
@@ -28,15 +28,15 @@
                 <td><input name="Items[@i].MaxScore" type="number" min="0" max="100" value="@it.MaxScore" class="form-control form-control-sm c-score" /></td>
                 <td><select name="Items[@i].DocumentType" class="form-select form-select-sm"><option value="">—</option>
                     @foreach (var d in docTypes) { <option value="@d.Value" selected="@(it.DocumentType != null && ((int)it.DocumentType.Value).ToString() == d.Value)">@d.Text</option> }</select></td>
-                <td class="text-nowrap"><button type="button" class="btn btn-sm btn-light c-up" title="Lên">↑</button><button type="button" class="btn btn-sm btn-light c-del" title="Xóa">✕</button></td>
+                <td class="text-nowrap"><button type="button" class="btn btn-sm btn-light c-up" title="@L["Lên"]">↑</button><button type="button" class="btn btn-sm btn-light c-del" title="@L["Xóa"]">✕</button></td>
             </tr>
         }
         </tbody>
     </table></div>
-    <div class="card-footer d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" id="c-add">+ Thêm tiêu chí</button>
-        <span class="small text-muted align-self-center">Tiêu chí bắt buộc đánh giá đạt / không đạt (không tính điểm).</span></div>
+    <div class="card-footer d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" id="c-add">@L["+ Thêm tiêu chí"]</button>
+        <span class="small text-muted align-self-center">@L["Tiêu chí bắt buộc đánh giá đạt / không đạt (không tính điểm)."]</span></div>
 </div>
-<div class="d-flex gap-2 mt-3"><button class="btn btn-primary">Lưu</button><a asp-action="Index" class="btn btn-light">Hủy</a></div>
+<div class="d-flex gap-2 mt-3"><button class="btn btn-primary">@L["Lưu"]</button><a asp-action="Index" class="btn btn-light">@L["Hủy"]</a></div>
 </form>
 <script>
 (function () {

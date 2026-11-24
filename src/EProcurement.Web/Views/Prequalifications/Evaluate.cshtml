@@ -7,18 +7,18 @@
 <div class="row g-3">
 <div class="col-lg-8">
     <form asp-action="Evaluate" asp-route-id="@Model.Id" asp-route-applicationId="@a.Id" method="post" class="card mb-3">
-        <div class="card-header">@Model.Number – @Model.Title · đạt khi mọi tiêu chí bắt buộc đạt và điểm ≥ @Model.MinScore/100</div>
+        <div class="card-header">@Model.Number – @Model.Title @L["· đạt khi mọi tiêu chí bắt buộc đạt và điểm ≥"] @Model.MinScore/100</div>
         <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
-            <thead><tr><th>Tiêu chí</th><th style="width:150px">Đánh giá</th><th style="min-width:200px">Nhận xét</th></tr></thead><tbody>
+            <thead><tr><th>@L["Tiêu chí"]</th><th style="width:150px">@L["Đánh giá"]</th><th style="min-width:200px">@L["Nhận xét"]</th></tr></thead><tbody>
             @for (var i = 0; i < Model.Criteria.Count; i++)
             {
                 var c = Model.Criteria.ElementAt(i); var sc = a.Scores.FirstOrDefault(x => x.CriterionId == c.Id);
                 <tr><td><input type="hidden" name="criterionIds" value="@c.Id" /><b>@c.Name</b><div class="small text-muted">@c.Requirement</div>
-                        @if (c.DocumentType.HasValue) { <div class="small">Hồ sơ: @c.DocumentType.Value.GetDisplayName()</div> }</td>
+                        @if (c.DocumentType.HasValue) { <div class="small">@L["Hồ sơ:"] @c.DocumentType.Value.GetDisplayName()</div> }</td>
                     <td>@if (c.IsMandatory)
                         {
                             <select name="passes" class="form-select form-select-sm"><option value="">—</option>
-                                <option value="true" selected="@(sc?.Pass == true)">Đạt</option><option value="false" selected="@(sc?.Pass == false)">Không đạt</option></select>
+                                <option value="true" selected="@(sc?.Pass == true)">@L["Đạt"]</option><option value="false" selected="@(sc?.Pass == false)">@L["Không đạt"]</option></select>
                             <input type="hidden" name="scores" value="" />
                         }
                         else
@@ -30,21 +30,21 @@
             }
         </tbody></table></div>
         <div class="card-body border-top">
-            <label class="form-label small mb-0">Kết luận</label><input name="resultNote" value="@a.ResultNote" maxlength="1000" class="form-control form-control-sm mb-2" />
-            <button class="btn btn-primary">Lưu kết quả chấm</button> <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Quay lại</a>
+            <label class="form-label small mb-0">@L["Kết luận"]</label><input name="resultNote" value="@a.ResultNote" maxlength="1000" class="form-control form-control-sm mb-2" />
+            <button class="btn btn-primary">@L["Lưu kết quả chấm"]</button> <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">@L["Quay lại"]</a>
         </div>
     </form>
 </div>
 <div class="col-lg-4">
-    <div class="card mb-3"><div class="card-header">Thuyết minh của NCC</div><div class="card-body small pre">@(a.Note ?? "—")</div></div>
-    <div class="card"><div class="card-header">Hồ sơ pháp lý của NCC</div><ul class="list-group list-group-flush small">
+    <div class="card mb-3"><div class="card-header">@L["Thuyết minh của NCC"]</div><div class="card-body small pre">@(a.Note ?? "—")</div></div>
+    <div class="card"><div class="card-header">@L["Hồ sơ pháp lý của NCC"]</div><ul class="list-group list-group-flush small">
         @foreach (var d in docs)
         {
             <li class="list-group-item @(attached.Contains(d.Id) ? "list-group-item-primary" : "")"><a asp-controller="Vendors" asp-action="Document" asp-route-id="@d.VendorId" asp-route-docId="@d.Id">@d.Type.GetDisplayName()</a>
-                @if (attached.Contains(d.Id)) { <span class="badge bg-primary">nộp kèm hồ sơ</span> }
-                <div class="text-muted">@d.Number · hiệu lực @(d.ExpiryDate?.ToDate() ?? "không thời hạn") · @d.Status.GetDisplayName()</div></li>
+                @if (attached.Contains(d.Id)) { <span class="badge bg-primary">@L["nộp kèm hồ sơ"]</span> }
+                <div class="text-muted">@d.Number @L["· hiệu lực"] @(d.ExpiryDate?.ToDate() ?? L["không thời hạn"]) · @d.Status.GetDisplayName()</div></li>
         }
-        @if (!docs.Any()) { <li class="list-group-item text-muted">NCC chưa tải hồ sơ pháp lý.</li> }
+        @if (!docs.Any()) { <li class="list-group-item text-muted">@L["NCC chưa tải hồ sơ pháp lý."]</li> }
     </ul></div>
 </div>
 </div>

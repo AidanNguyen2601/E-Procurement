@@ -25,11 +25,11 @@
     var steps = new (string Name, bool Done, bool Current)[]
     {
         ("KH & HSMT", s >= TenderStatus.Published && s != TenderStatus.Cancelled, s is TenderStatus.Draft or TenderStatus.PendingPlanApproval),
-        ("Mời thầu", Model.OpenedAt.HasValue, s == TenderStatus.Published),
-        ("Mở thầu & đánh giá", s >= TenderStatus.PendingResultApproval && s != TenderStatus.Cancelled, s == TenderStatus.Opened),
-        ("Duyệt kết quả", s >= TenderStatus.Awarded && s != TenderStatus.Cancelled, s == TenderStatus.PendingResultApproval),
-        ("Kiến nghị", s == TenderStatus.Contracted, s == TenderStatus.Awarded),
-        ("Hợp đồng", false, s == TenderStatus.Contracted)
+        (L["Mời thầu"], Model.OpenedAt.HasValue, s == TenderStatus.Published),
+        (L["Mở thầu & đánh giá"], s >= TenderStatus.PendingResultApproval && s != TenderStatus.Cancelled, s == TenderStatus.Opened),
+        (L["Duyệt kết quả"], s >= TenderStatus.Awarded && s != TenderStatus.Cancelled, s == TenderStatus.PendingResultApproval),
+        (L["Kiến nghị"], s == TenderStatus.Contracted, s == TenderStatus.Awarded),
+        (L["Hợp đồng"], false, s == TenderStatus.Contracted)
     };
 }
 <div class="card mb-3"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -46,32 +46,32 @@
 <div class="toolbar">
     @if (buyer && s == TenderStatus.Draft)
     {
-        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa KH & HSMT</a>
-        <form asp-action="SubmitPlan" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">Trình duyệt KH & HSMT</button></form>
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">@L["Sửa KH & HSMT"]</a>
+        <form asp-action="SubmitPlan" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">@L["Trình duyệt KH & HSMT"]</button></form>
     }
     @if (s >= TenderStatus.Published && s != TenderStatus.Cancelled)
     {
-        <a class="btn btn-outline-secondary" asp-action="Notice" asp-route-id="@Model.Id" target="_blank">Thông báo mời thầu (công khai)</a>
+        <a class="btn btn-outline-secondary" asp-action="Notice" asp-route-id="@Model.Id" target="_blank">@L["Thông báo mời thầu (công khai)"]</a>
     }
     @if (buyer && s == TenderStatus.Published && closed)
     {
-        <form asp-action="OpenBids" asp-route-id="@Model.Id" method="post" data-confirm="Mở thầu? Biên bản mở thầu sẽ được lập và công khai.">
-            <button class="btn btn-primary">Mở thầu (@submitted.Count HSDT)</button></form>
+        <form asp-action="OpenBids" asp-route-id="@Model.Id" method="post" data-confirm="@L["Mở thầu? Biên bản mở thầu sẽ được lập và công khai."]">
+            <button class="btn btn-primary">@L["Mở thầu ("]@submitted.Count HSDT)</button></form>
     }
-    @if (leaderOrBuyer && s == TenderStatus.Opened) { <a class="btn btn-primary" asp-action="Screen" asp-route-id="@Model.Id">Đánh giá hợp lệ & năng lực</a> }
-    @if (member != null && s == TenderStatus.Opened) { <a class="btn btn-primary" asp-action="Score" asp-route-id="@Model.Id">Phiếu chấm kỹ thuật của tôi</a> }
+    @if (leaderOrBuyer && s == TenderStatus.Opened) { <a class="btn btn-primary" asp-action="Screen" asp-route-id="@Model.Id">@L["Đánh giá hợp lệ & năng lực"]</a> }
+    @if (member != null && s == TenderStatus.Opened) { <a class="btn btn-primary" asp-action="Score" asp-route-id="@Model.Id">@L["Phiếu chấm kỹ thuật của tôi"]</a> }
     @if (buyer && s == TenderStatus.Opened && Model.EnvelopeMethod == EnvelopeMethod.TwoEnvelope && !Model.FinancialOpenedAt.HasValue && scoringDone)
     {
-        <form asp-action="OpenFinancial" asp-route-id="@Model.Id" method="post" data-confirm="Mở hồ sơ tài chính của các HSDT đạt kỹ thuật?"><button class="btn btn-primary">Mở hồ sơ tài chính</button></form>
+        <form asp-action="OpenFinancial" asp-route-id="@Model.Id" method="post" data-confirm="@L["Mở hồ sơ tài chính của các HSDT đạt kỹ thuật?"]"><button class="btn btn-primary">@L["Mở hồ sơ tài chính"]</button></form>
     }
-    @if (buyer || director) { <a class="btn btn-outline-secondary" asp-action="ExportPublication" asp-route-id="@Model.Id">@Icon.Svg("external", 14) Xuất dữ liệu đăng tải</a> }
-    @if (Model.OpenedAt.HasValue && (buyer || director || member != null)) { <a class="btn btn-outline-secondary" asp-action="Report" asp-route-id="@Model.Id" target="_blank">Biên bản mở thầu & báo cáo đánh giá</a> }
-    @if (buyer && s == TenderStatus.Awarded) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Create" asp-route-tenderId="@Model.Id">Ký hợp đồng</a> }
-    @if (contract != null) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Details" asp-route-id="@contract.Id">Hợp đồng @contract.Number</a> }
+    @if (buyer || director) { <a class="btn btn-outline-secondary" asp-action="ExportPublication" asp-route-id="@Model.Id">@Icon.Svg("external", 14) @L["Xuất dữ liệu đăng tải"]</a> }
+    @if (Model.OpenedAt.HasValue && (buyer || director || member != null)) { <a class="btn btn-outline-secondary" asp-action="Report" asp-route-id="@Model.Id" target="_blank">@L["Biên bản mở thầu & báo cáo đánh giá"]</a> }
+    @if (buyer && s == TenderStatus.Awarded) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Create" asp-route-tenderId="@Model.Id">@L["Ký hợp đồng"]</a> }
+    @if (contract != null) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Details" asp-route-id="@contract.Id">@L["Hợp đồng"] @contract.Number</a> }
     @if (buyer && s is not (TenderStatus.Contracted or TenderStatus.Cancelled))
     {
-        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="Hủy gói thầu?">
-            <input name="reason" class="form-control form-control-sm" placeholder="Lý do hủy" /><button class="btn btn-sm btn-outline-danger text-nowrap">Hủy gói thầu</button>
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="@L["Hủy gói thầu?"]">
+            <input name="reason" class="form-control form-control-sm" placeholder="@L["Lý do hủy"]" /><button class="btn btn-sm btn-outline-danger text-nowrap">@L["Hủy gói thầu"]</button>
         </form>
     }
 </div>
@@ -79,25 +79,25 @@
 @if (director && s == TenderStatus.PendingPlanApproval)
 {
     <div class="card mb-3 border-warning"><div class="card-body">
-        <div class="fw-semibold mb-2">Phê duyệt kế hoạch lựa chọn nhà thầu & HSMT – giá gói thầu @Model.PackageBudget.ToMoney() đ, đóng thầu @Model.ClosingAt.ToDateTime()</div>
+        <div class="fw-semibold mb-2">@L["Phê duyệt kế hoạch lựa chọn nhà thầu & HSMT – giá gói thầu"] @Model.PackageBudget.ToMoney() @L["đ, đóng thầu"] @Model.ClosingAt.ToDateTime()</div>
         <form asp-action="DecidePlan" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-            <input name="comment" class="form-control" placeholder="Ý kiến (bắt buộc khi trả lại)" />
-            <button name="approve" value="true" class="btn btn-success text-nowrap">Duyệt & phát hành</button>
-            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">Trả lại</button>
+            <input name="comment" class="form-control" placeholder="@L["Ý kiến (bắt buộc khi trả lại)"]" />
+            <button name="approve" value="true" class="btn btn-success text-nowrap">@L["Duyệt & phát hành"]</button>
+            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">@L["Trả lại"]</button>
         </form>
     </div></div>
 }
 @if (director && s == TenderStatus.PendingResultApproval)
 {
     <div class="card mb-3 border-warning"><div class="card-body">
-        <div class="fw-semibold mb-1">Phê duyệt kết quả: <span class="text-primary">@Model.AwardedVendor?.Name</span> – @Model.AwardPrice?.ToMoney() đ (trước VAT)</div>
-        <div class="small mb-2">@Model.AwardReason · <a asp-action="Report" asp-route-id="@Model.Id" target="_blank">Xem báo cáo đánh giá</a>
-            @if (Model.Appraisals.Any(a => !a.IsVoid && a.CompletedAt != null)) { <span>· <a asp-action="AppraisalReport" asp-route-id="@Model.Id" target="_blank">Xem báo cáo thẩm định</a></span> }</div>
+        <div class="fw-semibold mb-1">@L["Phê duyệt kết quả:"] <span class="text-primary">@Model.AwardedVendor?.Name</span> – @Model.AwardPrice?.ToMoney() @L["đ (trước VAT)"]</div>
+        <div class="small mb-2">@Model.AwardReason · <a asp-action="Report" asp-route-id="@Model.Id" target="_blank">@L["Xem báo cáo đánh giá"]</a>
+            @if (Model.Appraisals.Any(a => !a.IsVoid && a.CompletedAt != null)) { <span>· <a asp-action="AppraisalReport" asp-route-id="@Model.Id" target="_blank">@L["Xem báo cáo thẩm định"]</a></span> }</div>
         @if (blocker != null) { <div class="alert alert-warning py-1 small mb-2">@blocker</div> }
         <form asp-action="DecideResult" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-            <input name="comment" class="form-control" placeholder="Ý kiến (bắt buộc khi trả lại)" />
-            <button name="approve" value="true" class="btn btn-success text-nowrap" disabled="@(blocker != null)">Phê duyệt kết quả</button>
-            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">Trả lại</button>
+            <input name="comment" class="form-control" placeholder="@L["Ý kiến (bắt buộc khi trả lại)"]" />
+            <button name="approve" value="true" class="btn btn-success text-nowrap" disabled="@(blocker != null)">@L["Phê duyệt kết quả"]</button>
+            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">@L["Trả lại"]</button>
         </form>
     </div></div>
 }
@@ -107,58 +107,58 @@
     <div class="card mb-3"><div class="card-body">
         <h5>@Model.Title</h5>
         <dl class="row small mb-0 info">
-            <dt class="col-sm-3">Từ đề nghị</dt><dd class="col-sm-9"><a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId">@Model.PurchaseRequest?.Number</a> – @Model.PurchaseRequest?.Department</dd>
-            <dt class="col-sm-3">Giá gói thầu</dt><dd class="col-sm-9"><b>@Model.PackageBudget.ToMoney() đ</b> (trước VAT) · @Model.EnvelopeMethod.GetDisplayName() · HĐ @Model.ContractType, @Model.ContractDurationDays ngày@(Model.IsFramework ? " · hợp đồng khung" : "")</dd>
-            <dt class="col-sm-3">Lịch</dt><dd class="col-sm-9">Phát hành @(Model.PublishedAt?.ToDateTime() ?? "—") → đóng thầu <b class="@(s == TenderStatus.Published && closed ? "text-danger" : "")">@Model.ClosingAt.ToDateTime()</b>
-                @if (Model.OpenedAt.HasValue) { <span> · mở thầu @Model.OpenedAt.ToDateTime()</span> }
-                @if (Model.FinancialOpenedAt.HasValue) { <span> · mở HS tài chính @Model.FinancialOpenedAt.ToDateTime()</span> }</dd>
-            <dt class="col-sm-3">Đánh giá</dt><dd class="col-sm-9">@Model.EvaluationMethod.GetDisplayName() · điểm KT tối thiểu @Model.MinTechnicalScore
-                @if (Model.EvaluationMethod == TenderEvaluationMethod.Combined) { <span>(KT @Model.TechnicalWeight% · giá @Model.PriceWeight%)</span> }</dd>
-            <dt class="col-sm-3">Bảo đảm</dt><dd class="col-sm-9">Dự thầu @Model.BidSecurityAmount.ToMoney() đ · hiệu lực HSDT @Model.BidValidityDays ngày · thực hiện HĐ @Model.PerformanceSecurityPercent.ToString("0.##")%</dd>
-            <dt class="col-sm-3">Yêu cầu kỹ thuật</dt><dd class="col-sm-9 pre">@Model.TechnicalRequirements</dd>
-            <dt class="col-sm-3">Năng lực, kinh nghiệm</dt><dd class="col-sm-9 pre">@Model.QualificationCriteria</dd>
-            @if (!string.IsNullOrEmpty(Model.ContractTerms)) { <dt class="col-sm-3">Điều kiện HĐ</dt><dd class="col-sm-9 pre">@Model.ContractTerms</dd> }
+            <dt class="col-sm-3">@L["Từ đề nghị"]</dt><dd class="col-sm-9"><a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId">@Model.PurchaseRequest?.Number</a> – @Model.PurchaseRequest?.Department</dd>
+            <dt class="col-sm-3">@L["Giá gói thầu"]</dt><dd class="col-sm-9"><b>@Model.PackageBudget.ToMoney() đ</b> @L["(trước VAT) ·"] @Model.EnvelopeMethod.GetDisplayName() @L["· HĐ"] @Model.ContractType, @Model.ContractDurationDays @L["ngày"]@(Model.IsFramework ? L[" · hợp đồng khung"] : "")</dd>
+            <dt class="col-sm-3">@L["Lịch"]</dt><dd class="col-sm-9">@L["Phát hành"] @(Model.PublishedAt?.ToDateTime() ?? "—") @L["→ đóng thầu"] <b class="@(s == TenderStatus.Published && closed ? "text-danger" : "")">@Model.ClosingAt.ToDateTime()</b>
+                @if (Model.OpenedAt.HasValue) { <span> @L["· mở thầu"] @Model.OpenedAt.ToDateTime()</span> }
+                @if (Model.FinancialOpenedAt.HasValue) { <span> @L["· mở HS tài chính"] @Model.FinancialOpenedAt.ToDateTime()</span> }</dd>
+            <dt class="col-sm-3">@L["Đánh giá"]</dt><dd class="col-sm-9">@Model.EvaluationMethod.GetDisplayName() @L["· điểm KT tối thiểu"] @Model.MinTechnicalScore
+                @if (Model.EvaluationMethod == TenderEvaluationMethod.Combined) { <span>(KT @Model.TechnicalWeight@L["% · giá"] @Model.PriceWeight%)</span> }</dd>
+            <dt class="col-sm-3">@L["Bảo đảm"]</dt><dd class="col-sm-9">@L["Dự thầu"] @Model.BidSecurityAmount.ToMoney() @L["đ · hiệu lực HSDT"] @Model.BidValidityDays @L["ngày · thực hiện HĐ"] @Model.PerformanceSecurityPercent.ToString("0.##")%</dd>
+            <dt class="col-sm-3">@L["Yêu cầu kỹ thuật"]</dt><dd class="col-sm-9 pre">@Model.TechnicalRequirements</dd>
+            <dt class="col-sm-3">@L["Năng lực, kinh nghiệm"]</dt><dd class="col-sm-9 pre">@Model.QualificationCriteria</dd>
+            @if (!string.IsNullOrEmpty(Model.ContractTerms)) { <dt class="col-sm-3">@L["Điều kiện HĐ"]</dt><dd class="col-sm-9 pre">@Model.ContractTerms</dd> }
         </dl>
     </div></div>
 
     <div class="card mb-3"><div class="card-body p-0"><table class="table table-sm mb-0">
-        <thead><tr><th>#</th><th>Hạng mục</th><th>ĐVT</th><th class="money">SL</th><th class="money">Đơn giá dự toán</th></tr></thead>
+        <thead><tr><th>#</th><th>@L["Hạng mục"]</th><th>@L["ĐVT"]</th><th class="money">SL</th><th class="money">@L["Đơn giá dự toán"]</th></tr></thead>
         <tbody>@foreach (var l in Model.Lines) { <tr><td>@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.EstimatedPrice.ToMoney()</td></tr> }</tbody>
     </table></div></div>
 
     @* ---------------- Nhà thầu & HSDT ---------------- *@
     @if (s >= TenderStatus.Published && s != TenderStatus.Cancelled || Model.Bidders.Any())
     {
-        <div class="card mb-3"><div class="card-header d-flex justify-content-between">Nhà thầu (@Model.Bidders.Count nhận HSMT · @submitted.Count nộp HSDT)
-            @if (!Model.OpenedAt.HasValue) { <span class="small fw-normal text-muted">🔒 HSDT niêm phong đến khi mở thầu</span> }
-            else if (!pricesVisible) { <span class="small fw-normal text-muted">🔒 Hồ sơ tài chính niêm phong đến khi chấm xong kỹ thuật</span> }</div>
+        <div class="card mb-3"><div class="card-header d-flex justify-content-between">@L["Nhà thầu ("]@Model.Bidders.Count @L["nhận HSMT ·"] @submitted.Count @L["nộp HSDT)"]
+            @if (!Model.OpenedAt.HasValue) { <span class="small fw-normal text-muted">@L["🔒 HSDT niêm phong đến khi mở thầu"]</span> }
+            else if (!pricesVisible) { <span class="small fw-normal text-muted">@L["🔒 Hồ sơ tài chính niêm phong đến khi chấm xong kỹ thuật"]</span> }</div>
         <div class="card-body p-0"><table class="table mb-0">
-            <thead><tr><th>Nhà thầu</th><th>HSDT</th><th class="money">Giá dự thầu</th><th class="money">Giá đánh giá (gồm VAT)</th><th>Bảo đảm DT</th><th></th></tr></thead>
+            <thead><tr><th>@L["Nhà thầu"]</th><th>HSDT</th><th class="money">@L["Giá dự thầu"]</th><th class="money">@L["Giá đánh giá (gồm VAT)"]</th><th>@L["Bảo đảm DT"]</th><th></th></tr></thead>
             <tbody>
             @foreach (var b in Model.Bidders.OrderByDescending(b => b.Submitted).ThenBy(b => b.Vendor?.Name))
             {
                 var sec = b.Submitted ? TenderEvaluation.SecurityProblems(Model, b) : new List<string>();
                 <tr class="@(Model.AwardedVendorId == b.VendorId && s >= TenderStatus.Awarded ? "table-success" : "")">
-                    <td>@b.Vendor?.Name <span class="badge bg-light text-dark border">@b.Vendor?.Status.GetDisplayName()</span><br /><small class="text-muted">nhận HSMT @b.RegisteredAt.ToDateTime()</small></td>
-                    <td>@(b.Submitted ? $"Nộp {b.SubmittedAt.ToDateTime()}" : closed ? "Không nộp" : "Chưa nộp")</td>
+                    <td>@b.Vendor?.Name <span class="badge bg-light text-dark border">@b.Vendor?.Status.GetDisplayName()</span><br /><small class="text-muted">@L["nhận HSMT"] @b.RegisteredAt.ToDateTime()</small></td>
+                    <td>@(b.Submitted ? L["Nộp {0}", b.SubmittedAt.ToDateTime()] : closed ? L["Không nộp"] : L["Chưa nộp"])</td>
                     <td class="money">@(b.Submitted ? (Model.OpenedAt.HasValue && (pricesVisible || Model.EnvelopeMethod == EnvelopeMethod.OneEnvelope) ? $"{b.BidPrice.ToMoney()}" + (b.DiscountPercent > 0 ? $" (−{b.DiscountPercent:0.##}%)" : "") : "🔒") : "")</td>
                     <td class="money">@(b.Submitted && pricesVisible ? b.EvaluatedPrice.ToMoney() : "")</td>
-                    <td class="small">@if (b.Submitted && Model.OpenedAt.HasValue) { @b.BidSecurityAmount.ToMoney() <span>đ</span> @if (sec.Any()) { <div class="text-danger">@string.Join("; ", sec)</div> } }</td>
+                    <td class="small">@if (b.Submitted && Model.OpenedAt.HasValue) { @b.BidSecurityAmount.ToMoney() <span>@L["đ"]</span> @if (sec.Any()) { <div class="text-danger">@string.Join("; ", sec)</div> } }</td>
                     <td class="text-end text-nowrap">
                         @if (((Dictionary<int, string>)ViewBag.Online).TryGetValue(b.Id, out var onl)) { <span class="badge bg-success-subtle text-success" title="@onl">Online</span><div class="small text-muted">@onl</div> }
-                        else if (buyer && s == TenderStatus.Published && !closed) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterBid" asp-route-bidderId="@b.Id">@(b.Submitted ? "Nộp HSDT thay thế" : "Tiếp nhận HSDT")</a> }
-                        @if (s is TenderStatus.Awarded or TenderStatus.Contracted && b.Submitted) { <a class="btn btn-sm btn-outline-success" asp-action="ResultNotice" asp-route-id="@Model.Id" asp-route-vendorId="@b.VendorId" target="_blank">Thông báo KQ</a> }
+                        else if (buyer && s == TenderStatus.Published && !closed) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterBid" asp-route-bidderId="@b.Id">@(b.Submitted ? L["Nộp HSDT thay thế"] : L["Tiếp nhận HSDT"])</a> }
+                        @if (s is TenderStatus.Awarded or TenderStatus.Contracted && b.Submitted) { <a class="btn btn-sm btn-outline-success" asp-action="ResultNotice" asp-route-id="@Model.Id" asp-route-vendorId="@b.VendorId" target="_blank">@L["Thông báo KQ"]</a> }
                     </td>
                 </tr>
             }
-            @if (!Model.Bidders.Any()) { <tr><td colspan="6" class="text-muted p-3">Chưa có nhà thầu nhận HSMT.</td></tr> }
+            @if (!Model.Bidders.Any()) { <tr><td colspan="6" class="text-muted p-3">@L["Chưa có nhà thầu nhận HSMT."]</td></tr> }
             </tbody>
         </table></div>
         @if (buyer && s == TenderStatus.Published && !closed && ViewBag.Vendors != null)
         {
             <div class="card-body border-top"><form asp-action="RegisterBidder" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-                <select name="vendorId" class="form-select form-select-sm" asp-items="ViewBag.Vendors"><option value="">-- Nhà thầu nhận / mua HSMT --</option></select>
-                <button class="btn btn-sm btn-outline-primary text-nowrap">Ghi nhận</button>
+                <select name="vendorId" class="form-select form-select-sm" asp-items="ViewBag.Vendors"><option value="">@L["-- Nhà thầu nhận / mua HSMT --"]</option></select>
+                <button class="btn btn-sm btn-outline-primary text-nowrap">@L["Ghi nhận"]</button>
             </form></div>
         }
         </div>
@@ -167,8 +167,8 @@
     @* ---------------- Đánh giá ---------------- *@
     @if (Model.OpenedAt.HasValue)
     {
-        <div class="card mb-3"><div class="card-header">Kết quả đánh giá</div><div class="card-body p-0"><table class="table mb-0">
-            <thead><tr><th>Nhà thầu</th><th>Hợp lệ</th><th>Năng lực</th><th class="money">Điểm KT (TB)</th><th class="money">Giá đánh giá</th>@if (Model.EvaluationMethod == TenderEvaluationMethod.Combined) { <th class="money">Tổng điểm</th> }<th>Xếp hạng</th></tr></thead>
+        <div class="card mb-3"><div class="card-header">@L["Kết quả đánh giá"]</div><div class="card-body p-0"><table class="table mb-0">
+            <thead><tr><th>@L["Nhà thầu"]</th><th>@L["Hợp lệ"]</th><th>@L["Năng lực"]</th><th class="money">@L["Điểm KT (TB)"]</th><th class="money">@L["Giá đánh giá"]</th>@if (Model.EvaluationMethod == TenderEvaluationMethod.Combined) { <th class="money">@L["Tổng điểm"]</th> }<th>@L["Xếp hạng"]</th></tr></thead>
             <tbody>
             @foreach (var r in results)
             {
@@ -177,10 +177,10 @@
                     <td>@r.Bid.Vendor?.Name @if (r.Issues.Any()) { <div class="small text-muted">@string.Join("; ", r.Issues)</div> }</td>
                     <td title="@r.Bid.ValidNote">@Mark(r.Bid.Valid)</td>
                     <td title="@r.Bid.QualifiedNote">@Mark(r.Bid.Qualified)</td>
-                    <td class="money">@(scoringDone && r.TechnicalAverage.HasValue ? r.TechnicalAverage.Value.ToString("0.##") : r.Responsive ? $"{r.ScoreCount}/{Model.Committee.Count} đã chấm" : "")</td>
+                    <td class="money">@(scoringDone && r.TechnicalAverage.HasValue ? r.TechnicalAverage.Value.ToString("0.##") : r.Responsive ? L["{0}/{1} đã chấm", r.ScoreCount, Model.Committee.Count] : "")</td>
                     <td class="money">@(pricesVisible && r.TechnicalPass ? r.Bid.EvaluatedPrice.ToMoney() : "")</td>
                     @if (Model.EvaluationMethod == TenderEvaluationMethod.Combined) { <td class="money">@(pricesVisible && r.TechnicalPass ? r.Total.ToString("0.##") : "")</td> }
-                    <td>@(pricesVisible && r.Rank.HasValue ? $"Hạng {r.Rank}" : r.Responsive ? "" : "Loại")</td>
+                    <td>@(pricesVisible && r.Rank.HasValue ? L["Hạng {0}", r.Rank] : r.Responsive ? "" : L["Loại"])</td>
                 </tr>
             }
             </tbody>
@@ -192,17 +192,17 @@
                 {
                     var nb = Model.Bidders.First(b => b.Id == negOk.TenderBidderId);
                     <form asp-action="ProposeAward" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-                        <input name="reason" class="form-control form-control-sm" placeholder="Kết luận của tổ chuyên gia (mặc định: xếp hạng + kết quả đàm phán)" />
-                        <button class="btn btn-sm btn-success text-nowrap">Trình duyệt kết quả: @nb.Vendor?.Name – @negOk.NegotiatedPrice.ToMoney() đ</button>
+                        <input name="reason" class="form-control form-control-sm" placeholder="@L["Kết luận của tổ chuyên gia (mặc định: xếp hạng + kết quả đàm phán)"]" />
+                        <button class="btn btn-sm btn-success text-nowrap">@L["Trình duyệt kết quả:"] @nb.Vendor?.Name – @negOk.NegotiatedPrice.ToMoney() đ</button>
                     </form>
                 }
                 else if (scoringDone && pricesVisible && results.Any(r => r.Rank.HasValue))
                 {
-                    <div class="small text-muted">Đàm phán hợp đồng với nhà thầu xếp hạng cao nhất (mục Đàm phán hợp đồng bên dưới) trước khi trình kết quả.</div>
+                    <div class="small text-muted">@L["Đàm phán hợp đồng với nhà thầu xếp hạng cao nhất (mục Đàm phán hợp đồng bên dưới) trước khi trình kết quả."]</div>
                 }
                 else
                 {
-                    <div class="small text-muted">Trình kết quả khi: đã đánh giá hợp lệ & năng lực, mọi thành viên hoàn thành chấm kỹ thuật@(Model.EnvelopeMethod == EnvelopeMethod.TwoEnvelope ? ", đã mở hồ sơ tài chính" : ""), có HSDT đạt kỹ thuật và đã đàm phán hợp đồng thành công.</div>
+                    <div class="small text-muted">@L["Trình kết quả khi: đã đánh giá hợp lệ & năng lực, mọi thành viên hoàn thành chấm kỹ thuật"]@(Model.EnvelopeMethod == EnvelopeMethod.TwoEnvelope ? L[", đã mở hồ sơ tài chính"] : "")@L[", có HSDT đạt kỹ thuật và đã đàm phán hợp đồng thành công."]</div>
                 }
             </div>
         }
@@ -212,18 +212,18 @@
     @* ---------------- Đàm phán hợp đồng ---------------- *@
     @if (Model.Negotiations.Any() || negCandidate != null)
     {
-        <div class="card mb-3" id="negotiation"><div class="card-header">Đàm phán hợp đồng</div>
+        <div class="card mb-3" id="negotiation"><div class="card-header">@L["Đàm phán hợp đồng"]</div>
         <ul class="list-group list-group-flush small">
             @foreach (var n in Model.Negotiations.OrderBy(n => n.CreatedAt))
             {
                 var nb = Model.Bidders.FirstOrDefault(b => b.Id == n.TenderBidderId);
                 <li class="list-group-item @(n.IsVoid ? "text-muted" : "")">
-                    <div class="d-flex justify-content-between gap-2"><span><b>@nb?.Vendor?.Name</b> (hạng @n.Rank) · @n.NegotiatedOn.ToDate()
-                        @if (n.IsVoid) { <span class="badge bg-light text-muted border">hết hiệu lực</span> } else if (n.Success) { <span class="badge bg-success">Thành công</span> } else { <span class="badge bg-danger">Không thành công</span> }</span>
-                        <a asp-action="NegotiationMinutes" asp-route-id="@Model.Id" asp-route-negotiationId="@n.Id" target="_blank">Biên bản</a></div>
-                    <div>Giá dự thầu sau giảm giá @n.BidPrice.ToMoney() đ @if (n.Success) { <span>→ sau đàm phán <b>@n.NegotiatedPrice.ToMoney() đ</b> (giảm @((n.BidPrice - n.NegotiatedPrice).ToMoney()) đ)</span> }</div>
+                    <div class="d-flex justify-content-between gap-2"><span><b>@nb?.Vendor?.Name</b> @L["(hạng"] @n.Rank) · @n.NegotiatedOn.ToDate()
+                        @if (n.IsVoid) { <span class="badge bg-light text-muted border">@L["hết hiệu lực"]</span> } else if (n.Success) { <span class="badge bg-success">@L["Thành công"]</span> } else { <span class="badge bg-danger">@L["Không thành công"]</span> }</span>
+                        <a asp-action="NegotiationMinutes" asp-route-id="@Model.Id" asp-route-negotiationId="@n.Id" target="_blank">@L["Biên bản"]</a></div>
+                    <div>@L["Giá dự thầu sau giảm giá"] @n.BidPrice.ToMoney() đ @if (n.Success) { <span>@L["→ sau đàm phán"] <b>@n.NegotiatedPrice.ToMoney() đ</b> @L["(giảm"] @((n.BidPrice - n.NegotiatedPrice).ToMoney()) @L["đ)"]</span> }</div>
                     <div class="pre text-muted">@n.Content</div>
-                    @if (!string.IsNullOrEmpty(n.Note)) { <div>Ghi chú: @n.Note</div> }
+                    @if (!string.IsNullOrEmpty(n.Note)) { <div>@L["Ghi chú:"] @n.Note</div> }
                 </li>
             }
         </ul>
@@ -231,15 +231,15 @@
         {
             <div class="card-body border-top"><form asp-action="Negotiate" asp-route-id="@Model.Id" method="post" class="row g-2">
                 <input type="hidden" name="bidderId" value="@negCandidate.Bid.Id" />
-                <div class="col-12 small">Mời đàm phán: <b>@negCandidate.Bid.Vendor?.Name</b> – xếp hạng @negCandidate.Rank · giá dự thầu sau giảm giá @negCandidate.Bid.NetPrice.ToMoney() đ (trước VAT)</div>
-                <div class="col-md-3"><label class="form-label small mb-0">Ngày đàm phán</label><input type="date" name="negotiatedOn" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
-                <div class="col-md-9"><label class="form-label small mb-0">Thành phần tham dự</label><input name="participants" maxlength="1000" class="form-control form-control-sm" placeholder="Bên mời thầu: …; nhà thầu: …" required /></div>
-                <div class="col-12"><label class="form-label small mb-0">Nội dung đàm phán</label><textarea name="content" rows="3" maxlength="4000" class="form-control form-control-sm" placeholder="Sai sót / sai lệch được hiệu chỉnh, chi tiết hàng hóa, tiến độ, điều khoản thanh toán, bảo hành…" required></textarea></div>
-                <div class="col-md-4"><label class="form-label small mb-0">Giá sau đàm phán (trước VAT)</label><input type="number" name="negotiatedPrice" min="0" max="@negCandidate.Bid.NetPrice.ToString("0")" value="@negCandidate.Bid.NetPrice.ToString("0")" class="form-control form-control-sm" /></div>
-                <div class="col-md-8"><label class="form-label small mb-0">Ghi chú / lý do không thành công</label><input name="note" maxlength="1000" class="form-control form-control-sm" /></div>
+                <div class="col-12 small">@L["Mời đàm phán:"] <b>@negCandidate.Bid.Vendor?.Name</b> @L["– xếp hạng"] @negCandidate.Rank @L["· giá dự thầu sau giảm giá"] @negCandidate.Bid.NetPrice.ToMoney() @L["đ (trước VAT)"]</div>
+                <div class="col-md-3"><label class="form-label small mb-0">@L["Ngày đàm phán"]</label><input type="date" name="negotiatedOn" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
+                <div class="col-md-9"><label class="form-label small mb-0">@L["Thành phần tham dự"]</label><input name="participants" maxlength="1000" class="form-control form-control-sm" placeholder="@L["Bên mời thầu: …; nhà thầu: …"]" required /></div>
+                <div class="col-12"><label class="form-label small mb-0">@L["Nội dung đàm phán"]</label><textarea name="content" rows="3" maxlength="4000" class="form-control form-control-sm" placeholder="@L["Sai sót / sai lệch được hiệu chỉnh, chi tiết hàng hóa, tiến độ, điều khoản thanh toán, bảo hành…"]" required></textarea></div>
+                <div class="col-md-4"><label class="form-label small mb-0">@L["Giá sau đàm phán (trước VAT)"]</label><input type="number" name="negotiatedPrice" min="0" max="@negCandidate.Bid.NetPrice.ToString("0")" value="@negCandidate.Bid.NetPrice.ToString("0")" class="form-control form-control-sm" /></div>
+                <div class="col-md-8"><label class="form-label small mb-0">@L["Ghi chú / lý do không thành công"]</label><input name="note" maxlength="1000" class="form-control form-control-sm" /></div>
                 <div class="col-12 d-flex gap-2">
-                    <button name="success" value="true" class="btn btn-sm btn-success">Đàm phán thành công</button>
-                    <button name="success" value="false" class="btn btn-sm btn-outline-danger" data-confirm="Ghi nhận đàm phán không thành công và mời nhà thầu xếp hạng kế tiếp?">Không thành công</button>
+                    <button name="success" value="true" class="btn btn-sm btn-success">@L["Đàm phán thành công"]</button>
+                    <button name="success" value="false" class="btn btn-sm btn-outline-danger" data-confirm="@L["Ghi nhận đàm phán không thành công và mời nhà thầu xếp hạng kế tiếp?"]">@L["Không thành công"]</button>
                 </div>
             </form></div>
         }
@@ -250,36 +250,36 @@
     @if (s == TenderStatus.PendingResultApproval || Model.Appraisals.Any())
     {
         <div class="card mb-3" id="appraisal"><div class="card-header d-flex justify-content-between">Thẩm định kết quả lựa chọn nhà thầu
-            @if (Model.Appraisals.Any(a => a.CompletedAt != null)) { <a asp-action="AppraisalReport" asp-route-id="@Model.Id" target="_blank" class="small fw-normal">Báo cáo thẩm định</a> }</div>
+            @if (Model.Appraisals.Any(a => a.CompletedAt != null)) { <a asp-action="AppraisalReport" asp-route-id="@Model.Id" target="_blank" class="small fw-normal">@L["Báo cáo thẩm định"]</a> }</div>
         <ul class="list-group list-group-flush small">
             @foreach (var a in Model.Appraisals.OrderBy(a => a.AssignedAt))
             {
                 <li class="list-group-item @(a.IsVoid ? "text-muted" : "")"><b>@a.Appraiser?.FullName</b> · giao @a.AssignedAt.ToDateTime()
-                    @if (a.IsVoid) { <span class="badge bg-light text-muted border">hết hiệu lực</span> }
-                    else if (a.CompletedAt == null) { <span class="badge bg-warning text-dark">Đang thẩm định</span> }
-                    else { <span class="badge @(a.Agree == true ? "bg-success" : "bg-danger")">@(a.Agree == true ? "Thống nhất" : "Không thống nhất") · @a.CompletedAt.ToDateTime()</span> }
+                    @if (a.IsVoid) { <span class="badge bg-light text-muted border">@L["hết hiệu lực"]</span> }
+                    else if (a.CompletedAt == null) { <span class="badge bg-warning text-dark">@L["Đang thẩm định"]</span> }
+                    else { <span class="badge @(a.Agree == true ? "bg-success" : "bg-danger")">@(a.Agree == true ? L["Thống nhất"] : L["Không thống nhất"]) · @a.CompletedAt.ToDateTime()</span> }
                     @if (!string.IsNullOrEmpty(a.Content)) { <div class="pre">@a.Content</div> }
-                    @if (!string.IsNullOrEmpty(a.Recommendation)) { <div class="pre"><b>Kiến nghị:</b> @a.Recommendation</div> }</li>
+                    @if (!string.IsNullOrEmpty(a.Recommendation)) { <div class="pre"><b>@L["Kiến nghị:"]</b> @a.Recommendation</div> }</li>
             }
-            @if (!Model.Appraisals.Any()) { <li class="list-group-item text-muted">Chưa giao thẩm định.@(settings.TenderAppraisalRequired ? " Bắt buộc có báo cáo thẩm định thống nhất trước khi Giám đốc phê duyệt kết quả." : "")</li> }
+            @if (!Model.Appraisals.Any()) { <li class="list-group-item text-muted">@L["Chưa giao thẩm định."]@(settings.TenderAppraisalRequired ? L[" Bắt buộc có báo cáo thẩm định thống nhất trước khi Giám đốc phê duyệt kết quả."] : "")</li> }
         </ul>
         @if (s == TenderStatus.PendingResultApproval && appraisal?.CompletedAt == null && appraisal?.AppraiserId == meId)
         {
             <div class="card-body border-top"><form asp-action="Appraise" asp-route-id="@Model.Id" method="post" class="row g-2">
-                <div class="col-12"><label class="form-label small mb-0">Nội dung thẩm định</label><textarea name="content" rows="5" maxlength="4000" class="form-control form-control-sm" required
-                    placeholder="1. Căn cứ pháp lý, KHLCNT, HSMT đã duyệt; 2. Quá trình tổ chức lựa chọn nhà thầu (thời gian, mở thầu, đánh giá); 3. Kết quả đánh giá, xếp hạng, đàm phán hợp đồng; 4. Giá đề nghị trúng thầu so với giá gói thầu"></textarea></div>
-                <div class="col-12"><label class="form-label small mb-0">Kiến nghị</label><textarea name="recommendation" rows="2" maxlength="2000" class="form-control form-control-sm"></textarea></div>
+                <div class="col-12"><label class="form-label small mb-0">@L["Nội dung thẩm định"]</label><textarea name="content" rows="5" maxlength="4000" class="form-control form-control-sm" required
+                    placeholder="@L["1. Căn cứ pháp lý, KHLCNT, HSMT đã duyệt; 2. Quá trình tổ chức lựa chọn nhà thầu (thời gian, mở thầu, đánh giá); 3. Kết quả đánh giá, xếp hạng, đàm phán hợp đồng; 4. Giá đề nghị trúng thầu so với giá gói thầu"]"></textarea></div>
+                <div class="col-12"><label class="form-label small mb-0">@L["Kiến nghị"]</label><textarea name="recommendation" rows="2" maxlength="2000" class="form-control form-control-sm"></textarea></div>
                 <div class="col-12 d-flex gap-2">
-                    <button name="agree" value="true" class="btn btn-sm btn-success">Thống nhất – đề nghị phê duyệt</button>
-                    <button name="agree" value="false" class="btn btn-sm btn-outline-danger">Không thống nhất</button>
+                    <button name="agree" value="true" class="btn btn-sm btn-success">@L["Thống nhất – đề nghị phê duyệt"]</button>
+                    <button name="agree" value="false" class="btn btn-sm btn-outline-danger">@L["Không thống nhất"]</button>
                 </div>
             </form></div>
         }
         @if (buyer && s == TenderStatus.PendingResultApproval && appraisal?.CompletedAt == null && ViewBag.Appraisers is Microsoft.AspNetCore.Mvc.Rendering.SelectList appraisers)
         {
             <div class="card-body border-top"><form asp-action="AssignAppraiser" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-                <select name="appraiserId" class="form-select form-select-sm" asp-items="appraisers" required><option value="">-- Người thẩm định (độc lập với bên mời thầu, tổ chuyên gia) --</option></select>
-                <button class="btn btn-sm btn-outline-primary text-nowrap">@(appraisal == null ? "Giao thẩm định" : "Giao lại")</button>
+                <select name="appraiserId" class="form-select form-select-sm" asp-items="appraisers" required><option value="">@L["-- Người thẩm định (độc lập với bên mời thầu, tổ chuyên gia) --"]</option></select>
+                <button class="btn btn-sm btn-outline-primary text-nowrap">@(appraisal == null ? L["Giao thẩm định"] : L["Giao lại"])</button>
             </form></div>
         }
         </div>
@@ -288,33 +288,33 @@
     @* ---------------- Kiến nghị ---------------- *@
     @if (s >= TenderStatus.Awarded && s != TenderStatus.Cancelled || Model.Complaints.Any())
     {
-        <div class="card mb-3"><div class="card-header">Kiến nghị kết quả @if (Model.ComplaintDeadline.HasValue) { <span class="small fw-normal">– hạn @Model.ComplaintDeadline.ToDateTime() @(now > Model.ComplaintDeadline ? "(đã hết hạn)" : "")</span> }</div>
+        <div class="card mb-3"><div class="card-header">@L["Kiến nghị kết quả"] @if (Model.ComplaintDeadline.HasValue) { <span class="small fw-normal">– @L["hạn"] @Model.ComplaintDeadline.ToDateTime() @(now > Model.ComplaintDeadline ? L["(đã hết hạn)"] : "")</span> }</div>
         <ul class="list-group list-group-flush">
             @foreach (var c in Model.Complaints.OrderBy(c => c.ReceivedAt))
             {
                 <li class="list-group-item small">
                     <b>@c.Vendor?.Name</b> · @c.ReceivedAt.ToDateTime(): @c.Content
-                    @if (c.ResolvedAt.HasValue) { <div class="@(c.Upheld == true ? "text-danger" : "text-success")">→ @(c.Upheld == true ? "Chấp nhận" : "Bác"): @c.Response (@c.ResolvedAt.ToDateTime())</div> }
+                    @if (c.ResolvedAt.HasValue) { <div class="@(c.Upheld == true ? "text-danger" : "text-success")">→ @(c.Upheld == true ? L["Chấp nhận"] : L["Bác"]): @c.Response (@c.ResolvedAt.ToDateTime())</div> }
                     else if (director && s == TenderStatus.Awarded)
                     {
                         <form asp-action="ResolveComplaint" asp-route-id="@Model.Id" method="post" class="d-flex gap-1 mt-1">
                             <input type="hidden" name="complaintId" value="@c.Id" />
-                            <input name="response" class="form-control form-control-sm" placeholder="Trả lời kiến nghị" />
-                            <button name="upheld" value="false" class="btn btn-sm btn-outline-secondary">Bác</button>
-                            <button name="upheld" value="true" class="btn btn-sm btn-outline-danger" data-confirm="Chấp nhận kiến nghị sẽ hủy kết quả và đánh giá lại?">Chấp nhận</button>
+                            <input name="response" class="form-control form-control-sm" placeholder="@L["Trả lời kiến nghị"]" />
+                            <button name="upheld" value="false" class="btn btn-sm btn-outline-secondary">@L["Bác"]</button>
+                            <button name="upheld" value="true" class="btn btn-sm btn-outline-danger" data-confirm="@L["Chấp nhận kiến nghị sẽ hủy kết quả và đánh giá lại?"]">@L["Chấp nhận"]</button>
                         </form>
                     }
-                    else { <div class="text-warning">Chờ Giám đốc giải quyết</div> }
+                    else { <div class="text-warning">@L["Chờ Giám đốc giải quyết"]</div> }
                 </li>
             }
-            @if (!Model.Complaints.Any()) { <li class="list-group-item small text-muted">Chưa có kiến nghị.</li> }
+            @if (!Model.Complaints.Any()) { <li class="list-group-item small text-muted">@L["Chưa có kiến nghị."]</li> }
         </ul>
         @if (buyer && s == TenderStatus.Awarded && now <= Model.ComplaintDeadline && ViewBag.ComplaintVendors != null)
         {
             <div class="card-body border-top"><form asp-action="AddComplaint" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
                 <select name="vendorId" class="form-select form-select-sm" style="width:auto" asp-items="ViewBag.ComplaintVendors"></select>
-                <input name="content" class="form-control form-control-sm" placeholder="Nội dung kiến nghị nhận được" />
-                <button class="btn btn-sm btn-outline-primary text-nowrap">Ghi nhận kiến nghị</button>
+                <input name="content" class="form-control form-control-sm" placeholder="@L["Nội dung kiến nghị nhận được"]" />
+                <button class="btn btn-sm btn-outline-primary text-nowrap">@L["Ghi nhận kiến nghị"]</button>
             </form></div>
         }
         </div>
@@ -323,32 +323,32 @@
     @* ---------------- Làm rõ / sửa đổi HSMT ---------------- *@
     @if (s >= TenderStatus.Published && s != TenderStatus.Cancelled || Model.Clarifications.Any())
     {
-        <div class="card mb-3"><div class="card-header">Làm rõ / sửa đổi HSMT (@Model.Clarifications.Count) – công khai trên thông báo mời thầu</div>
+        <div class="card mb-3"><div class="card-header">@L["Làm rõ / sửa đổi HSMT ("]@Model.Clarifications.Count@L[") – công khai trên thông báo mời thầu"]</div>
         <ul class="list-group list-group-flush">
             @foreach (var c in Model.Clarifications.OrderBy(c => c.CreatedAt))
             {
-                <li class="list-group-item small">@if (c.IsAmendment) { <span class="badge bg-warning text-dark">Sửa đổi HSMT</span> }
+                <li class="list-group-item small">@if (c.IsAmendment) { <span class="badge bg-warning text-dark">@L["Sửa đổi HSMT"]</span> }
                     <span class="text-muted">@c.CreatedAt.ToDateTime()</span>
-                    @if (!string.IsNullOrEmpty(c.Question)) { <div><b>Hỏi:</b> @c.Question</div> }
-                    <div class="pre"><b>@(c.IsAmendment ? "Nội dung:" : "Trả lời:")</b> @c.Answer</div></li>
+                    @if (!string.IsNullOrEmpty(c.Question)) { <div><b>@L["Hỏi:"]</b> @c.Question</div> }
+                    <div class="pre"><b>@(c.IsAmendment ? L["Nội dung:"] : L["Trả lời:"])</b> @c.Answer</div></li>
             }
         </ul>
         @{ var pendingQ = Model.Questions.Where(q => q.ClarificationId == null).OrderBy(q => q.AskedAt).ToList(); }
         @if (pendingQ.Any())
         {
-            <div class="card-body border-top bg-warning-subtle"><div class="fw-semibold small mb-2">Đề nghị làm rõ từ nhà thầu chờ trả lời (@pendingQ.Count)</div>
+            <div class="card-body border-top bg-warning-subtle"><div class="fw-semibold small mb-2">@L["Đề nghị làm rõ từ nhà thầu chờ trả lời ("]@pendingQ.Count)</div>
             @foreach (var q in pendingQ)
             {
-                <div class="small mb-2 pb-2 border-bottom"><span class="text-muted">@q.AskedAt.ToDateTime() · @q.Vendor?.Name (không công khai tên)</span>
+                <div class="small mb-2 pb-2 border-bottom"><span class="text-muted">@q.AskedAt.ToDateTime() · @q.Vendor?.Name @L["(không công khai tên)"]</span>
                     <div class="pre">@q.Content</div>
                     @if (buyer && s == TenderStatus.Published && !closed)
                     {
                         <form asp-action="AddClarification" asp-route-id="@Model.Id" method="post" class="row g-1 mt-1">
                             <input type="hidden" name="questionId" value="@q.Id" />
-                            <div class="col-12"><input name="question" value="@q.Content" maxlength="2000" class="form-control form-control-sm" title="Câu hỏi đăng công khai – có thể biên tập lại, bỏ thông tin nhận diện nhà thầu" /></div>
-                            <div class="col-md-8"><textarea name="answer" rows="2" class="form-control form-control-sm" placeholder="Trả lời (đăng công khai cho mọi nhà thầu)" required></textarea></div>
-                            <div class="col-md-2 d-flex align-items-center"><label class="small"><input type="checkbox" name="isAmendment" value="true" class="form-check-input" /> Sửa đổi HSMT</label></div>
-                            <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Trả lời</button></div>
+                            <div class="col-12"><input name="question" value="@q.Content" maxlength="2000" class="form-control form-control-sm" title="@L["Câu hỏi đăng công khai – có thể biên tập lại, bỏ thông tin nhận diện nhà thầu"]" /></div>
+                            <div class="col-md-8"><textarea name="answer" rows="2" class="form-control form-control-sm" placeholder="@L["Trả lời (đăng công khai cho mọi nhà thầu)"]" required></textarea></div>
+                            <div class="col-md-2 d-flex align-items-center"><label class="small"><input type="checkbox" name="isAmendment" value="true" class="form-check-input" /> @L["Sửa đổi HSMT"]</label></div>
+                            <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">@L["Trả lời"]</button></div>
                         </form>
                     }
                 </div>
@@ -358,12 +358,12 @@
         @if (buyer && s == TenderStatus.Published && !closed)
         {
             <div class="card-body border-top"><form asp-action="AddClarification" asp-route-id="@Model.Id" method="post" class="row g-2">
-                <div class="col-12"><input name="question" class="form-control form-control-sm" placeholder="Câu hỏi của nhà thầu (để trống nếu là sửa đổi chủ động)" /></div>
-                <div class="col-12"><textarea name="answer" class="form-control form-control-sm" rows="2" placeholder="Trả lời / nội dung sửa đổi"></textarea></div>
-                <div class="col-md-3 d-flex align-items-center"><label class="small"><input type="checkbox" name="isAmendment" value="true" class="form-check-input" /> Là sửa đổi HSMT</label></div>
-                <div class="col-md-5"><input type="datetime-local" name="newClosingAt" class="form-control form-control-sm" title="Gia hạn đóng thầu (bắt buộc nếu sửa đổi trong vòng @settings.TenderAmendmentMinDays ngày trước đóng thầu)" /></div>
-                <div class="col-md-4"><button class="btn btn-sm btn-outline-primary w-100">Đăng tải</button></div>
-                <div class="col-12 small text-muted">Sửa đổi HSMT trong vòng @settings.TenderAmendmentMinDays ngày trước đóng thầu phải gia hạn thời điểm đóng thầu.</div>
+                <div class="col-12"><input name="question" class="form-control form-control-sm" placeholder="@L["Câu hỏi của nhà thầu (để trống nếu là sửa đổi chủ động)"]" /></div>
+                <div class="col-12"><textarea name="answer" class="form-control form-control-sm" rows="2" placeholder="@L["Trả lời / nội dung sửa đổi"]"></textarea></div>
+                <div class="col-md-3 d-flex align-items-center"><label class="small"><input type="checkbox" name="isAmendment" value="true" class="form-check-input" /> @L["Là sửa đổi HSMT"]</label></div>
+                <div class="col-md-5"><input type="datetime-local" name="newClosingAt" class="form-control form-control-sm" title="@L["Gia hạn đóng thầu (bắt buộc nếu sửa đổi trong vòng {0} ngày trước đóng thầu)", settings.TenderAmendmentMinDays]" /></div>
+                <div class="col-md-4"><button class="btn btn-sm btn-outline-primary w-100">@L["Đăng tải"]</button></div>
+                <div class="col-12 small text-muted">@L["Sửa đổi HSMT trong vòng"] @settings.TenderAmendmentMinDays @L["ngày trước đóng thầu phải gia hạn thời điểm đóng thầu."]</div>
             </form></div>
         }
         </div>
@@ -372,30 +372,30 @@
 </div>
 
 <div class="col-lg-4">
-    <div class="card mb-3"><div class="card-header">Tổ chuyên gia (@Model.Committee.Count/@settings.TenderMinCommittee tối thiểu)</div>
+    <div class="card mb-3"><div class="card-header">@L["Tổ chuyên gia ("]@Model.Committee.Count/@settings.TenderMinCommittee @L["tối thiểu)"]</div>
     <ul class="list-group list-group-flush">
         @foreach (var m in Model.Committee.OrderByDescending(m => m.IsLeader).ThenBy(m => m.User?.FullName))
         {
             <li class="list-group-item small d-flex justify-content-between align-items-center">
-                <span>@m.User?.FullName @if (m.IsLeader) { <span class="badge bg-primary">Tổ trưởng</span> }<br />
-                    <span class="text-muted">@(m.ConflictDeclaredAt.HasValue ? "✔ đã cam kết không xung đột" : "chưa cam kết") · @(m.ScoringCompletedAt.HasValue ? "✔ đã nộp phiếu chấm" : s == TenderStatus.Opened ? "chưa nộp phiếu" : "")</span></span>
+                <span>@m.User?.FullName @if (m.IsLeader) { <span class="badge bg-primary">@L["Tổ trưởng"]</span> }<br />
+                    <span class="text-muted">@(m.ConflictDeclaredAt.HasValue ? L["✔ đã cam kết không xung đột"] : L["chưa cam kết"]) · @(m.ScoringCompletedAt.HasValue ? L["✔ đã nộp phiếu chấm"] : s == TenderStatus.Opened ? L["chưa nộp phiếu"] : "")</span></span>
                 @if (buyer && s == TenderStatus.Draft)
                 {
-                    <form asp-action="RemoveMember" asp-route-id="@Model.Id" method="post"><input type="hidden" name="memberId" value="@m.Id" /><button class="btn btn-sm btn-link text-danger">Rút</button></form>
+                    <form asp-action="RemoveMember" asp-route-id="@Model.Id" method="post"><input type="hidden" name="memberId" value="@m.Id" /><button class="btn btn-sm btn-link text-danger">@L["Rút"]</button></form>
                 }
             </li>
         }
-        @if (!Model.Committee.Any()) { <li class="list-group-item small text-muted">Chưa thành lập.</li> }
+        @if (!Model.Committee.Any()) { <li class="list-group-item small text-muted">@L["Chưa thành lập."]</li> }
     </ul>
     @if (buyer && s == TenderStatus.Draft && ViewBag.Users != null)
     {
         <div class="card-body border-top"><form asp-action="AddMember" asp-route-id="@Model.Id" method="post" class="d-flex flex-column gap-1">
             <select name="userId" class="form-select form-select-sm" asp-items="ViewBag.Users"></select>
-            <div class="d-flex justify-content-between align-items-center"><label class="small"><input type="checkbox" name="isLeader" value="true" class="form-check-input" /> Tổ trưởng</label>
-                <button class="btn btn-sm btn-outline-primary">Thêm thành viên</button></div>
+            <div class="d-flex justify-content-between align-items-center"><label class="small"><input type="checkbox" name="isLeader" value="true" class="form-check-input" /> @L["Tổ trưởng"]</label>
+                <button class="btn btn-sm btn-outline-primary">@L["Thêm thành viên"]</button></div>
         </form></div>
     }
     </div>
-    <div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.Tender, id = Model.Id })</div></div>
+    <div class="card"><div class="card-header">@L["Nhật ký"]</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.Tender, id = Model.Id })</div></div>
 </div>
 </div>

@@ -102,12 +102,12 @@ public class OrgUnitsController : Controller
         if (string.IsNullOrEmpty(model.Code) && model.Name.Length > 0) { model.Code = OrgUnits.Abbreviate(model.Name); ModelState.Remove(nameof(model.Code)); }
         var all = await _db.OrgUnits.AsNoTracking().ToListAsync();
         if (all.Any(x => x.Id != model.Id && string.Equals(x.Name, model.Name, StringComparison.OrdinalIgnoreCase)))
-            ModelState.AddModelError(nameof(model.Name), "Đã có đơn vị cùng tên (tên đơn vị là phòng ban dùng trong toàn hệ thống).");
+            ModelState.AddModelError(nameof(model.Name), I18n.T("Đã có đơn vị cùng tên (tên đơn vị là phòng ban dùng trong toàn hệ thống)."));
         if (all.Any(x => x.Id != model.Id && string.Equals(x.Code, model.Code, StringComparison.OrdinalIgnoreCase)))
-            ModelState.AddModelError(nameof(model.Code), "Mã đơn vị đã được dùng.");
-        if (!OrgUnits.CanBeParent(all, model.Id, model.ParentId)) ModelState.AddModelError(nameof(model.ParentId), "Không chọn chính đơn vị hoặc đơn vị cấp dưới làm cấp trên.");
+            ModelState.AddModelError(nameof(model.Code), I18n.T("Mã đơn vị đã được dùng."));
+        if (!OrgUnits.CanBeParent(all, model.Id, model.ParentId)) ModelState.AddModelError(nameof(model.ParentId), I18n.T("Không chọn chính đơn vị hoặc đơn vị cấp dưới làm cấp trên."));
         if (model.ParentId == null && all.Any(x => x.ParentId == null && x.Id != model.Id))
-            ModelState.AddModelError(nameof(model.ParentId), "Chọn đơn vị cấp trên (chỉ có một đơn vị gốc).");
+            ModelState.AddModelError(nameof(model.ParentId), I18n.T("Chọn đơn vị cấp trên (chỉ có một đơn vị gốc)."));
         if (!ModelState.IsValid) { await LoadFormAsync(model); ViewData["Title"] = model.Id == 0 ? "Thêm đơn vị" : $"Sửa đơn vị {model.Name}"; return View("Form", model); }
 
         OrgUnit u;
@@ -126,7 +126,7 @@ public class OrgUnitsController : Controller
         await _db.SaveChangesAsync();
         await OrgUnits.SyncCatalogAsync(_db);
         await tx.CommitAsync();
-        TempData["Success"] = $"Đã lưu đơn vị {u.Name}." + (renamedFrom != null ? $" Đổi tên từ \"{renamedFrom}\": cập nhật {cascaded} bản ghi (người dùng, đề nghị, ngân sách, kế hoạch, hạn mức)." : "");
+        TempData["Success"] = I18n.T("Đã lưu đơn vị {0}.", u.Name) + (renamedFrom != null ? I18n.T(" Đổi tên từ \"{0}\": cập nhật {1} bản ghi (người dùng, đề nghị, ngân sách, kế hoạch, hạn mức).", renamedFrom, cascaded) : "");
         return RedirectToAction(nameof(Details), new { id = u.Id });
     }
 
@@ -142,7 +142,7 @@ public class OrgUnitsController : Controller
         user.Department = u.Name;
         if (makeManager) u.ManagerId = user.Id;
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã chuyển {user.FullName} từ {from} sang {u.Name}." + (makeManager ? " Đặt làm trưởng đơn vị." : "");
+        TempData["Success"] = I18n.T("Đã chuyển {0} từ {1} sang {2}.", user.FullName, from, u.Name) + (makeManager ? I18n.T(" Đặt làm trưởng đơn vị.") : "");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -153,14 +153,14 @@ public class OrgUnitsController : Controller
         var u = await _db.OrgUnits.Include(x => x.Children).FirstOrDefaultAsync(x => x.Id == id);
         if (u == null) return NotFound();
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
-        if (u.Children.Any()) return Fail("Đơn vị còn đơn vị cấp dưới – chuyển hoặc xóa các đơn vị đó trước.");
-        if (u.ParentId == null) return Fail("Không xóa đơn vị gốc.");
+        if (u.Children.Any()) return Fail(I18n.T("Đơn vị còn đơn vị cấp dưới – chuyển hoặc xóa các đơn vị đó trước."));
+        if (u.ParentId == null) return Fail(I18n.T("Không xóa đơn vị gốc."));
         var used = await OrgUnits.UsageAsync(_db, u.Name);
-        if (used > 0) return Fail($"\"{u.Name}\" đang được dùng ở {used} bản ghi (người dùng, đề nghị, ngân sách…) – chọn \"Ngừng hoạt động\" thay vì xóa.");
+        if (used > 0) return Fail(I18n.T("\"{0}\" đang được dùng ở {1} bản ghi (người dùng, đề nghị, ngân sách…) – chọn \"Ngừng hoạt động\" thay vì xóa.", u.Name, used));
         _db.OrgUnits.Remove(u);
         await _db.CatalogEntries.Where(e => e.Type == CatalogType.Department && e.Name == u.Name).ExecuteDeleteAsync();
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã xóa đơn vị {u.Name}.";
+        TempData["Success"] = I18n.T("Đã xóa đơn vị {0}.", u.Name);
         return RedirectToAction(nameof(Index));
     }
 }

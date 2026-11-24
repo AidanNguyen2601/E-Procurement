@@ -13,11 +13,11 @@
     }
     else if (pr != null)
     {
-        <div class="alert alert-info py-2">Từ đề nghị <b>@pr.Number</b> – @pr.Title (dự toán @pr.EstimatedTotal.ToMoney() đ).
+        <div class="alert alert-info py-2">@L["Từ đề nghị"] <b>@pr.Number</b> – @pr.Title (dự toán @pr.EstimatedTotal.ToMoney() đ).
             Hạng mục mời thầu lấy theo đề nghị: @string.Join("; ", pr.Lines.OrderBy(l => l.SortOrder).Select(l => $"{l.Description} × {l.Quantity.ToQty()} {l.Unit}")).</div>
     }
 
-    <div class="card mb-3"><div class="card-header">1. Kế hoạch lựa chọn nhà thầu (theo KHLCNT đã duyệt) & HSMT</div><div class="card-body row g-3">
+    <div class="card mb-3"><div class="card-header">@L["1. Kế hoạch lựa chọn nhà thầu (theo KHLCNT đã duyệt) & HSMT"]</div><div class="card-body row g-3">
         <div class="col-md-2"><label asp-for="Number" class="form-label"></label><input asp-for="Number" class="form-control" readonly /></div>
         <div class="col-md-6"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
         <div class="col-md-4"><label asp-for="PackageBudget" class="form-label"></label><input asp-for="PackageBudget" type="number" step="1000" class="form-control" /></div>
@@ -26,13 +26,13 @@
         <div class="col-md-2"><label asp-for="ContractDurationDays" class="form-label"></label><input asp-for="ContractDurationDays" class="form-control" /></div>
         <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input asp-for="IsFramework" class="form-check-input" /><label asp-for="IsFramework" class="form-check-label"></label></div></div>
         <div class="col-md-4"><label asp-for="ClosingAt" class="form-label"></label><input asp-for="ClosingAt" type="datetime-local" class="form-control" />
-            <div class="small text-muted">Tối thiểu @(((ProcurementSettings?)ViewBag.Settings)?.TenderMinBiddingDays.ToString() ?? "N") ngày sau khi phát hành HSMT.</div></div>
+            <div class="small text-muted">@L["Tối thiểu"] @(((ProcurementSettings?)ViewBag.Settings)?.TenderMinBiddingDays.ToString() ?? "N") @L["ngày sau khi phát hành HSMT."]</div></div>
     </div></div>
 
-    <div class="card mb-3"><div class="card-header">2. Hồ sơ mời thầu</div><div class="card-body row g-3">
+    <div class="card mb-3"><div class="card-header">@L["2. Hồ sơ mời thầu"]</div><div class="card-body row g-3">
         <div class="col-12"><div class="d-flex flex-wrap gap-2 align-items-center mb-1"><label asp-for="TechnicalRequirements" class="form-label mb-0"></label><span class="ms-auto">@await Html.PartialAsync("_CriteriaPicker", ("TenderTechnical", "text", "#TechnicalRequirements"))</span></div><textarea asp-for="TechnicalRequirements" class="form-control" rows="4"></textarea></div>
         <div class="col-12"><div class="d-flex flex-wrap gap-2 align-items-center mb-1"><label asp-for="QualificationCriteria" class="form-label mb-0"></label><span class="ms-auto">@await Html.PartialAsync("_CriteriaPicker", ("TenderQualification", "text", "#QualificationCriteria"))</span></div>
-            <textarea asp-for="QualificationCriteria" class="form-control" rows="3" placeholder="VD: Đã thực hiện ≥ 2 hợp đồng tương tự trong 3 năm; doanh thu bình quân ≥ …; là đại lý ủy quyền của hãng…"></textarea></div>
+            <textarea asp-for="QualificationCriteria" class="form-control" rows="3" placeholder="@L["VD: Đã thực hiện ≥ 2 hợp đồng tương tự trong 3 năm; doanh thu bình quân ≥ …; là đại lý ủy quyền của hãng…"]"></textarea></div>
         <div class="col-12"><label asp-for="ContractTerms" class="form-label"></label><textarea asp-for="ContractTerms" class="form-control" rows="2"></textarea></div>
         <div class="col-md-6"><label asp-for="EvaluationMethod" class="form-label"></label>
             <select asp-for="EvaluationMethod" class="form-select" asp-items="Html.GetEnumSelectList<TenderEvaluationMethod>()" id="evalMethod"></select></div>
@@ -40,13 +40,13 @@
         <div class="col-md-2 weights"><label asp-for="TechnicalWeight" class="form-label"></label><input asp-for="TechnicalWeight" class="form-control" /></div>
         <div class="col-md-2 weights"><label asp-for="PriceWeight" class="form-label"></label><input asp-for="PriceWeight" class="form-control" /></div>
         <div class="col-md-4"><label asp-for="BidSecurityAmount" class="form-label"></label><input asp-for="BidSecurityAmount" type="number" step="1000" class="form-control" />
-            <div class="small text-muted">Thường 1–3% giá gói thầu.</div></div>
+            <div class="small text-muted">@L["Thường 1–3% giá gói thầu."]</div></div>
         <div class="col-md-4"><label asp-for="BidValidityDays" class="form-label"></label><input asp-for="BidValidityDays" class="form-control" /></div>
         <div class="col-md-4"><label asp-for="PerformanceSecurityPercent" class="form-label"></label><input asp-for="PerformanceSecurityPercent" type="number" step="0.5" class="form-control" /></div>
     </div></div>
 
-    <button class="btn btn-primary">Lưu</button>
-    <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId" class="btn btn-light">Hủy</a>
+    <button class="btn btn-primary">@L["Lưu"]</button>
+    <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId" class="btn btn-light">@L["Hủy"]</a>
 </form>
 @section Scripts {
 <script>

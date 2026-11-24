@@ -62,12 +62,12 @@ public class ApprovalSettingsController : Controller
     public async Task<IActionResult> SaveLimit(ApprovalLimitType type, string? department, decimal amount, string? note)
     {
         department = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
-        if (amount < 0) { TempData["Error"] = "Hạn mức không được âm."; return RedirectToAction(nameof(Index)); }
+        if (amount < 0) { TempData["Error"] = I18n.T("Hạn mức không được âm."); return RedirectToAction(nameof(Index)); }
         var l = await _db.ApprovalLimits.FirstOrDefaultAsync(x => x.Type == type && x.Department == department)
                 ?? _db.ApprovalLimits.Add(new ApprovalLimit { Type = type, Department = department }).Entity;
         l.Amount = amount; l.Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(); l.UpdatedAt = DateTime.Now;
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu hạn mức {(department ?? "mặc định toàn công ty")}: {amount.ToMoney()} đ.";
+        TempData["Success"] = I18n.T("Đã lưu hạn mức {0}: {1} đ.", (department ?? "mặc định toàn công ty"), amount.ToMoney());
         return RedirectToAction(nameof(Index));
     }
 
@@ -75,7 +75,7 @@ public class ApprovalSettingsController : Controller
     public async Task<IActionResult> DeleteLimit(int id)
     {
         await _db.ApprovalLimits.Where(l => l.Id == id).ExecuteDeleteAsync();
-        TempData["Success"] = "Đã xóa hạn mức (áp dụng lại mức mặc định).";
+        TempData["Success"] = I18n.T("Đã xóa hạn mức (áp dụng lại mức mặc định).");
         return RedirectToAction(nameof(Index));
     }
 
@@ -86,17 +86,17 @@ public class ApprovalSettingsController : Controller
         if (!User.IsAdmin() && fromUserId != Me) return Forbid();
         var from = await _db.Users.FindAsync(fromUserId);
         var to = await _db.Users.FindAsync(toUserId);
-        if (from == null || to == null || !to.IsActive) return Fail("Chọn người ủy quyền và người nhận hợp lệ.");
-        if (from.Role is not (AppRoles.Director or AppRoles.Approver)) return Fail("Chỉ Giám đốc hoặc Trưởng bộ phận được ủy quyền phê duyệt.");
-        if (from.Id == to.Id) return Fail("Không tự ủy quyền cho chính mình.");
+        if (from == null || to == null || !to.IsActive) return Fail(I18n.T("Chọn người ủy quyền và người nhận hợp lệ."));
+        if (from.Role is not (AppRoles.Director or AppRoles.Approver)) return Fail(I18n.T("Chỉ Giám đốc hoặc Trưởng bộ phận được ủy quyền phê duyệt."));
+        if (from.Id == to.Id) return Fail(I18n.T("Không tự ủy quyền cho chính mình."));
         // Phân tách nhiệm vụ: người lập chứng từ mua hàng không được duyệt chứng từ của chính bộ phận mua hàng
-        if (to.Role == AppRoles.Buyer) return Fail("Không ủy quyền phê duyệt cho nhân viên mua hàng (tránh tự lập – tự duyệt).");
-        if (from.Role == AppRoles.Approver && to.Department != from.Department) return Fail("Trưởng bộ phận chỉ ủy quyền cho người cùng phòng ban.");
-        if (string.IsNullOrWhiteSpace(reason)) return Fail("Nhập lý do ủy quyền.");
-        if (endDate.Date < startDate.Date || startDate.Date < DateTime.Today.AddDays(-1)) return Fail("Thời gian ủy quyền không hợp lệ.");
-        if ((endDate.Date - startDate.Date).TotalDays > MaxDelegationDays) return Fail($"Ủy quyền tối đa {MaxDelegationDays} ngày mỗi lần.");
+        if (to.Role == AppRoles.Buyer) return Fail(I18n.T("Không ủy quyền phê duyệt cho nhân viên mua hàng (tránh tự lập – tự duyệt)."));
+        if (from.Role == AppRoles.Approver && to.Department != from.Department) return Fail(I18n.T("Trưởng bộ phận chỉ ủy quyền cho người cùng phòng ban."));
+        if (string.IsNullOrWhiteSpace(reason)) return Fail(I18n.T("Nhập lý do ủy quyền."));
+        if (endDate.Date < startDate.Date || startDate.Date < DateTime.Today.AddDays(-1)) return Fail(I18n.T("Thời gian ủy quyền không hợp lệ."));
+        if ((endDate.Date - startDate.Date).TotalDays > MaxDelegationDays) return Fail(I18n.T("Ủy quyền tối đa {0} ngày mỗi lần.", MaxDelegationDays));
         if (await _db.ApprovalDelegations.AnyAsync(d => d.FromUserId == from.Id && d.RevokedAt == null && d.StartDate <= endDate.Date && d.EndDate >= startDate.Date))
-            return Fail("Đã có ủy quyền trùng thời gian – thu hồi ủy quyền cũ trước.");
+            return Fail(I18n.T("Đã có ủy quyền trùng thời gian – thu hồi ủy quyền cũ trước."));
         _db.ApprovalDelegations.Add(new ApprovalDelegation
         {
             FromUserId = from.Id, ToUserId = to.Id, StartDate = startDate.Date, EndDate = endDate.Date, Reason = reason.Trim()[..Math.Min(500, reason.Trim().Length)],
@@ -109,7 +109,7 @@ public class ApprovalSettingsController : Controller
         });
         await _db.SaveChangesAsync();
         DelegationClaimsTransformation.Invalidate(_cache, to.Id);
-        TempData["Success"] = $"Đã ủy quyền cho {to.FullName} từ {startDate:dd/MM/yyyy} đến {endDate:dd/MM/yyyy}.";
+        TempData["Success"] = I18n.T("Đã ủy quyền cho {0} từ {1:dd/MM/yyyy} đến {2:dd/MM/yyyy}.", to.FullName, startDate, endDate);
         return RedirectToAction(nameof(Index));
     }
 
@@ -122,7 +122,7 @@ public class ApprovalSettingsController : Controller
         d.RevokedAt ??= DateTime.Now;
         await _db.SaveChangesAsync();
         DelegationClaimsTransformation.Invalidate(_cache, d.ToUserId);
-        TempData["Success"] = "Đã thu hồi ủy quyền.";
+        TempData["Success"] = I18n.T("Đã thu hồi ủy quyền.");
         return RedirectToAction(nameof(Index));
     }
 }

@@ -5,9 +5,7 @@
     ViewData["Title"] = $"Tiếp nhận HSDT – {b.Vendor?.Name}";
     var inv = System.Globalization.CultureInfo.InvariantCulture;
 }
-<div class="alert alert-info py-2 small">@t.Number – @t.Title. Đóng thầu <b>@t.ClosingAt.ToDateTime()</b>; HSDT nộp sau thời điểm này bị từ chối.
-    Yêu cầu bảo đảm dự thầu <b>@t.BidSecurityAmount.ToMoney() đ</b>, hiệu lực đến ít nhất @t.ClosingAt.Date.AddDays(t.BidValidityDays + 30).ToDate(); hiệu lực HSDT ≥ @t.BidValidityDays ngày.
-    Thời điểm tiếp nhận được hệ thống ghi tự động.</div>
+<div class="alert alert-info py-2 small">@t.Number – @t.Title@L[". Đóng thầu"] <b>@t.ClosingAt.ToDateTime()</b>@L["; HSDT nộp sau thời điểm này bị từ chối. Yêu cầu bảo đảm dự thầu"] <b>@t.BidSecurityAmount.ToMoney() đ</b>@L[", hiệu lực đến ít nhất"] @t.ClosingAt.Date.AddDays(t.BidValidityDays + 30).ToDate()@L["; hiệu lực HSDT ≥"] @t.BidValidityDays @L["ngày. Thời điểm tiếp nhận được hệ thống ghi tự động."]</div>
 <form asp-action="EnterBid" method="post">
     <input type="hidden" asp-for="TenderBidderId" />
     <div asp-validation-summary="All" class="text-danger"></div>
@@ -22,7 +20,7 @@
         <div class="col-md-4"><label asp-for="BidSecurityExpiry" class="form-label"></label><input asp-for="BidSecurityExpiry" class="form-control" /></div>
     </div></div>
     <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
-        <thead><tr><th>Hạng mục</th><th>ĐVT</th><th class="money">SL</th><th style="width:190px">Đơn giá dự thầu</th><th class="money">Thành tiền</th></tr></thead>
+        <thead><tr><th>@L["Hạng mục"]</th><th>@L["ĐVT"]</th><th class="money">SL</th><th style="width:190px">@L["Đơn giá dự thầu"]</th><th class="money">@L["Thành tiền"]</th></tr></thead>
         <tbody>
         @for (var i = 0; i < Model.Lines.Count; i++)
         {
@@ -36,12 +34,12 @@
         }
         </tbody>
         <tfoot>
-            <tr class="fw-bold"><td colspan="4" class="text-end">Giá dự thầu (trước VAT)</td><td class="money" id="sum">0</td></tr>
-            <tr><td colspan="4" class="text-end">Giá đánh giá (sau giảm giá, gồm VAT)</td><td class="money" id="eval">0</td></tr>
+            <tr class="fw-bold"><td colspan="4" class="text-end">@L["Giá dự thầu (trước VAT)"]</td><td class="money" id="sum">0</td></tr>
+            <tr><td colspan="4" class="text-end">@L["Giá đánh giá (sau giảm giá, gồm VAT)"]</td><td class="money" id="eval">0</td></tr>
         </tfoot>
     </table></div></div>
-    <button class="btn btn-primary">Tiếp nhận HSDT (niêm phong)</button>
-    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">Hủy</a>
+    <button class="btn btn-primary">@L["Tiếp nhận HSDT (niêm phong)"]</button>
+    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">@L["Hủy"]</a>
 </form>
 @section Scripts {
 <script>

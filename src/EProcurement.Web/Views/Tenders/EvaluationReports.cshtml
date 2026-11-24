@@ -1,32 +1,32 @@
 @model List<Tender>
 @{ ViewData["Title"] = "Báo cáo đánh giá lựa chọn nhà thầu"; var rfqs = (List<Rfq>)ViewBag.Rfqs; }
-<div class="card mb-3"><div class="card-header">Đấu thầu – biên bản mở thầu & báo cáo đánh giá HSDT</div><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-    <thead><tr><th>Gói thầu</th><th>Mở thầu</th><th class="money">HSDT</th><th>Nhà thầu xếp hạng 1 / trúng thầu</th><th>Trạng thái</th><th></th></tr></thead>
+<div class="card mb-3"><div class="card-header">@L["Đấu thầu – biên bản mở thầu & báo cáo đánh giá HSDT"]</div><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>@L["Gói thầu"]</th><th>@L["Mở thầu"]</th><th class="money">HSDT</th><th>@L["Nhà thầu xếp hạng 1 / trúng thầu"]</th><th>@L["Trạng thái"]</th><th></th></tr></thead>
     <tbody>
     @foreach (var t in Model)
     {
         var top = TenderEvaluation.PricesVisible(t) ? TenderEvaluation.Evaluate(t).FirstOrDefault(r => r.Rank == 1) : null;
         <tr><td><a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold">@t.Number</a><div class="small">@t.Title</div></td>
             <td class="small">@t.OpenedAt.ToDateTime()</td><td class="money">@t.Bidders.Count(b => b.Submitted)</td>
-            <td class="small">@(t.AwardedVendor != null ? $"{t.AwardedVendor.Name} – {t.AwardPrice?.ToMoney()} đ" : top?.Bid.Vendor?.Name ?? "")</td>
+            <td class="small">@(t.AwardedVendor != null ? L["{0} – {1} đ", t.AwardedVendor.Name, t.AwardPrice?.ToMoney()] : top?.Bid.Vendor?.Name ?? "")</td>
             <td><partial name="_Badge" model="t.Status" /></td>
-            <td class="text-end text-nowrap"><a asp-action="Report" asp-route-id="@t.Id" target="_blank" class="btn btn-sm btn-outline-primary">Báo cáo đánh giá</a>
-                @if (User.IsPurchasing() || User.IsInRole(AppRoles.Director)) { <a asp-action="ExportPublication" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary">Excel đăng tải</a> }</td></tr>
+            <td class="text-end text-nowrap"><a asp-action="Report" asp-route-id="@t.Id" target="_blank" class="btn btn-sm btn-outline-primary">@L["Báo cáo đánh giá"]</a>
+                @if (User.IsPurchasing() || User.IsInRole(AppRoles.Director)) { <a asp-action="ExportPublication" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary">@L["Excel đăng tải"]</a> }</td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="6" class="text-muted p-3">Chưa có gói thầu đã mở thầu.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="6" class="text-muted p-3">@L["Chưa có gói thầu đã mở thầu."]</td></tr> }
     </tbody>
 </table></div></div></div>
 @if (rfqs.Any())
 {
-    <div class="card"><div class="card-header">Chào giá cạnh tranh – báo cáo đánh giá hồ sơ chào giá</div><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-        <thead><tr><th>Hồ sơ chào giá</th><th>Mở báo giá</th><th class="money">Báo giá</th><th>NCC được chọn</th><th>Trạng thái</th><th></th></tr></thead>
+    <div class="card"><div class="card-header">@L["Chào giá cạnh tranh – báo cáo đánh giá hồ sơ chào giá"]</div><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
+        <thead><tr><th>@L["Hồ sơ chào giá"]</th><th>@L["Mở báo giá"]</th><th class="money">@L["Báo giá"]</th><th>@L["NCC được chọn"]</th><th>@L["Trạng thái"]</th><th></th></tr></thead>
         <tbody>
         @foreach (var r in rfqs)
         {
             <tr><td><a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.Id" class="fw-semibold">@r.Number</a><div class="small">@r.Title</div></td>
                 <td class="small">@r.OpenedAt.ToDateTime()</td><td class="money">@r.Vendors.Count(v => v.Responded)/@r.Vendors.Count</td>
                 <td class="small">@r.AwardedVendor?.Name</td><td><partial name="_Badge" model="r.Status" /></td>
-                <td class="text-end"><a asp-controller="Rfqs" asp-action="Report" asp-route-id="@r.Id" target="_blank" class="btn btn-sm btn-outline-primary">Báo cáo đánh giá</a></td></tr>
+                <td class="text-end"><a asp-controller="Rfqs" asp-action="Report" asp-route-id="@r.Id" target="_blank" class="btn btn-sm btn-outline-primary">@L["Báo cáo đánh giá"]</a></td></tr>
         }
         </tbody>
     </table></div></div></div>

@@ -160,7 +160,7 @@ public class SettingsController : Controller
                 Weight = Math.Clamp(m?.Weight ?? d.Weight, 0, 100), Guide = m?.Guide?.Trim() is { Length: > 0 } g ? g[..Math.Min(300, g.Length)] : null
             };
         }).ToList();
-        if (items.Sum(i => i.Weight) == 0) { TempData["Error"] = "Tổng trọng số phải lớn hơn 0."; return RedirectToAction(nameof(SupplierCriteria)); }
+        if (items.Sum(i => i.Weight) == 0) { TempData["Error"] = I18n.T("Tổng trọng số phải lớn hơn 0."); return RedirectToAction(nameof(SupplierCriteria)); }
         await _store.SaveAsync(SettingsStore.SupplierCriteria, new SupplierCriteriaSettings { Items = items });
         return Saved("Đã lưu tiêu chí đánh giá NCC. Điểm tổng hợp và xếp loại tính lại theo trọng số mới.", nameof(SupplierCriteria));
     }
@@ -225,9 +225,9 @@ public class SettingsController : Controller
 
     private static string? EmailProblem(EmailConfig e)
     {
-        if (e.Enabled && string.IsNullOrWhiteSpace(e.Host)) return "Nhập máy chủ SMTP.";
-        if (!System.Net.Mail.MailAddress.TryCreate(e.From, out _)) return "Địa chỉ người gửi không hợp lệ.";
-        if (!Uri.TryCreate(e.BaseUrl, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https")) return "Địa chỉ trang web phải bắt đầu bằng http:// hoặc https://";
+        if (e.Enabled && string.IsNullOrWhiteSpace(e.Host)) return I18n.T("Nhập máy chủ SMTP.");
+        if (!System.Net.Mail.MailAddress.TryCreate(e.From, out _)) return I18n.T("Địa chỉ người gửi không hợp lệ.");
+        if (!Uri.TryCreate(e.BaseUrl, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https")) return I18n.T("Địa chỉ trang web phải bắt đầu bằng http:// hoặc https://");
         return null;
     }
 
@@ -240,14 +240,14 @@ public class SettingsController : Controller
         if (test)
         {
             var to = string.IsNullOrWhiteSpace(testTo) ? User.FindFirstValue(ClaimTypes.Email) ?? (await _db.Users.FindAsync(User.GetUserId()))?.Email : testTo.Trim();
-            if (to == null || !System.Net.Mail.MailAddress.TryCreate(to, out _)) { TempData["Error"] = "Nhập email nhận thư thử."; return RedirectToAction(nameof(Email)); }
-            if (string.IsNullOrWhiteSpace(e.Host)) { TempData["Error"] = "Nhập máy chủ SMTP để gửi thử."; return RedirectToAction(nameof(Email)); }
+            if (to == null || !System.Net.Mail.MailAddress.TryCreate(to, out _)) { TempData["Error"] = I18n.T("Nhập email nhận thư thử."); return RedirectToAction(nameof(Email)); }
+            if (string.IsNullOrWhiteSpace(e.Host)) { TempData["Error"] = I18n.T("Nhập máy chủ SMTP để gửi thử."); return RedirectToAction(nameof(Email)); }
             try
             {
                 await _notify.SendTestAsync(e, await _store.GetAsync(SettingsStore.Templates, () => new NotifyTemplates()), to, User.GetFullName());
-                TempData["Success"] = $"Đã gửi email thử tới {to}. Kiểm tra hộp thư (cả thư rác). Cấu hình chưa được lưu – bấm Lưu nếu đúng.";
+                TempData["Success"] = I18n.T("Đã gửi email thử tới {0}. Kiểm tra hộp thư (cả thư rác). Cấu hình chưa được lưu – bấm Lưu nếu đúng.", to);
             }
-            catch (Exception ex) { TempData["Error"] = "Gửi thử thất bại: " + ex.GetBaseException().Message; }
+            catch (Exception ex) { TempData["Error"] = I18n.T("Gửi thử thất bại: ") + ex.GetBaseException().Message; }
             return RedirectToAction(nameof(Email));
         }
         await _store.SaveAsync(SettingsStore.Email, e);

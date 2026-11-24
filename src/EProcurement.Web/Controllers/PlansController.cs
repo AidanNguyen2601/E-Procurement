@@ -67,7 +67,7 @@ public class PlansController : ProcControllerBase
         if (!ModelState.IsValid) { await LoadItemsJsonAsync(); ViewBag.Plan = null; if (vm.Lines.Count == 0) vm.Lines.Add(new LineInput()); return View(nameof(Edit), vm); }
         var dept = User.GetDepartment();
         var p = await Db.ProcurementPlans.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Year == vm.Year && x.Department == dept);
-        if (p != null && p.Status is PlanStatus.Submitted or PlanStatus.Approved) { TempData["Error"] = "Kế hoạch đã trình / đã duyệt – không sửa được."; return RedirectToAction(nameof(Details), new { id = p.Id }); }
+        if (p != null && p.Status is PlanStatus.Submitted or PlanStatus.Approved) { TempData["Error"] = I18n.T("Kế hoạch đã trình / đã duyệt – không sửa được."); return RedirectToAction(nameof(Details), new { id = p.Id }); }
         if (p == null) { p = new ProcurementPlan { Year = vm.Year, Department = dept, CreatedById = Me }; Db.ProcurementPlans.Add(p); }
         Db.ProcurementPlanLines.RemoveRange(p.Lines);
         p.Lines.Clear();
@@ -76,13 +76,13 @@ public class PlansController : ProcControllerBase
         p.Note = vm.Note?.Trim();
         if (submit)
         {
-            if (!(User.IsInRole(AppRoles.Approver) || User.IsAdmin())) { TempData["Error"] = "Trưởng bộ phận trình kế hoạch – bạn đã lưu nháp."; submit = false; }
+            if (!(User.IsInRole(AppRoles.Approver) || User.IsAdmin())) { TempData["Error"] = I18n.T("Trưởng bộ phận trình kế hoạch – bạn đã lưu nháp."); submit = false; }
             else { p.Status = PlanStatus.Submitted; p.SubmittedAt = DateTime.Now; }
         }
         await Db.SaveChangesAsync();
         Log(DocType.Plan, p.Id, submit ? "Trình Giám đốc duyệt kế hoạch mua sắm" : "Lưu kế hoạch", $"{p.Lines.Count} dòng · {p.Total.ToMoney()} đ");
         await Db.SaveChangesAsync();
-        TempData["Success"] = submit ? "Đã trình kế hoạch – chờ Giám đốc duyệt." : (TempData["Error"] == null ? "Đã lưu kế hoạch." : null);
+        TempData["Success"] = submit ? I18n.T("Đã trình kế hoạch – chờ Giám đốc duyệt.") : (TempData["Error"] == null ? I18n.T("Đã lưu kế hoạch.") : null);
         return RedirectToAction(nameof(Details), new { id = p.Id });
     }
 
@@ -106,12 +106,12 @@ public class PlansController : ProcControllerBase
         var p = await Db.ProcurementPlans.FindAsync(id);
         if (p == null) return NotFound();
         if (p.Status != PlanStatus.Submitted) return BadRequest();
-        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do trả lại."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = I18n.T("Nhập lý do trả lại."); return RedirectToAction(nameof(Details), new { id }); }
         p.Status = approve ? PlanStatus.Approved : PlanStatus.Returned; p.DecisionNote = comment?.Trim();
         if (approve) { p.ApprovedById = Me; p.ApprovedAt = DateTime.Now; }
         Log(DocType.Plan, id, approve ? "Giám đốc duyệt kế hoạch mua sắm" : "Giám đốc trả lại kế hoạch", comment);
         await Db.SaveChangesAsync();
-        TempData["Success"] = approve ? "Đã duyệt kế hoạch." : "Đã trả lại kế hoạch.";
+        TempData["Success"] = approve ? I18n.T("Đã duyệt kế hoạch.") : I18n.T("Đã trả lại kế hoạch.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -143,7 +143,7 @@ public class PlansController : ProcControllerBase
     public async Task<IActionResult> CreatePr(int year, List<string> keys, string? title)
     {
         var groups = (await GroupsAsync(year)).Where(g => keys.Contains(Key(g))).ToList();
-        if (groups.Count == 0) { TempData["Error"] = "Chọn ít nhất một nhóm nhu cầu."; return RedirectToAction(nameof(Consolidate), new { year }); }
+        if (groups.Count == 0) { TempData["Error"] = I18n.T("Chọn ít nhất một nhóm nhu cầu."); return RedirectToAction(nameof(Consolidate), new { year }); }
         var depts = groups.SelectMany(g => g.Departments).Distinct().OrderBy(x => x).ToList();
         var pr = new PurchaseRequest
         {
@@ -163,7 +163,7 @@ public class PlansController : ProcControllerBase
         await Db.ProcurementPlanLines.Where(l => ids.Contains(l.Id)).ExecuteUpdateAsync(x => x.SetProperty(l => l.PurchaseRequestId, pr.Id));
         Log(DocType.PR, pr.Id, $"Tạo từ kế hoạch mua sắm năm {year} đã duyệt (gom {depts.Count} phòng ban)", string.Join("; ", groups.Select(g => $"{g.Description}: {g.Quantity.ToQty()} {g.Unit} ({string.Join(", ", g.Departments)})")));
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã tạo {pr.Number} – {pr.EstimatedTotal.ToMoney()} đ. Chọn hình thức lựa chọn NCC để tiếp tục.";
+        TempData["Success"] = I18n.T("Đã tạo {0} – {1} đ. Chọn hình thức lựa chọn NCC để tiếp tục.", pr.Number, pr.EstimatedTotal.ToMoney());
         return RedirectToAction("Details", "PurchaseRequests", new { id = pr.Id });
     }
 

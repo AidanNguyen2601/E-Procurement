@@ -4,7 +4,7 @@
     ViewData["Title"] = "Danh sách gói thầu";
 }
 <div class="card"><div class="card-body p-0"><table class="table mb-0">
-    <thead><tr><th>Số</th><th>Gói thầu</th><th>Phát hành</th><th>Đóng thầu</th><th>Tình trạng</th></tr></thead>
+    <thead><tr><th>@L["Số"]</th><th>@L["Gói thầu"]</th><th>@L["Phát hành"]</th><th>@L["Đóng thầu"]</th><th>@L["Tình trạng"]</th></tr></thead>
     <tbody>
     @foreach (var t in Model)
     {
@@ -14,11 +14,11 @@
             <td>@t.Title</td>
             <td>@t.PublishedAt.ToDate()</td>
             <td>@t.ClosingAt.ToDateTime()</td>
-            <td>@if (open) { <span class="badge bg-success">Đang nhận HSDT</span> }
-                else if (t.Status is TenderStatus.Awarded or TenderStatus.Contracted) { <span class="badge bg-primary">Đã có kết quả</span> }
-                else { <span class="badge bg-secondary">Đã đóng thầu</span> }</td>
+            <td>@if (open) { <span class="badge bg-success">@L["Đang nhận HSDT"]</span> }
+                else if (t.Status is TenderStatus.Awarded or TenderStatus.Contracted) { <span class="badge bg-primary">@L["Đã có kết quả"]</span> }
+                else { <span class="badge bg-secondary">@L["Đã đóng thầu"]</span> }</td>
         </tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">Hiện không có gói thầu nào.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="5" class="text-muted p-3">@L["Hiện không có gói thầu nào."]</td></tr> }
     </tbody>
 </table></div></div>

@@ -79,7 +79,7 @@ public class SupplierEvaluationsController : ProcControllerBase
         await Db.SaveChangesAsync();
         var levels = await SupplierScorecard.LevelsAsync(Db);
         var grade = SupplierScorecard.Grade(e.Average, levels);
-        TempData["Success"] = $"Đã đánh giá định kỳ {period} cho {v.Name}: {e.Average:0.00}/5 – loại {grade} ({SupplierScorecard.GradeText(grade, levels)}). Điểm chung mới: {v.Rating:0.00}.";
+        TempData["Success"] = I18n.T("Đã đánh giá định kỳ {0} cho {1}: {2:0.00}/5 – loại {3} ({4}). Điểm chung mới: {5:0.00}.", period, v.Name, e.Average, grade, SupplierScorecard.GradeText(grade, levels), v.Rating);
         return RedirectToAction(nameof(Index));
     }
 }

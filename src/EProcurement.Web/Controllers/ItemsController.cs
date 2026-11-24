@@ -47,10 +47,10 @@ public class ItemsController : ProcControllerBase
     public async Task<IActionResult> Save(Item model)
     {
         if (await Db.Items.AnyAsync(i => i.Code == model.Code && i.Id != model.Id))
-            ModelState.AddModelError(nameof(model.Code), "Mã hàng đã tồn tại");
+            ModelState.AddModelError(nameof(model.Code), I18n.T("Mã hàng đã tồn tại"));
         var oldUnit = model.Id == 0 ? null : await Db.Items.Where(i => i.Id == model.Id).Select(i => i.Unit).FirstOrDefaultAsync();
         if (!await HttpContext.RequestServices.GetRequiredService<CatalogService>().IsValidAsync(CatalogType.Unit, model.Unit, oldUnit))
-            ModelState.AddModelError(nameof(model.Unit), "Chọn đơn vị tính trong danh mục");
+            ModelState.AddModelError(nameof(model.Unit), I18n.T("Chọn đơn vị tính trong danh mục"));
         if (!ModelState.IsValid)
         {
             await LoadCategories(model.CategoryId);
@@ -66,7 +66,7 @@ public class ItemsController : ProcControllerBase
             i.Origin = string.IsNullOrWhiteSpace(model.Origin) ? null : model.Origin.Trim(); i.Brand = string.IsNullOrWhiteSpace(model.Brand) ? null : model.Brand.Trim();
         }
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã lưu hàng hóa.";
+        TempData["Success"] = I18n.T("Đã lưu hàng hóa.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -75,9 +75,9 @@ public class ItemsController : ProcControllerBase
     public async Task<IActionResult> SaveCategory(Category model)
     {
         if (string.IsNullOrWhiteSpace(model.Code) || string.IsNullOrWhiteSpace(model.Name))
-            TempData["Error"] = "Nhập mã và tên nhóm hàng.";
+            TempData["Error"] = I18n.T("Nhập mã và tên nhóm hàng.");
         else if (await Db.Categories.AnyAsync(c => c.Code == model.Code && c.Id != model.Id))
-            TempData["Error"] = "Mã nhóm hàng đã tồn tại.";
+            TempData["Error"] = I18n.T("Mã nhóm hàng đã tồn tại.");
         else
         {
             if (model.Id == 0) Db.Categories.Add(model);
@@ -88,7 +88,7 @@ public class ItemsController : ProcControllerBase
                 c.Code = model.Code; c.Name = model.Name;
             }
             await Db.SaveChangesAsync();
-            TempData["Success"] = "Đã lưu nhóm hàng.";
+            TempData["Success"] = I18n.T("Đã lưu nhóm hàng.");
         }
         return RedirectToAction(nameof(Index));
     }

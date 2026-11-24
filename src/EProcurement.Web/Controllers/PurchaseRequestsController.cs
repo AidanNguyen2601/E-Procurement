@@ -88,7 +88,7 @@ public class PurchaseRequestsController : ProcControllerBase
         if (pr == null) return NotFound();
         if (pr.RequesterId != Me || pr.Status is not (PrStatus.Draft or PrStatus.Rejected))
         {
-            TempData["Error"] = "Chỉ người đề nghị được sửa PR ở trạng thái Nháp hoặc Bị từ chối.";
+            TempData["Error"] = I18n.T("Chỉ người đề nghị được sửa PR ở trạng thái Nháp hoặc Bị từ chối.");
             return RedirectToAction(nameof(Details), new { id });
         }
         await LoadItemsJsonAsync();
@@ -104,7 +104,7 @@ public class PurchaseRequestsController : ProcControllerBase
     public async Task<IActionResult> Save(PrFormViewModel vm, bool submit = false)
     {
         vm.Lines = CleanLines(vm.Lines);
-        if (vm.NeededDate < DateTime.Today) ModelState.AddModelError(nameof(vm.NeededDate), "Ngày cần hàng không được ở quá khứ");
+        if (vm.NeededDate < DateTime.Today) ModelState.AddModelError(nameof(vm.NeededDate), I18n.T("Ngày cần hàng không được ở quá khứ"));
         if (!ModelState.IsValid)
         {
             if (vm.Lines.Count == 0) vm.Lines.Add(new LineInput());
@@ -138,7 +138,7 @@ public class PurchaseRequestsController : ProcControllerBase
         await Db.SaveChangesAsync();
 
         if (submit) return await DoSubmit(pr);
-        TempData["Success"] = $"Đã lưu nháp {pr.Number}.";
+        TempData["Success"] = I18n.T("Đã lưu nháp {0}.", pr.Number);
         return RedirectToAction(nameof(Details), new { id = pr.Id });
     }
 
@@ -167,7 +167,7 @@ public class PurchaseRequestsController : ProcControllerBase
         var budget = await BudgetProblemAsync(pr);
         if (budget != null && BudgetBlocks)
         {
-            TempData["Error"] = "Không gửi duyệt được – vượt / chưa có ngân sách: " + budget;
+            TempData["Error"] = I18n.T("Không gửi duyệt được – vượt / chưa có ngân sách: ") + budget;
             return RedirectToAction(nameof(Details), new { id = pr.Id });
         }
         pr.SubmittedAt = DateTime.Now;
@@ -185,7 +185,7 @@ public class PurchaseRequestsController : ProcControllerBase
         }
         else pr.Status = PrStatus.Submitted;
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã gửi {pr.Number} – {pr.Status.GetDisplayName()}.";
+        TempData["Success"] = I18n.T("Đã gửi {0} – {1}.", pr.Number, pr.Status.GetDisplayName());
         return RedirectToAction(nameof(Details), new { id = pr.Id });
     }
 
@@ -199,7 +199,7 @@ public class PurchaseRequestsController : ProcControllerBase
         if (!CanApprove(pr)) return Forbid();
         if (!approve && string.IsNullOrWhiteSpace(comment))
         {
-            TempData["Error"] = "Vui lòng nhập lý do từ chối.";
+            TempData["Error"] = I18n.T("Vui lòng nhập lý do từ chối.");
             return RedirectToAction(nameof(Details), new { id });
         }
 
@@ -208,12 +208,12 @@ public class PurchaseRequestsController : ProcControllerBase
         {
             if (BudgetBlocks)
             {
-                TempData["Error"] = "Không duyệt được – vượt / chưa có ngân sách: " + budget;
+                TempData["Error"] = I18n.T("Không duyệt được – vượt / chưa có ngân sách: ") + budget;
                 return RedirectToAction(nameof(Details), new { id });
             }
             if (string.IsNullOrWhiteSpace(comment))
             {
-                TempData["Error"] = "Đề nghị vượt / chưa có ngân sách – nhập ý kiến (lý do chấp thuận) khi duyệt. " + budget;
+                TempData["Error"] = I18n.T("Đề nghị vượt / chưa có ngân sách – nhập ý kiến (lý do chấp thuận) khi duyệt. ") + budget;
                 return RedirectToAction(nameof(Details), new { id });
             }
             comment = $"{comment.Trim()} [Duyệt vượt ngân sách: {budget}]";
@@ -250,14 +250,14 @@ public class PurchaseRequestsController : ProcControllerBase
         {
             // Chỉ rút khỏi gói khi gói còn nháp; gói đã trình / duyệt thì hủy gói (hoặc trả lại KHLCNT) trước
             var pkg = await Db.ProcurementPackages.FirstAsync(p => p.Id == pr.PackageId);
-            if (pkg.Status != PackageStatus.Draft) { TempData["Error"] = $"Đề nghị thuộc gói {pkg.Number} ({pkg.Status.GetDisplayName()}) – hủy gói trước khi hủy đề nghị."; return RedirectToAction(nameof(Details), new { id }); }
+            if (pkg.Status != PackageStatus.Draft) { TempData["Error"] = I18n.T("Đề nghị thuộc gói {0} ({1}) – hủy gói trước khi hủy đề nghị.", pkg.Number, pkg.Status.GetDisplayName()); return RedirectToAction(nameof(Details), new { id }); }
             Log(DocType.Package, pkg.Id, $"Rút {pr.Number} khỏi gói – đề nghị bị hủy", comment);
             pr.PackageId = null; pr.Method = null; pr.MethodReason = null;
         }
         pr.Status = PrStatus.Cancelled;
         Log(DocType.PR, id, "Hủy đề nghị", comment);
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã hủy {pr.Number}.";
+        TempData["Success"] = I18n.T("Đã hủy {0}.", pr.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 

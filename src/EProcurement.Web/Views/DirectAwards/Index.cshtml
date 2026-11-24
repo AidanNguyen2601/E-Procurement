@@ -13,10 +13,10 @@
     foreach (var i in statusItems) i.Selected = status.HasValue && i.Value == ((int)status.Value).ToString();
 }
 <div class="row g-3 mb-3">
-    <div class="col-md-3"><div class="card stat"><div class="label">Tờ trình đã duyệt năm @year</div><div class="value">@approvedCount</div></div></div>
-    <div class="col-md-3"><div class="card stat"><div class="label">Giá trị chỉ định</div><div class="value">@approvedValue.ToShortMoney()</div></div></div>
-    <div class="col-md-3"><div class="card stat"><div class="label">Tỷ trọng / tổng chi mua hàng</div><div class="value @(share > 20 ? "text-danger" : "")">@share.ToString("0.#")%</div><div class="small text-muted">tổng chi @totalSpend.ToShortMoney()</div></div></div>
-    <div class="col-md-3"><div class="card stat"><div class="label">Tiết kiệm nhờ thương thảo</div><div class="value text-success">@saving.ToShortMoney()</div></div></div>
+    <div class="col-md-3"><div class="card stat"><div class="label">@L["Tờ trình đã duyệt năm"] @year</div><div class="value">@approvedCount</div></div></div>
+    <div class="col-md-3"><div class="card stat"><div class="label">@L["Giá trị chỉ định"]</div><div class="value">@approvedValue.ToShortMoney()</div></div></div>
+    <div class="col-md-3"><div class="card stat"><div class="label">@L["Tỷ trọng / tổng chi mua hàng"]</div><div class="value @(share > 20 ? "text-danger" : "")">@share.ToString("0.#")%</div><div class="small text-muted">@L["tổng chi"] @totalSpend.ToShortMoney()</div></div></div>
+    <div class="col-md-3"><div class="card stat"><div class="label">@L["Tiết kiệm nhờ thương thảo"]</div><div class="value text-success">@saving.ToShortMoney()</div></div></div>
 </div>
 
 <div class="row g-3 mb-3">
@@ -25,7 +25,7 @@
         <div class="col-lg-4"><div class="card h-100"><div class="card-header">@title</div><div class="card-body p-0"><table class="table table-sm mb-0">
             <tbody>
             @foreach (var r in rows) { <tr><td>@r.Name</td><td class="money">@r.Count</td><td class="money">@r.Value.ToShortMoney()</td></tr> }
-            @if (!rows.Any()) { <tr><td class="text-muted small p-2">Chưa có dữ liệu.</td></tr> }
+            @if (!rows.Any()) { <tr><td class="text-muted small p-2">@L["Chưa có dữ liệu."]</td></tr> }
             </tbody>
         </table></div></div></div>
     }
@@ -33,18 +33,18 @@
 
 <form method="get" class="toolbar">
     <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="statusItems" onchange="this.form.submit()">
-        <option value="">-- Mọi trạng thái --</option>
+        <option value="">@L["-- Mọi trạng thái --"]</option>
     </select>
     <input type="number" name="year" value="@year" class="form-control form-control-sm" style="width:100px" onchange="this.form.submit()" />
 </form>
 <div class="card"><div class="card-body p-0"><table class="table mb-0">
-    <thead><tr><th>Số</th><th>Tiêu đề</th><th>Đề nghị</th><th>Nhà cung cấp</th><th>Căn cứ</th><th class="money">Giá trị (trước VAT)</th><th>Trạng thái</th></tr></thead>
+    <thead><tr><th>@L["Số"]</th><th>@L["Tiêu đề"]</th><th>@L["Đề nghị"]</th><th>@L["Nhà cung cấp"]</th><th>@L["Căn cứ"]</th><th class="money">@L["Giá trị (trước VAT)"]</th><th>@L["Trạng thái"]</th></tr></thead>
     <tbody>
     @foreach (var d in Model)
     {
         <tr>
             <td><a asp-action="Details" asp-route-id="@d.Id" class="fw-semibold">@d.Number</a><br /><small class="text-muted">@d.CreatedAt.ToDate()</small></td>
-            <td>@d.Title @if (!string.IsNullOrEmpty(d.SplitWarning)) { <span class="badge bg-danger" title="@d.SplitWarning">nghi chia nhỏ</span> }</td>
+            <td>@d.Title @if (!string.IsNullOrEmpty(d.SplitWarning)) { <span class="badge bg-danger" title="@d.SplitWarning">@L["nghi chia nhỏ"]</span> }</td>
             <td>@d.PurchaseRequest?.Number<br /><small class="text-muted">@d.PurchaseRequest?.Department</small></td>
             <td>@d.Vendor?.Name</td>
             <td class="small">@d.Reason.GetDisplayName()</td>
@@ -52,6 +52,6 @@
             <td><partial name="_Badge" model="d.Status" /></td>
         </tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Chưa có tờ trình nào.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">@L["Chưa có tờ trình nào."]</td></tr> }
     </tbody>
 </table></div></div>

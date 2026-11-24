@@ -1,12 +1,11 @@
 @model NumberingSettings
 <div class="alert alert-info small mb-3">
-    Mã chèn: @foreach (var (tk, m) in NumberingSettings.Tokens) { <code class="me-1">@tk</code><span class="me-3">@m</span> }
-    <br />Số thứ tự đếm lại khi phần đứng trước nó thay đổi: có <code>{YYYY}</code> → đếm lại mỗi năm, có <code>{MM}</code> → mỗi tháng, không có ngày tháng → đếm liên tục.
-    Thay đổi chỉ áp dụng cho chứng từ tạo mới; số đã cấp giữ nguyên.
+    @L["Mã chèn:"] @foreach (var (tk, m) in NumberingSettings.Tokens) { <code class="me-1">@tk</code><span class="me-3">@m</span> }
+    <br />@L["Số thứ tự đếm lại khi phần đứng trước nó thay đổi: có"] <code>{YYYY}</code> @L["→ đếm lại mỗi năm, có"] <code>{MM}</code> @L["→ mỗi tháng, không có ngày tháng → đếm liên tục. Thay đổi chỉ áp dụng cho chứng từ tạo mới; số đã cấp giữ nguyên."]
 </div>
 <form method="post" asp-action="Numbering" class="card">
     <div class="table-responsive"><table class="table align-middle mb-0">
-        <thead><tr><th>Loại chứng từ</th><th style="width:120px">Mã viết tắt</th><th>Mẫu số</th><th style="width:110px">Số chữ số STT</th><th style="width:220px">Ví dụ số tiếp theo</th></tr></thead>
+        <thead><tr><th>@L["Loại chứng từ"]</th><th style="width:120px">@L["Mã viết tắt"]</th><th>@L["Mẫu số"]</th><th style="width:110px">@L["Số chữ số STT"]</th><th style="width:220px">@L["Ví dụ số tiếp theo"]</th></tr></thead>
         <tbody>
         @for (var i = 0; i < NumberingSettings.Defs.Length; i++)
         {
@@ -24,11 +23,11 @@
         </tbody>
     </table></div>
     <div class="card-footer d-flex gap-2 flex-wrap align-items-center">
-        <button class="btn btn-primary">Lưu</button>
-        <span class="small text-muted">Mẫu gợi ý:</span>
+        <button class="btn btn-primary">@L["Lưu"]</button>
+        <span class="small text-muted">@L["Mẫu gợi ý:"]</span>
         @foreach (var p in new[] { "{MA}-{YYYY}-{STT}", "{MA}/{YYYY}/{MM}/{STT}", "{MA}{YY}{MM}-{STT}", "{MA}-{STT}" })
         { <button type="button" class="btn btn-sm btn-light border font-monospace n-preset" data-p="@p">@p</button> }
-        <span class="small text-muted">(bấm để áp cho mọi loại)</span>
+        <span class="small text-muted">@L["(bấm để áp cho mọi loại)"]</span>
     </div>
 </form>
 <script>

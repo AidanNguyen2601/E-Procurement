@@ -61,7 +61,7 @@ public class VendorsController : ProcControllerBase
             default: return BadRequest();
         }
         await Db.SaveChangesAsync();
-        TempData["Success"] = op switch { "approve" => $"Đã xác nhận tài khoản {u.Email}.", "lock" => $"Đã khóa tài khoản {u.Email}.", _ => $"Đã mở khóa {u.Email}." };
+        TempData["Success"] = op switch { "approve" => I18n.T("Đã xác nhận tài khoản {0}.", u.Email), "lock" => I18n.T("Đã khóa tài khoản {0}.", u.Email), _ => I18n.T("Đã mở khóa {0}.", u.Email) };
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -78,11 +78,11 @@ public class VendorsController : ProcControllerBase
     {
         var d = await Db.VendorDocuments.FirstOrDefaultAsync(x => x.Id == docId && x.VendorId == id);
         if (d == null) return NotFound();
-        if (!accept && string.IsNullOrWhiteSpace(note)) { TempData["Error"] = "Nhập lý do không chấp nhận hồ sơ."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!accept && string.IsNullOrWhiteSpace(note)) { TempData["Error"] = I18n.T("Nhập lý do không chấp nhận hồ sơ."); return RedirectToAction(nameof(Details), new { id }); }
         d.Status = accept ? VendorDocumentStatus.Verified : VendorDocumentStatus.Rejected;
         d.Note = string.IsNullOrWhiteSpace(note) ? d.Note : note.Trim(); d.VerifiedById = Me; d.VerifiedAt = DateTime.Now;
         await Db.SaveChangesAsync();
-        TempData["Success"] = accept ? "Đã xác minh hồ sơ." : "Đã đánh dấu hồ sơ không chấp nhận.";
+        TempData["Success"] = accept ? I18n.T("Đã xác minh hồ sơ.") : I18n.T("Đã đánh dấu hồ sơ không chấp nhận.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -112,10 +112,10 @@ public class VendorsController : ProcControllerBase
     public async Task<IActionResult> Save(Vendor model, List<int> categoryIds)
     {
         if (await Db.Vendors.AnyAsync(v => v.Code == model.Code && v.Id != model.Id))
-            ModelState.AddModelError(nameof(model.Code), "Mã NCC đã tồn tại");
+            ModelState.AddModelError(nameof(model.Code), I18n.T("Mã NCC đã tồn tại"));
         if (await Db.Vendors.AnyAsync(v => v.TaxCode == model.TaxCode && v.Id != model.Id))
-            ModelState.AddModelError(nameof(model.TaxCode), "Mã số thuế đã được đăng ký cho NCC khác");
-        if (categoryIds.Count == 0) ModelState.AddModelError(string.Empty, "Chọn ít nhất một nhóm hàng NCC cung cấp.");
+            ModelState.AddModelError(nameof(model.TaxCode), I18n.T("Mã số thuế đã được đăng ký cho NCC khác"));
+        if (categoryIds.Count == 0) ModelState.AddModelError(string.Empty, I18n.T("Chọn ít nhất một nhóm hàng NCC cung cấp."));
         if (!ModelState.IsValid)
         {
             ViewBag.AllCategories = await Db.Categories.OrderBy(c => c.Name).ToListAsync();
@@ -149,7 +149,7 @@ public class VendorsController : ProcControllerBase
             Db.VendorCategories.Add(new VendorCategory { VendorId = v.Id, CategoryId = cid });
 
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu nhà cung cấp {v.Name}.";
+        TempData["Success"] = I18n.T("Đã lưu nhà cung cấp {0}.", v.Name);
         return RedirectToAction(nameof(Details), new { id = v.Id });
     }
 

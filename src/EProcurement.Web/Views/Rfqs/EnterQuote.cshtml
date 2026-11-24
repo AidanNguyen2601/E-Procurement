@@ -7,9 +7,9 @@
     <input type="hidden" asp-for="RfqVendorId" />
     <div asp-validation-summary="All" class="text-danger"></div>
     <div class="card mb-3"><div class="card-body row g-3">
-        <div class="col-12 small text-muted">@Model.RfqVendor?.Rfq?.Number – @Model.RfqVendor?.Rfq?.Title. Nhập theo báo giá chính thức NCC gửi (email / văn bản); để trống đơn giá nếu NCC không chào dòng đó.</div>
+        <div class="col-12 small text-muted">@Model.RfqVendor?.Rfq?.Number – @Model.RfqVendor?.Rfq?.Title@L[". Nhập theo báo giá chính thức NCC gửi (email / văn bản); để trống đơn giá nếu NCC không chào dòng đó."]</div>
         <div class="col-md-3"><label asp-for="ReceivedDate" class="form-label"></label><input asp-for="ReceivedDate" class="form-control" />
-            <div class="small text-muted">Hạn nộp: hết ngày @Model.RfqVendor?.Rfq?.Deadline.ToDate()</div><span asp-validation-for="ReceivedDate" class="text-danger small"></span></div>
+            <div class="small text-muted">@L["Hạn nộp: hết ngày"] @Model.RfqVendor?.Rfq?.Deadline.ToDate()</div><span asp-validation-for="ReceivedDate" class="text-danger small"></span></div>
         <div class="col-md-2"><label asp-for="LeadTimeDays" class="form-label"></label><input asp-for="LeadTimeDays" class="form-control" /></div>
         <div class="col-md-7"></div>
         <div class="col-md-4"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" list="dl-paymentterm" />@await Catalog.DatalistAsync(CatalogType.PaymentTerm)</div>
@@ -18,7 +18,7 @@
         <div class="col-12"><label asp-for="Note" class="form-label"></label><input asp-for="Note" class="form-control" /></div>
     </div></div>
     <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
-        <thead><tr><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL</th><th style="width:180px">Đơn giá (trước VAT)</th><th class="money">Thành tiền</th><th>Ghi chú</th></tr></thead>
+        <thead><tr><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">SL</th><th style="width:180px">@L["Đơn giá (trước VAT)"]</th><th class="money">@L["Thành tiền"]</th><th>@L["Ghi chú"]</th></tr></thead>
         <tbody>
         @for (var i = 0; i < Model.Lines.Count; i++)
         {
@@ -32,10 +32,10 @@
             </tr>
         }
         </tbody>
-        <tfoot><tr class="fw-bold"><td colspan="4" class="text-end">Tổng trước VAT</td><td class="money" id="sum">0</td><td></td></tr></tfoot>
+        <tfoot><tr class="fw-bold"><td colspan="4" class="text-end">@L["Tổng trước VAT"]</td><td class="money" id="sum">0</td><td></td></tr></tfoot>
     </table></div></div>
-    <button class="btn btn-primary">Lưu báo giá</button>
-    <a asp-action="Details" asp-route-id="@Model.RfqVendor?.RfqId" class="btn btn-light">Hủy</a>
+    <button class="btn btn-primary">@L["Lưu báo giá"]</button>
+    <a asp-action="Details" asp-route-id="@Model.RfqVendor?.RfqId" class="btn btn-light">@L["Hủy"]</a>
 </form>
 @section Scripts {
 <script>

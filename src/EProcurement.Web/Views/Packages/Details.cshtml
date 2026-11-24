@@ -1,0 +1,121 @@
+@model ProcurementPackage
+@{
+    ViewData["Title"] = $"Gói mua sắm {Model.Number}";
+    var history = (List<ApprovalHistory>)ViewBag.History;
+    var rfqs = (List<Rfq>)ViewBag.Rfqs; var tenders = (List<Tender>)ViewBag.Tenders; var awards = (List<DirectAward>)ViewBag.DirectAwards; var orders = (List<PurchaseOrder>)ViewBag.Orders;
+    bool active = ViewBag.Active; var openPlans = (List<SelectionPlan>)ViewBag.OpenPlans;
+    var members = (List<PackageMember>)ViewBag.Members;
+    var buyer = User.IsPurchasing() && (bool)ViewBag.CanEdit;
+    var s = Model.Status;
+    var steps = new (string Name, bool Done, bool Current)[]
+    {
+        (L["Gom đề nghị"], s != PackageStatus.Cancelled, false),
+        (L["Đưa vào KHLCNT"], Model.SelectionPlanId != null && s != PackageStatus.Draft, s == PackageStatus.Draft),
+        (L["Giám đốc duyệt"], s >= PackageStatus.Approved && s != PackageStatus.Cancelled, s == PackageStatus.InPlan),
+        (L["Lựa chọn NCC"], s == PackageStatus.Completed, s is PackageStatus.Approved or PackageStatus.Executing),
+        (L["Hoàn tất"], s == PackageStatus.Completed, false)
+    };
+    var lines = Model.PurchaseRequests.OrderBy(r => r.Id).SelectMany(r => r.Lines.OrderBy(l => l.SortOrder).Select(l => (Pr: r, Line: l))).ToList();
+    var (createCtrl, createLabel) = Model.Method switch
+    {
+        ProcurementMethod.CompetitiveQuotation => ("Rfqs", L["Lập hồ sơ chào giá cạnh tranh"]),
+        ProcurementMethod.OpenTender => ("Tenders", L["Lập HSMT / HSYC"]),
+        ProcurementMethod.DirectAward => ("DirectAwards", L["Lập hồ sơ chào giá chỉ định"]),
+        _ => ("PurchaseOrders", L["Lập đơn mua sắm trực tiếp"])
+    };
+}
+<div class="card mb-3"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="flow">
+        @for (var i = 0; i < steps.Length; i++)
+        {
+            <span class="step @(steps[i].Done ? "done" : steps[i].Current ? "current" : "")">@steps[i].Name</span>
+            @if (i < steps.Length - 1) { <span class="arrow">›</span> }
+        }
+    </div>
+    <partial name="_Badge" model="Model.Status" />
+</div></div>
+
+<div class="toolbar">
+    @if (buyer && s == PackageStatus.Draft)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">@L["Sửa gói"]</a>
+        @if (Model.SelectionPlanId == null)
+        {
+            <a asp-controller="SelectionPlans" asp-action="Create" asp-route-packageIds="@Model.Id" class="btn btn-primary">@L["Lập KHLCNT với gói này"]</a>
+            @foreach (var pl in openPlans) { <a asp-controller="SelectionPlans" asp-action="Edit" asp-route-id="@pl.Id" class="btn btn-outline-primary">@L["Thêm vào"] @pl.Number</a> }
+        }
+        else { <a asp-controller="SelectionPlans" asp-action="Details" asp-route-id="@Model.SelectionPlanId" class="btn btn-primary">@L["Trình duyệt trong"] @Model.SelectionPlan?.Number</a> }
+    }
+    @if (buyer && s is PackageStatus.Approved or PackageStatus.Executing && !active)
+    {
+        <a asp-controller="@createCtrl" asp-action="Create" asp-route-packageId="@Model.Id" class="btn btn-primary">@createLabel</a>
+    }
+    @if (buyer && s is PackageStatus.Draft or PackageStatus.Approved or PackageStatus.Executing && !active)
+    {
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="@L["Hủy gói mua sắm? Các đề nghị sẽ được giải phóng để gom lại."]">
+            <input name="reason" class="form-control form-control-sm" placeholder="@L["Lý do hủy gói"]" />
+            <button class="btn btn-outline-danger btn-sm text-nowrap">@L["Hủy gói"]</button>
+        </form>
+    }
+</div>
+
+<div class="row g-3">
+<div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+        <h5>@Model.Title</h5>
+        <dl class="row small mb-0 info">
+            <dt class="col-sm-4">@L["Giá gói (trước VAT)"]</dt><dd class="col-sm-8 fw-semibold">@Model.Budget.ToMoney() đ <span class="text-muted fw-normal">· @L["tổng dự toán PR"] @Model.PurchaseRequests.Sum(r => r.EstimatedTotal).ToMoney() đ</span></dd>
+            <dt class="col-sm-4">@L["Nguồn vốn"]</dt><dd class="col-sm-8">@Model.FundingSource</dd>
+            <dt class="col-sm-4">@L["Hình thức lựa chọn NCC"]</dt><dd class="col-sm-8"><b>@Model.Method.GetDisplayName()</b>@if (Model.Method == ProcurementMethod.OpenTender) { <span> – @Model.EnvelopeMethod.GetDisplayName()</span> }
+                @if (!string.IsNullOrEmpty(Model.MethodReason)) { <div class="text-muted">@L["Lý do:"] @Model.MethodReason</div> }</dd>
+            <dt class="col-sm-4">@L["Thời gian bắt đầu tổ chức LCNT"]</dt><dd class="col-sm-8">@Model.PlannedStart.ToDate()</dd>
+            <dt class="col-sm-4">@L["Loại hợp đồng"]</dt><dd class="col-sm-8">@Model.ContractType</dd>
+            <dt class="col-sm-4">@L["Thời gian thực hiện hợp đồng"]</dt><dd class="col-sm-8">@Model.ContractDurationDays @L["ngày"]</dd>
+            <dt class="col-sm-4">KHLCNT</dt><dd class="col-sm-8">@if (Model.SelectionPlan != null) { <a asp-controller="SelectionPlans" asp-action="Details" asp-route-id="@Model.SelectionPlanId">@Model.SelectionPlan.Number</a> <partial name="_Badge" model="Model.SelectionPlan.Status" /> } else { <span class="text-muted">@L["Chưa đưa vào kế hoạch"]</span> }</dd>
+            <dt class="col-sm-4">@L["Người phụ trách"]</dt><dd class="col-sm-8">@Model.Buyer?.FullName@(string.IsNullOrEmpty(Model.Team) ? "" : " · " + Model.Team)</dd>
+            @if (!string.IsNullOrEmpty(Model.Note)) { <dt class="col-sm-4">@L["Ghi chú"]</dt><dd class="col-sm-8 pre">@Model.Note</dd> }
+        </dl>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-header">@L["Đề nghị mua hàng trong gói ("]@Model.PurchaseRequests.Count)</div><ul class="list-group list-group-flush">
+        @foreach (var r in Model.PurchaseRequests.OrderBy(r => r.Id))
+        {
+            <li class="list-group-item d-flex justify-content-between gap-2"><span><a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@r.Id" class="fw-semibold">@r.Number</a> – @r.Title
+                <span class="small text-muted">· @r.Department · @r.Requester?.FullName @L["· cần"] @r.NeededDate.ToDate()</span></span>
+                <span class="text-nowrap"><span class="money me-2">@r.EstimatedTotal.ToMoney()</span><partial name="_Badge" model="r.Status" /></span></li>
+        }
+    </ul></div>
+
+    <div class="card mb-3"><div class="card-header">@L["Phạm vi cung cấp ("]@lines.Count @L["dòng)"]</div><div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>#</th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">SL</th><th class="money">@L["Đơn giá dự toán"]</th><th class="money">@L["Thành tiền"]</th><th>PR</th></tr></thead><tbody>
+        @for (var i = 0; i < lines.Count; i++)
+        {
+            var l = lines[i].Line;
+            <tr><td>@(i + 1)</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.EstimatedPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td><td class="small">@lines[i].Pr.Number</td></tr>
+        }
+    </tbody></table></div></div>
+
+    @if (rfqs.Any() || tenders.Any() || awards.Any() || orders.Any())
+    {
+        <div class="card mb-3"><div class="card-header">@L["Hồ sơ lựa chọn NCC & đơn hàng"]</div><ul class="list-group list-group-flush">
+            @foreach (var r in rfqs) { <li class="list-group-item d-flex justify-content-between"><span>@L["Chào giá cạnh tranh"] <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.Id">@r.Number</a> – @r.Title@(r.AwardedVendor != null ? " · " + r.AwardedVendor.Name : "")</span><partial name="_Badge" model="r.Status" /></li> }
+            @foreach (var t in tenders) { <li class="list-group-item d-flex justify-content-between"><span>HSMT <a asp-controller="Tenders" asp-action="Details" asp-route-id="@t.Id">@t.Number</a> – @t.Title@(t.AwardedVendor != null ? " · " + t.AwardedVendor.Name : "")</span><partial name="_Badge" model="t.Status" /></li> }
+            @foreach (var d in awards) { <li class="list-group-item d-flex justify-content-between"><span>@L["Chào giá chỉ định"] <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@d.Id">@d.Number</a> – @d.Vendor?.Name</span><partial name="_Badge" model="d.Status" /></li> }
+            @foreach (var o in orders) { <li class="list-group-item d-flex justify-content-between"><span>@L["Đơn hàng"] <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@o.Id">@o.Number</a> – @o.Vendor?.Name · @o.Total.ToMoney() đ</span><partial name="_Badge" model="o.Status" /></li> }
+        </ul></div>
+    }
+</div>
+<div class="col-lg-4">
+    <div class="card mb-3"><div class="card-header d-flex">@L["Quyền theo gói"] <a asp-controller="Settings" asp-action="PackageAccess" asp-route-id="@Model.Id" class="ms-auto small">@L["Phân quyền"]</a></div>
+        @if (members.Count == 0) { <div class="card-body small text-muted">@L["Chưa phân thành viên – mọi nhân viên mua hàng được chỉnh sửa. Phụ trách:"] @Model.Buyer?.FullName</div> }
+        else
+        {
+            <ul class="list-group list-group-flush small">
+                <li class="list-group-item d-flex justify-content-between"><span>@Model.Buyer?.FullName</span><span class="badge bg-primary">@L["Người lập gói"]</span></li>
+                @foreach (var m in members) { <li class="list-group-item d-flex justify-content-between"><span>@m.User?.FullName</span><span class="badge @(m.Role == PackageRole.Viewer ? "bg-secondary-subtle text-secondary" : "bg-primary-subtle text-primary-emphasis")">@m.Role.GetDisplayName()</span></li> }
+            </ul>
+        }
+    </div>
+    <div class="card"><div class="card-header">@L["Nhật ký"]</div><div class="card-body"><partial name="_History" model="history" /></div></div>
+</div>
+</div>

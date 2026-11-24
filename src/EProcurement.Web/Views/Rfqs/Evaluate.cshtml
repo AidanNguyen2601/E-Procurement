@@ -5,15 +5,15 @@
     var weighted = r.EvaluationMethod == EvaluationMethod.WeightedScore;
 }
 <div class="alert alert-info py-2 small">
-    Đánh giá từng báo giá theo yêu cầu của RFQ: <span class="pre">@r.Requirements</span><br />
-    Báo giá <b>không đạt</b> sẽ bị loại, không xét giá (bắt buộc ghi lý do).
-    @if (weighted) { <span>Báo giá đạt cần chấm <b>điểm kỹ thuật 0–100</b> (trọng số @r.TechnicalWeight%).</span> }
+    @L["Đánh giá từng báo giá theo yêu cầu của RFQ:"] <span class="pre">@r.Requirements</span><br />
+    @L["Báo giá"] <b>@L["không đạt"]</b> @L["sẽ bị loại, không xét giá (bắt buộc ghi lý do)."]
+    @if (weighted) { <span>@L["Báo giá đạt cần chấm"] <b>@L["điểm kỹ thuật 0–100"]</b> @L["(trọng số"] @r.TechnicalWeight%).</span> }
 </div>
 <form asp-action="Evaluate" method="post">
     <input type="hidden" asp-for="RfqId" />
     <div asp-validation-summary="All" class="text-danger"></div>
     <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0 align-middle">
-        <thead><tr><th>Nhà cung cấp</th><th class="money">Tổng (gồm VAT)</th><th>Giao / bảo hành</th><th style="width:190px">Kết quả</th>@if (weighted) { <th style="width:110px">Điểm KT</th> }<th>Nhận xét / lý do không đạt</th></tr></thead>
+        <thead><tr><th>@L["Nhà cung cấp"]</th><th class="money">@L["Tổng (gồm VAT)"]</th><th>@L["Giao / bảo hành"]</th><th style="width:190px">@L["Kết quả"]</th>@if (weighted) { <th style="width:110px">@L["Điểm KT"]</th> }<th>@L["Nhận xét / lý do không đạt"]</th></tr></thead>
         <tbody>
         @for (var i = 0; i < Model.Lines.Count; i++)
         {
@@ -23,10 +23,10 @@
                 <td>@l.VendorName<input type="hidden" asp-for="Lines[i].RfqVendorId" /><input type="hidden" asp-for="Lines[i].VendorName" />
                     @if (!string.IsNullOrEmpty(q.Note)) { <div class="small text-muted">@q.Note</div> }</td>
                 <td class="money">@q.GrandTotal.ToMoney()</td>
-                <td class="small">@(q.LeadTimeDays.HasValue ? q.LeadTimeDays + " ngày" : "—")<br />@q.Warranty</td>
+                <td class="small">@(q.LeadTimeDays.HasValue ? q.LeadTimeDays + L[" ngày"] : "—")<br />@q.Warranty</td>
                 <td class="text-nowrap">
-                    <label class="me-2"><input type="radio" name="Lines[@i].Pass" value="true" class="form-check-input" checked="@(l.Pass == true)" /> Đạt</label>
-                    <label><input type="radio" name="Lines[@i].Pass" value="false" class="form-check-input" checked="@(l.Pass == false)" /> Không đạt</label>
+                    <label class="me-2"><input type="radio" name="Lines[@i].Pass" value="true" class="form-check-input" checked="@(l.Pass == true)" /> @L["Đạt"]</label>
+                    <label><input type="radio" name="Lines[@i].Pass" value="false" class="form-check-input" checked="@(l.Pass == false)" /> @L["Không đạt"]</label>
                 </td>
                 @if (weighted) { <td><input asp-for="Lines[i].Score" type="number" min="0" max="100" class="form-control form-control-sm" /></td> }
                 <td><input asp-for="Lines[i].Note" class="form-control form-control-sm" /></td>
@@ -34,6 +34,6 @@
         }
         </tbody>
     </table></div></div>
-    <button class="btn btn-primary">Lưu đánh giá & xem xếp hạng</button>
-    <a asp-action="Details" asp-route-id="@r.Id" class="btn btn-light">Quay lại</a>
+    <button class="btn btn-primary">@L["Lưu đánh giá & xem xếp hạng"]</button>
+    <a asp-action="Details" asp-route-id="@r.Id" class="btn btn-light">@L["Quay lại"]</a>
 </form>

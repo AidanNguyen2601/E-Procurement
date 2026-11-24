@@ -5,12 +5,12 @@
 }
 <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
     <div class="btn-group btn-group-sm">
-        <a asp-action="Index" class="btn @(unread ? "btn-outline-primary" : "btn-primary")">Tất cả</a>
-        <a asp-action="Index" asp-route-unread="true" class="btn @(unread ? "btn-primary" : "btn-outline-primary")">Chưa đọc</a>
+        <a asp-action="Index" class="btn @(unread ? "btn-outline-primary" : "btn-primary")">@L["Tất cả"]</a>
+        <a asp-action="Index" asp-route-unread="true" class="btn @(unread ? "btn-primary" : "btn-outline-primary")">@L["Chưa đọc"]</a>
     </div>
     <div class="d-flex gap-2">
-        <form asp-action="MarkAllRead" method="post"><button class="btn btn-sm btn-light">Đánh dấu tất cả đã đọc</button></form>
-        @if (User.IsAdmin()) { <form asp-action="RunNow" method="post"><button class="btn btn-sm btn-outline-secondary" title="Bình thường hệ thống tự quét theo chu kỳ">Quét nhắc hạn ngay</button></form> }
+        <form asp-action="MarkAllRead" method="post"><button class="btn btn-sm btn-light">@L["Đánh dấu tất cả đã đọc"]</button></form>
+        @if (User.IsAdmin()) { <form asp-action="RunNow" method="post"><button class="btn btn-sm btn-outline-secondary" title="@L["Bình thường hệ thống tự quét theo chu kỳ"]">@L["Quét nhắc hạn ngay"]</button></form> }
     </div>
 </div>
 <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0 align-middle">
@@ -25,7 +25,7 @@
             <td class="small text-nowrap text-muted fw-normal">@n.CreatedAt.ToDateTime()</td>
         </tr>
     }
-    @if (!Model.Any()) { <tr><td class="text-muted p-3">Không có thông báo.</td></tr> }
+    @if (!Model.Any()) { <tr><td class="text-muted p-3">@L["Không có thông báo."]</td></tr> }
     </tbody>
 </table></div></div>
 @if (pages > 1)
@@ -36,10 +36,10 @@
 }
 <div class="card"><div class="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
     <div class="small">
-        <b>Nhận thông báo qua email</b>: @(ViewBag.EmailOn ? "đang bật" : "đang tắt")
-        <span class="text-muted">· @(string.IsNullOrEmpty((string?)ViewBag.Email) ? "tài khoản chưa có email" : (string)ViewBag.Email)</span>
-        <div class="text-muted">Email chỉ được gửi khi quản trị đã cấu hình máy chủ gửi thư (SMTP).</div>
+        <b>@L["Nhận thông báo qua email"]</b>: @(ViewBag.EmailOn ? L["đang bật"] : L["đang tắt"])
+        <span class="text-muted">· @(string.IsNullOrEmpty((string?)ViewBag.Email) ? L["tài khoản chưa có email"] : (string)ViewBag.Email)</span>
+        <div class="text-muted">@L["Email chỉ được gửi khi quản trị đã cấu hình máy chủ gửi thư (SMTP)."]</div>
     </div>
     <form asp-action="EmailPreference" method="post"><input type="hidden" name="enabled" value="@((!(bool)ViewBag.EmailOn).ToString().ToLower())" />
-        <button class="btn btn-sm btn-outline-primary">@(ViewBag.EmailOn ? "Tắt email" : "Bật email")</button></form>
+        <button class="btn btn-sm btn-outline-primary">@(ViewBag.EmailOn ? L["Tắt email"] : L["Bật email"])</button></form>
 </div></div>

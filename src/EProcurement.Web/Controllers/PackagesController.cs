@@ -100,7 +100,7 @@ public class PackagesController : ProcControllerBase
     {
         var p = await Db.ProcurementPackages.Include(x => x.PurchaseRequests).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status != PackageStatus.Draft) { TempData["Error"] = "Chỉ sửa gói ở trạng thái Nháp (chưa trình / bị trả lại)."; return RedirectToAction(nameof(Details), new { id }); }
+        if (p.Status != PackageStatus.Draft) { TempData["Error"] = I18n.T("Chỉ sửa gói ở trạng thái Nháp (chưa trình / bị trả lại)."); return RedirectToAction(nameof(Details), new { id }); }
         if (!await PackageAccess.CanEditAsync(Db, User, id)) { TempData["Error"] = PackageAccess.Explain; return RedirectToAction(nameof(Details), new { id }); }
         var vm = new PackageForm
         {
@@ -128,8 +128,8 @@ public class PackagesController : ProcControllerBase
         await FillAsync(vm);
         if (refresh) { ModelState.Clear(); if (vm.Budget <= 0) vm.Budget = vm.Estimate; return View("Form", vm); }
         var chosen = vm.Available.Where(r => vm.PrIds.Contains(r.Id)).ToList();
-        if (chosen.Count == 0) ModelState.AddModelError(nameof(vm.PrIds), "Chọn ít nhất một đề nghị mua hàng đã duyệt.");
-        if (chosen.Count != vm.PrIds.Count) ModelState.AddModelError(nameof(vm.PrIds), "Có đề nghị không còn hợp lệ để đưa vào gói (đã thuộc gói khác hoặc đã có hồ sơ).");
+        if (chosen.Count == 0) ModelState.AddModelError(nameof(vm.PrIds), I18n.T("Chọn ít nhất một đề nghị mua hàng đã duyệt."));
+        if (chosen.Count != vm.PrIds.Count) ModelState.AddModelError(nameof(vm.PrIds), I18n.T("Có đề nghị không còn hợp lệ để đưa vào gói (đã thuộc gói khác hoặc đã có hồ sơ)."));
         if (vm.Budget <= 0) vm.Budget = vm.Estimate;
         if (chosen.Count > 0 && vm.Suggested.HasValue)
             foreach (var e in Packages.MethodProblems(vm.Method, vm.Suggested.Value, vm.MethodReason, vm.HasReference, vm.Budget, vm.Estimate, Settings))
@@ -155,7 +155,7 @@ public class PackagesController : ProcControllerBase
             $"{string.Join(", ", tracked.Select(r => r.Number))} · {p.Method.GetDisplayName()} · giá gói {p.Budget.ToMoney()} đ");
         foreach (var r in tracked) if (created) Log(DocType.PR, r.Id, $"Đưa vào gói mua sắm {p.Number}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu {p.Number}. Đưa gói vào kế hoạch lựa chọn NCC để trình duyệt.";
+        TempData["Success"] = I18n.T("Đã lưu {0}. Đưa gói vào kế hoạch lựa chọn NCC để trình duyệt.", p.Number);
         return RedirectToAction(nameof(Details), new { id = p.Id });
     }
 
@@ -186,9 +186,9 @@ public class PackagesController : ProcControllerBase
         if (p == null) return NotFound();
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
         if (!await PackageAccess.CanEditAsync(Db, User, id)) return Fail(PackageAccess.Explain);
-        if (p.Status is PackageStatus.Completed or PackageStatus.Cancelled or PackageStatus.InPlan) return Fail("Không hủy được gói ở trạng thái hiện tại.");
-        if (await Packages.HasActiveDocumentAsync(Db, id)) return Fail("Gói còn hồ sơ lựa chọn NCC / đơn hàng đang xử lý – hủy các chứng từ đó trước.");
-        if (string.IsNullOrWhiteSpace(reason)) return Fail("Nhập lý do hủy gói.");
+        if (p.Status is PackageStatus.Completed or PackageStatus.Cancelled or PackageStatus.InPlan) return Fail(I18n.T("Không hủy được gói ở trạng thái hiện tại."));
+        if (await Packages.HasActiveDocumentAsync(Db, id)) return Fail(I18n.T("Gói còn hồ sơ lựa chọn NCC / đơn hàng đang xử lý – hủy các chứng từ đó trước."));
+        if (string.IsNullOrWhiteSpace(reason)) return Fail(I18n.T("Nhập lý do hủy gói."));
         var prs = p.PurchaseRequests.ToList();
         foreach (var r in prs)
         {
@@ -200,7 +200,7 @@ public class PackagesController : ProcControllerBase
         p.Note = (p.Note + $"\nĐã hủy: {reason.Trim()}. Đề nghị đã giải phóng: {string.Join(", ", prs.Select(r => r.Number))}").Trim();
         Log(DocType.Package, id, "Hủy gói mua sắm", reason.Trim());
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã hủy {p.Number}. Các đề nghị có thể gom vào gói mới.";
+        TempData["Success"] = I18n.T("Đã hủy {0}. Các đề nghị có thể gom vào gói mới.", p.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 }

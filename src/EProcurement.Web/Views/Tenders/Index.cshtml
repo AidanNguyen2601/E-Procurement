@@ -6,11 +6,11 @@
     foreach (var i in items) i.Selected = status.HasValue && i.Value == ((int)status.Value).ToString();
 }
 <form method="get" class="toolbar">
-    <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="items" onchange="this.form.submit()"><option value="">-- Mọi trạng thái --</option></select>
-    <a asp-action="Public" target="_blank" class="btn btn-sm btn-outline-secondary ms-auto">Trang thông báo mời thầu công khai ↗</a>
+    <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="items" onchange="this.form.submit()"><option value="">@L["-- Mọi trạng thái --"]</option></select>
+    <a asp-action="Public" target="_blank" class="btn btn-sm btn-outline-secondary ms-auto">@L["Trang thông báo mời thầu công khai ↗"]</a>
 </form>
 <div class="card"><div class="card-body p-0"><table class="table mb-0">
-    <thead><tr><th>Số</th><th>Gói thầu</th><th>Đề nghị</th><th class="money">Giá gói thầu</th><th>Đóng thầu</th><th class="money">Nhà thầu</th><th>Trúng thầu</th><th>Trạng thái</th></tr></thead>
+    <thead><tr><th>@L["Số"]</th><th>@L["Gói thầu"]</th><th>@L["Đề nghị"]</th><th class="money">@L["Giá gói thầu"]</th><th>@L["Đóng thầu"]</th><th class="money">@L["Nhà thầu"]</th><th>@L["Trúng thầu"]</th><th>@L["Trạng thái"]</th></tr></thead>
     <tbody>
     @foreach (var t in Model)
     {
@@ -25,6 +25,6 @@
             <td><partial name="_Badge" model="t.Status" /></td>
         </tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">Chưa có gói thầu nào. Lập gói thầu từ đề nghị mua hàng đã duyệt (hình thức Đấu thầu rộng rãi).</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">@L["Chưa có gói thầu nào. Lập gói thầu từ đề nghị mua hàng đã duyệt (hình thức Đấu thầu rộng rãi)."]</td></tr> }
     </tbody>
 </table></div></div>

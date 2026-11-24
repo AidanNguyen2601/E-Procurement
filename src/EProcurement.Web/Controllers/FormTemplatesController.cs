@@ -50,20 +50,20 @@ public class FormTemplatesController : Controller
     {
         static string? T(string? v, int max) => string.IsNullOrWhiteSpace(v) ? null : v.Trim()[..Math.Min(max, v.Trim().Length)];
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Index), new { edit = id == 0 ? (int?)null : id }); }
-        if (string.IsNullOrWhiteSpace(name)) return Fail("Nhập tên biểu mẫu.");
+        if (string.IsNullOrWhiteSpace(name)) return Fail(I18n.T("Nhập tên biểu mẫu."));
         FormTemplate f;
         if (id == 0)
         {
-            if (file == null || file.Length == 0) return Fail("Chọn file biểu mẫu.");
+            if (file == null || file.Length == 0) return Fail(I18n.T("Chọn file biểu mẫu."));
             f = new FormTemplate { UploadedById = User.GetUserId() };
             _db.FormTemplates.Add(f);
         }
         else f = await _db.FormTemplates.FirstOrDefaultAsync(x => x.Id == id) ?? throw new KeyNotFoundException();
         if (file != null && file.Length > 0)
         {
-            if (file.Length > MaxSize) return Fail("File tối đa 20 MB.");
+            if (file.Length > MaxSize) return Fail(I18n.T("File tối đa 20 MB."));
             var ext = Path.GetExtension(file.FileName);
-            if (!AllowedExt.Contains(ext)) return Fail("Chỉ nhận file Word, Excel, PDF, PowerPoint, văn bản hoặc file nén.");
+            if (!AllowedExt.Contains(ext)) return Fail(I18n.T("Chỉ nhận file Word, Excel, PDF, PowerPoint, văn bản hoặc file nén."));
             using var ms = new MemoryStream();
             await file.CopyToAsync(ms);
             f.Data = ms.ToArray(); f.Size = file.Length; f.FileName = Path.GetFileName(file.FileName)[..Math.Min(260, Path.GetFileName(file.FileName).Length)];
@@ -73,7 +73,7 @@ public class FormTemplatesController : Controller
         f.Name = T(name, 200)!; f.Code = T(code, 30); f.Group = Groups.Contains(group) ? group : "Khác";
         f.Description = T(description, 1000); f.Version = T(version, 20); f.IsActive = isActive;
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu biểu mẫu \"{f.Name}\".";
+        TempData["Success"] = I18n.T("Đã lưu biểu mẫu \"{0}\".", f.Name);
         return RedirectToAction(nameof(Index), new { group = f.Group });
     }
 
@@ -85,7 +85,7 @@ public class FormTemplatesController : Controller
         if (f == null) return NotFound();
         _db.FormTemplates.Remove(f);
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã xóa biểu mẫu \"{f.Name}\".";
+        TempData["Success"] = I18n.T("Đã xóa biểu mẫu \"{0}\".", f.Name);
         return RedirectToAction(nameof(Index));
     }
 }

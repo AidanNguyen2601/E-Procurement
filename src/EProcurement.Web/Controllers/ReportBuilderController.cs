@@ -36,7 +36,7 @@ public class ReportBuilderController : ProcControllerBase
             var def = await Db.ReportDefinitions.FirstOrDefaultAsync(r => r.Id == id && (r.OwnerId == Me || r.IsShared));
             if (def == null) return NotFound();
             var design = DynamicReports.ParseJson(def.DesignJson);
-            if (design == null) { TempData["Error"] = "Thiết kế đã lưu bị lỗi định dạng."; return RedirectToAction(nameof(Index)); }
+            if (design == null) { TempData["Error"] = I18n.T("Thiết kế đã lưu bị lỗi định dạng."); return RedirectToAction(nameof(Index)); }
             vm = new DesignerViewModel { Id = def.Id, Name = def.Name, Description = def.Description, IsShared = def.IsShared, CanEdit = CanEdit(def), Design = design };
             if (run) await RunInto(vm);
         }
@@ -106,7 +106,7 @@ public class ReportBuilderController : ProcControllerBase
         def.Name = vm.Name.Trim(); def.Description = string.IsNullOrWhiteSpace(vm.Description) ? null : vm.Description.Trim()[..Math.Min(500, vm.Description.Trim().Length)];
         def.IsShared = vm.IsShared; def.Dataset = vm.Design.Dataset; def.DesignJson = JsonSerializer.Serialize(vm.Design, DynamicReports.Json); def.UpdatedAt = DateTime.Now;
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu báo cáo \"{def.Name}\".";
+        TempData["Success"] = I18n.T("Đã lưu báo cáo \"{0}\".", def.Name);
         return RedirectToAction(nameof(Designer), new { id = def.Id, run = true });
     }
 
@@ -115,16 +115,16 @@ public class ReportBuilderController : ProcControllerBase
     [RequestSizeLimit(1024 * 1024)]
     public async Task<IActionResult> Import(IFormFile? file)
     {
-        if (file == null || file.Length == 0 || file.Length > 512 * 1024) { TempData["Error"] = "Chọn file thiết kế (.json, tối đa 512 KB)."; return RedirectToAction(nameof(Index)); }
+        if (file == null || file.Length == 0 || file.Length > 512 * 1024) { TempData["Error"] = I18n.T("Chọn file thiết kế (.json, tối đa 512 KB)."); return RedirectToAction(nameof(Index)); }
         string json;
         using (var r = new StreamReader(file.OpenReadStream(), Encoding.UTF8)) json = await r.ReadToEndAsync();
         DesignFile? df = null;
         try { df = JsonSerializer.Deserialize<DesignFile>(json, DynamicReports.Json); } catch (JsonException) { }
-        if (df?.Design == null || df.Type != DesignFileType) { TempData["Error"] = "File không phải thiết kế báo cáo E-Procurement."; return RedirectToAction(nameof(Index)); }
+        if (df?.Design == null || df.Type != DesignFileType) { TempData["Error"] = I18n.T("File không phải thiết kế báo cáo E-Procurement."); return RedirectToAction(nameof(Index)); }
         var vm = new DesignerViewModel { Name = df.Name ?? "", Description = df.Description, Design = df.Design };
         vm.Errors = DynamicReports.Validate(vm.Design);
         if (vm.Errors.Count == 0) await RunInto(vm);
-        TempData["Success"] = "Đã nhập thiết kế. Bấm \"Lưu thiết kế\" để lưu vào danh sách báo cáo.";
+        TempData["Success"] = I18n.T("Đã nhập thiết kế. Bấm \"Lưu thiết kế\" để lưu vào danh sách báo cáo.");
         return View(nameof(Designer), vm);
     }
 
@@ -136,7 +136,7 @@ public class ReportBuilderController : ProcControllerBase
         if (!CanEdit(def)) return Forbid();
         Db.ReportDefinitions.Remove(def);
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã xóa báo cáo \"{def.Name}\".";
+        TempData["Success"] = I18n.T("Đã xóa báo cáo \"{0}\".", def.Name);
         return RedirectToAction(nameof(Index));
     }
 

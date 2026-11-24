@@ -8,53 +8,52 @@
 @if (me.ConflictDeclaredAt == null)
 {
     <div class="card mb-3 border-warning"><div class="card-body">
-        <h6>Cam kết không xung đột lợi ích</h6>
-        <p class="small mb-2">Tôi cam kết không có quan hệ sở hữu, góp vốn, gia đình, công tác hoặc lợi ích nào với các nhà thầu tham dự gói thầu
+        <h6>@L["Cam kết không xung đột lợi ích"]</h6>
+        <p class="small mb-2">@L["Tôi cam kết không có quan hệ sở hữu, góp vốn, gia đình, công tác hoặc lợi ích nào với các nhà thầu tham dự gói thầu"]
             <b>@t.Number – @t.Title</b>: @string.Join(", ", t.Bidders.Where(b => b.Submitted).Select(b => b.Vendor?.Name)).
             Tôi sẽ đánh giá độc lập, khách quan và bảo mật thông tin trong quá trình đánh giá.</p>
-        <form asp-action="DeclareConflict" asp-route-id="@t.Id" method="post"><button class="btn btn-warning">Tôi cam kết</button></form>
+        <form asp-action="DeclareConflict" asp-route-id="@t.Id" method="post"><button class="btn btn-warning">@L["Tôi cam kết"]</button></form>
     </div></div>
 }
 else if (t.Status != TenderStatus.Opened)
 {
-    <div class="alert alert-secondary">Gói thầu không ở bước đánh giá.</div>
+    <div class="alert alert-secondary">@L["Gói thầu không ở bước đánh giá."]</div>
 }
 else if (!screened)
 {
-    <div class="alert alert-warning">Bên mời thầu / tổ trưởng chưa đánh giá hợp lệ & năng lực. Quay lại sau.</div>
+    <div class="alert alert-warning">@L["Bên mời thầu / tổ trưởng chưa đánh giá hợp lệ & năng lực. Quay lại sau."]</div>
 }
 else
 {
     <div class="alert alert-info py-2 small">
-        Chấm theo yêu cầu kỹ thuật của HSMT (thang 0–100, đạt khi điểm trung bình tổ ≥ <b>@t.MinTechnicalScore</b>). Điểm của bạn được bảo mật –
-        các thành viên khác chỉ thấy khi cả tổ đã nộp phiếu. @(t.EnvelopeMethod == EnvelopeMethod.TwoEnvelope ? "Hồ sơ tài chính đang niêm phong." : "")
+        @L["Chấm theo yêu cầu kỹ thuật của HSMT (thang 0–100, đạt khi điểm trung bình tổ ≥"] <b>@t.MinTechnicalScore</b>@L["). Điểm của bạn được bảo mật – các thành viên khác chỉ thấy khi cả tổ đã nộp phiếu."] @(t.EnvelopeMethod == EnvelopeMethod.TwoEnvelope ? L["Hồ sơ tài chính đang niêm phong."] : "")
         <div class="pre mt-1">@t.TechnicalRequirements</div>
     </div>
-    @if (Model.Complete) { <div class="alert alert-success py-2">Bạn đã nộp phiếu chấm lúc @me.ScoringCompletedAt.ToDateTime().</div> }
+    @if (Model.Complete) { <div class="alert alert-success py-2">@L["Bạn đã nộp phiếu chấm lúc"] @me.ScoringCompletedAt.ToDateTime().</div> }
     <form asp-action="Score" method="post">
         <input type="hidden" asp-for="TenderId" />
         <div asp-validation-summary="All" class="text-danger"></div>
         <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0 align-middle">
-            <thead><tr><th>Nhà thầu (đạt hợp lệ & năng lực)</th><th>Đề xuất kỹ thuật</th><th style="width:120px">Điểm</th><th>Nhận xét</th></tr></thead>
+            <thead><tr><th>@L["Nhà thầu (đạt hợp lệ & năng lực)"]</th><th>@L["Đề xuất kỹ thuật"]</th><th style="width:120px">@L["Điểm"]</th><th>@L["Nhận xét"]</th></tr></thead>
             <tbody>
             @for (var i = 0; i < Model.Lines.Count; i++)
             {
                 var b = t.Bidders.FirstOrDefault(x => x.Id == Model.Lines[i].TenderBidderId); if (b == null) { continue; }
                 <tr>
                     <td>@Model.Lines[i].VendorName<input type="hidden" asp-for="Lines[i].TenderBidderId" /><input type="hidden" asp-for="Lines[i].VendorName" /></td>
-                    <td class="small">Giao @(b.LeadTimeDays.HasValue ? b.LeadTimeDays + " ngày" : "—") · @b.Note</td>
+                    <td class="small">Giao @(b.LeadTimeDays.HasValue ? b.LeadTimeDays + L[" ngày"] : "—") · @b.Note</td>
                     <td><input asp-for="Lines[i].Score" type="number" min="0" max="100" class="form-control form-control-sm" disabled="@Model.Complete" /></td>
                     <td><input asp-for="Lines[i].Comment" class="form-control form-control-sm" disabled="@Model.Complete" /></td>
                 </tr>
             }
-            @if (!Model.Lines.Any()) { <tr><td colspan="4" class="text-muted p-3">Không có HSDT nào đạt bước hợp lệ & năng lực. Bấm "Nộp phiếu" để hoàn thành.</td></tr> }
+            @if (!Model.Lines.Any()) { <tr><td colspan="4" class="text-muted p-3">@L["Không có HSDT nào đạt bước hợp lệ & năng lực. Bấm \"Nộp phiếu\" để hoàn thành."]</td></tr> }
             </tbody>
         </table></div></div>
         @if (!Model.Complete)
         {
-            <button class="btn btn-outline-primary" name="complete" value="false">Lưu nháp</button>
-            <button class="btn btn-primary" name="complete" value="true" data-confirm="Nộp phiếu chấm? Sau khi nộp không sửa được.">Nộp phiếu chấm</button>
+            <button class="btn btn-outline-primary" name="complete" value="false">@L["Lưu nháp"]</button>
+            <button class="btn btn-primary" name="complete" value="true" data-confirm="@L["Nộp phiếu chấm? Sau khi nộp không sửa được."]">@L["Nộp phiếu chấm"]</button>
         }
-        <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">Quay lại</a>
+        <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-light">@L["Quay lại"]</a>
     </form>
 }

@@ -24,7 +24,7 @@
 <form asp-action="Save" method="post" id="ui-form">
 <div class="row g-3">
     <div class="col-xl-7">
-        <div class="card mb-3"><div class="card-header">Vị trí menu</div><div class="card-body">
+        <div class="card mb-3"><div class="card-header">@L["Vị trí menu"]</div><div class="card-body">
             <div class="row g-2">
                 @foreach (var (key, label) in UiTheme.NavPositions)
                 {
@@ -34,14 +34,14 @@
                     </div>
                 }
             </div>
-            <div class="form-text">Trên điện thoại / màn hình hẹp, menu luôn là menu trượt bên trái (nút ☰).</div>
+            <div class="form-text">@L["Trên điện thoại / màn hình hẹp, menu luôn là menu trượt bên trái (nút ☰)."]</div>
             <div class="form-check mt-2">
                 <input type="checkbox" class="form-check-input" name="Accordion" value="true" id="acc" checked="@Model.Accordion" /><input type="hidden" name="Accordion" value="false" />
-                <label class="form-check-label" for="acc">Menu dọc gọn: chỉ mở một nhóm tại một thời điểm (mở nhóm này thì nhóm khác tự thu lại)</label>
+                <label class="form-check-label" for="acc">@L["Menu dọc gọn: chỉ mở một nhóm tại một thời điểm (mở nhóm này thì nhóm khác tự thu lại)"]</label>
             </div>
         </div></div>
 
-        <div class="card mb-3"><div class="card-header">Màu chủ đạo &amp; kiểu menu</div><div class="card-body">
+        <div class="card mb-3"><div class="card-header">@L["Màu chủ đạo &amp; kiểu menu"]</div><div class="card-body">
             <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
                 @foreach (var (color, label) in UiTheme.Colors)
                 {
@@ -52,36 +52,36 @@
                 }
                 <span class="ms-2 d-inline-flex align-items-center gap-2">
                     <input type="radio" class="btn-check" name="Color" value="@Model.Color" id="c-custom" checked="@custom" />
-                    <label class="btn btn-sm btn-outline-secondary" for="c-custom">Màu khác</label>
-                    <input type="color" id="c-picker" value="@Model.Color" class="form-control form-control-color" title="Chọn màu bất kỳ" />
+                    <label class="btn btn-sm btn-outline-secondary" for="c-custom">@L["Màu khác"]</label>
+                    <input type="color" id="c-picker" value="@Model.Color" class="form-control form-control-color" title="@L["Chọn màu bất kỳ"]" />
                 </span>
             </div>
             <div class="row g-2 mt-1" style="max-width:420px">
                 <div class="col-6">
                     <input type="radio" class="btn-check" name="Menu" value="dark" id="m-dark" checked="@(Model.Menu == "dark")" />
-                    <label class="ui-opt" for="m-dark"><div class="ui-menu-sample dark mb-2"><div>Dashboard</div><div class="on">Đang chọn</div><div>Báo cáo</div></div>Menu tối</label>
+                    <label class="ui-opt" for="m-dark"><div class="ui-menu-sample dark mb-2"><div>Dashboard</div><div class="on">@L["Đang chọn"]</div><div>@L["Báo cáo"]</div></div>@L["Menu tối"]</label>
                 </div>
                 <div class="col-6">
                     <input type="radio" class="btn-check" name="Menu" value="light" id="m-light" checked="@(Model.Menu == "light")" />
-                    <label class="ui-opt" for="m-light"><div class="ui-menu-sample light mb-2"><div>Dashboard</div><div class="on">Đang chọn</div><div>Báo cáo</div></div>Menu sáng</label>
+                    <label class="ui-opt" for="m-light"><div class="ui-menu-sample light mb-2"><div>Dashboard</div><div class="on">@L["Đang chọn"]</div><div>@L["Báo cáo"]</div></div>@L["Menu sáng"]</label>
                 </div>
             </div>
-            <div class="form-text">Nền menu tối được pha từ màu chủ đạo.</div>
+            <div class="form-text">@L["Nền menu tối được pha từ màu chủ đạo."]</div>
         </div></div>
 
-        <div class="card mb-3"><div class="card-header">Font &amp; cỡ chữ</div><div class="card-body row g-3">
+        <div class="card mb-3"><div class="card-header">@L["Font &amp; cỡ chữ"]</div><div class="card-body row g-3">
             <div class="col-md-6">
-                <label class="form-label" for="font">Font chữ</label>
+                <label class="form-label" for="font">@L["Font chữ"]</label>
                 <select name="Font" id="font" class="form-select">
                     @foreach (var f in UiTheme.Fonts)
                     {
                         <option value="@f.Key" selected="@(Model.Font == f.Key)" data-stack="@f.Stack" data-href="@(f.GoogleFamily == null ? null : $"https://fonts.googleapis.com/css2?family={f.GoogleFamily}&display=swap")">@f.Label@(f.GoogleFamily != null ? " (font web)" : "")</option>
                     }
                 </select>
-                <div class="form-text">Font web tải từ Google Fonts – cần Internet; không tải được thì dùng font hệ thống.</div>
+                <div class="form-text">@L["Font web tải từ Google Fonts – cần Internet; không tải được thì dùng font hệ thống."]</div>
             </div>
             <div class="col-md-6">
-                <label class="form-label d-block">Cỡ chữ</label>
+                <label class="form-label d-block">@L["Cỡ chữ"]</label>
                 <div class="btn-group flex-wrap" role="group">
                     @foreach (var (px, label) in UiTheme.Sizes)
                     {
@@ -95,32 +95,32 @@
     </div>
 
     <div class="col-xl-5">
-        <div class="card mb-3" style="position:sticky;top:12px"><div class="card-header">Xem trước</div><div class="card-body">
-            <p class="mb-2">Thay đổi được áp dụng ngay trên trang để xem thử; bấm <b>Lưu</b> để giữ lại.</p>
+        <div class="card mb-3" style="position:sticky;top:12px"><div class="card-header">@L["Xem trước"]</div><div class="card-body">
+            <p class="mb-2">@L["Thay đổi được áp dụng ngay trên trang để xem thử; bấm"] <b>@L["Lưu"]</b> @L["để giữ lại."]</p>
             <div class="d-flex flex-wrap gap-2 mb-3">
-                <button type="button" class="btn btn-primary btn-sm">Nút chính</button>
-                <button type="button" class="btn btn-outline-primary btn-sm">Nút viền</button>
-                <span class="badge bg-primary align-self-center">Nhãn</span>
-                <span class="badge bg-primary-subtle text-primary-emphasis align-self-center">Nhãn nhạt</span>
+                <button type="button" class="btn btn-primary btn-sm">@L["Nút chính"]</button>
+                <button type="button" class="btn btn-outline-primary btn-sm">@L["Nút viền"]</button>
+                <span class="badge bg-primary align-self-center">@L["Nhãn"]</span>
+                <span class="badge bg-primary-subtle text-primary-emphasis align-self-center">@L["Nhãn nhạt"]</span>
             </div>
-            <div class="flow mb-3"><span class="step done">Nháp</span><span class="arrow">›</span><span class="step current">Chờ duyệt</span><span class="arrow">›</span><span class="step">Đã duyệt</span></div>
-            <table class="table table-sm mb-2"><thead><tr><th>Đề nghị</th><th>Phòng ban</th><th class="text-end">Giá trị</th></tr></thead>
-                <tbody><tr><td><a href="#" onclick="return false">PR-2026-0012</a></td><td>Phòng CNTT</td><td class="money">125.000.000</td></tr>
-                <tr><td><a href="#" onclick="return false">PR-2026-0013</a></td><td>Phòng Kế toán</td><td class="money">8.450.000</td></tr></tbody></table>
+            <div class="flow mb-3"><span class="step done">@L["Nháp"]</span><span class="arrow">›</span><span class="step current">@L["Chờ duyệt"]</span><span class="arrow">›</span><span class="step">@L["Đã duyệt"]</span></div>
+            <table class="table table-sm mb-2"><thead><tr><th>@L["Đề nghị"]</th><th>@L["Phòng ban"]</th><th class="text-end">@L["Giá trị"]</th></tr></thead>
+                <tbody><tr><td><a href="#" onclick="return false">PR-2026-0012</a></td><td>@L["Phòng CNTT"]</td><td class="money">125.000.000</td></tr>
+                <tr><td><a href="#" onclick="return false">PR-2026-0013</a></td><td>@L["Phòng Kế toán"]</td><td class="money">8.450.000</td></tr></tbody></table>
             <div class="progress mb-3" style="height:6px"><div class="progress-bar" style="width:64%"></div></div>
-            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked disabled /><label class="form-check-label">Công tắc</label></div>
+            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked disabled /><label class="form-check-label">@L["Công tắc"]</label></div>
         </div>
         <div class="card-footer d-flex flex-wrap gap-2">
-            <button class="btn btn-primary" name="scope" value="me">Lưu cho tôi</button>
+            <button class="btn btn-primary" name="scope" value="me">@L["Lưu cho tôi"]</button>
             @if (User.IsAdmin())
             {
-                <button class="btn btn-outline-primary" name="scope" value="default" data-confirm="Đặt giao diện này làm mặc định cho mọi người dùng chưa tự chọn giao diện riêng?">Đặt làm mặc định hệ thống</button>
+                <button class="btn btn-outline-primary" name="scope" value="default" data-confirm="@L["Đặt giao diện này làm mặc định cho mọi người dùng chưa tự chọn giao diện riêng?"]">@L["Đặt làm mặc định hệ thống"]</button>
             }
             @if (hasOwn)
             {
-                <button class="btn btn-light" name="scope" value="reset" title="Bỏ tùy chọn riêng, dùng giao diện mặc định của hệ thống">Dùng mặc định hệ thống</button>
+                <button class="btn btn-light" name="scope" value="reset" title="@L["Bỏ tùy chọn riêng, dùng giao diện mặc định của hệ thống"]">@L["Dùng mặc định hệ thống"]</button>
             }
-            <a asp-action="Index" class="btn btn-link ms-auto">Hoàn tác xem thử</a>
+            <a asp-action="Index" class="btn btn-link ms-auto">@L["Hoàn tác xem thử"]</a>
         </div></div>
     </div>
 </div>

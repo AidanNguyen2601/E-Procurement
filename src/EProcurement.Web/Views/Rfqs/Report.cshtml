@@ -7,36 +7,36 @@
     var weighted = Model.EvaluationMethod == EvaluationMethod.WeightedScore;
     var notResponded = Model.Vendors.Where(v => !v.Responded).ToList();
 }
-<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button></div>
 <div class="card paper"><div class="card-body p-4">
-    <div class="text-center mb-3"><h4 class="mb-0">BIÊN BẢN MỞ VÀ ĐÁNH GIÁ BÁO GIÁ</h4>
-        <div class="text-muted">Chào hàng cạnh tranh số @Model.Number · @Model.Title</div></div>
+    <div class="text-center mb-3"><h4 class="mb-0">@L["BIÊN BẢN MỞ VÀ ĐÁNH GIÁ BÁO GIÁ"]</h4>
+        <div class="text-muted">@L["Chào hàng cạnh tranh số"] @Model.Number · @Model.Title</div></div>
 
-    <p class="mb-1"><b>1. Thông tin chung</b></p>
+    <p class="mb-1"><b>@L["1. Thông tin chung"]</b></p>
     <ul class="small">
-        <li>Đề nghị mua hàng: @(Model.PurchaseRequest?.Number ?? "—")@(Model.PurchaseRequest != null ? $", dự toán {Model.PurchaseRequest.EstimatedTotal.ToMoney()} đ" : "")</li>
-        <li>Phát hành: @Model.IssueDate.ToDate() · Hạn nộp: hết ngày @Model.Deadline.ToDate() · Mở báo giá: @(Model.OpenedAt?.ToDateTime() ?? "—")</li>
+        <li>@L["Đề nghị mua hàng:"] @(Model.PurchaseRequest?.Number ?? "—")@(Model.PurchaseRequest != null ? L[", dự toán {0} đ", Model.PurchaseRequest.EstimatedTotal.ToMoney()] : "")</li>
+        <li>@L["Phát hành:"] @Model.IssueDate.ToDate() @L["· Hạn nộp: hết ngày"] @Model.Deadline.ToDate() @L["· Mở báo giá:"] @(Model.OpenedAt?.ToDateTime() ?? "—")</li>
         <li>Số NCC được mời: @Model.Vendors.Count · Số báo giá nhận được: @scores.Count · Số báo giá hợp lệ: @scores.Count(s => s.Valid) (tối thiểu theo quy định: @minValid)</li>
-        <li>Phương pháp đánh giá: @Model.EvaluationMethod.GetDisplayName()@(weighted ? $" – giá {Model.PriceWeight}%, kỹ thuật {Model.TechnicalWeight}%, tiến độ {Model.DeliveryWeight}%" : ""). Giá so sánh là giá sau VAT.</li>
+        <li>@L["Phương pháp đánh giá:"] @Model.EvaluationMethod.GetDisplayName()@(weighted ? L[" – giá {0}%, kỹ thuật {1}%, tiến độ {2}%", Model.PriceWeight, Model.TechnicalWeight, Model.DeliveryWeight] : "")@L[". Giá so sánh là giá sau VAT."]</li>
         @if (notResponded.Any()) { <li>NCC không nộp báo giá: @string.Join(", ", notResponded.Select(v => v.Vendor?.Name))</li> }
     </ul>
 
-    <p class="mb-1"><b>2. Kết quả mở báo giá và đánh giá</b></p>
+    <p class="mb-1"><b>@L["2. Kết quả mở báo giá và đánh giá"]</b></p>
     <table class="table table-bordered table-sm small">
-        <thead><tr><th>Hạng</th><th>Nhà cung cấp</th><th>Ngày gửi</th><th class="money">Giá trước VAT</th><th class="money">Giá gồm VAT</th><th>Giao</th><th>Bảo hành</th><th>Kỹ thuật</th>
-            @if (weighted) { <th class="money">Điểm</th> }<th>Ghi chú</th></tr></thead>
+        <thead><tr><th>@L["Hạng"]</th><th>@L["Nhà cung cấp"]</th><th>@L["Ngày gửi"]</th><th class="money">@L["Giá trước VAT"]</th><th class="money">@L["Giá gồm VAT"]</th><th>Giao</th><th>@L["Bảo hành"]</th><th>@L["Kỹ thuật"]</th>
+            @if (weighted) { <th class="money">@L["Điểm"]</th> }<th>@L["Ghi chú"]</th></tr></thead>
         <tbody>
         @foreach (var s in scores)
         {
             <tr class="@(Model.AwardedVendorId == s.Quote.VendorId ? "table-success" : "")">
-                <td class="text-center">@(s.Rank?.ToString() ?? "Loại")</td>
+                <td class="text-center">@(s.Rank?.ToString() ?? L["Loại"])</td>
                 <td>@s.Quote.Vendor?.Name</td>
                 <td>@s.Quote.RespondedAt.ToDate()</td>
                 <td class="money">@s.Quote.TotalAmount.ToMoney()</td>
                 <td class="money">@s.Quote.GrandTotal.ToMoney()</td>
-                <td>@(s.Quote.LeadTimeDays.HasValue ? s.Quote.LeadTimeDays + " ngày" : "—")</td>
+                <td>@(s.Quote.LeadTimeDays.HasValue ? s.Quote.LeadTimeDays + L[" ngày"] : "—")</td>
                 <td>@s.Quote.Warranty</td>
-                <td>@(s.Quote.TechnicalPass == true ? "Đạt" + (s.Quote.TechnicalScore.HasValue ? $" ({s.Quote.TechnicalScore})" : "") : s.Quote.TechnicalPass == false ? "Không đạt" : "Chưa đánh giá")</td>
+                <td>@(s.Quote.TechnicalPass == true ? L["Đạt"] + (s.Quote.TechnicalScore.HasValue ? $" ({s.Quote.TechnicalScore})" : "") : s.Quote.TechnicalPass == false ? L["Không đạt"] : L["Chưa đánh giá"])</td>
                 @if (weighted) { <td class="money">@(s.Valid ? s.Total.ToString("0.##") : "")</td> }
                 <td>@string.Join("; ", s.Issues.Where(_ => !s.Valid))@(s.Valid ? s.Quote.TechnicalNote : "")</td>
             </tr>
@@ -44,29 +44,29 @@
         </tbody>
     </table>
 
-    <p class="mb-1"><b>3. Kết luận</b></p>
+    <p class="mb-1"><b>@L["3. Kết luận"]</b></p>
     @if (Model.Status == RfqStatus.Awarded)
     {
-        <p class="small">Lựa chọn <b>@Model.AwardedVendor?.Name</b>. Lý do: @Model.AwardReason.
-            @if (!string.IsNullOrEmpty(Model.ResultApprovalReason)) { <span>Kết quả được duyệt ngoại lệ vì: @Model.ResultApprovalReason.</span> }</p>
+        <p class="small">@L["Lựa chọn"] <b>@Model.AwardedVendor?.Name</b>@L[". Lý do:"] @Model.AwardReason.
+            @if (!string.IsNullOrEmpty(Model.ResultApprovalReason)) { <span>@L["Kết quả được duyệt ngoại lệ vì:"] @Model.ResultApprovalReason.</span> }</p>
     }
     else if (Model.Status == RfqStatus.PendingApproval)
     {
-        <p class="small">Đề xuất <b>@Model.ProposedVendor?.Name</b> (lý do: @Model.AwardReason). Đang chờ Giám đốc duyệt vì: @Model.ResultApprovalReason.</p>
+        <p class="small">@L["Đề xuất"] <b>@Model.ProposedVendor?.Name</b> @L["(lý do:"] @Model.AwardReason@L["). Đang chờ Giám đốc duyệt vì:"] @Model.ResultApprovalReason.</p>
     }
     else
     {
-        <p class="small text-muted">Chưa có kết luận.</p>
+        <p class="small text-muted">@L["Chưa có kết luận."]</p>
     }
 
-    <p class="mb-1"><b>4. Diễn biến</b></p>
+    <p class="mb-1"><b>@L["4. Diễn biến"]</b></p>
     <ul class="small">
         @foreach (var h in history) { <li>@h.CreatedAt.ToDateTime() – @h.User?.FullName: @h.Action@(string.IsNullOrEmpty(h.Comment) ? "" : " – " + h.Comment)</li> }
     </ul>
 
     <div class="row text-center mt-5 small">
-        <div class="col">NGƯỜI LẬP<br /><br /><br /><br />@Model.Buyer?.FullName</div>
-        <div class="col">TỔ ĐÁNH GIÁ</div>
-        <div class="col">PHÊ DUYỆT</div>
+        <div class="col">@L["NGƯỜI LẬP"]<br /><br /><br /><br />@Model.Buyer?.FullName</div>
+        <div class="col">@L["TỔ ĐÁNH GIÁ"]</div>
+        <div class="col">@L["PHÊ DUYỆT"]</div>
     </div>
 </div></div>

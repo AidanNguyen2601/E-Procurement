@@ -124,7 +124,7 @@ public class InvoicesController : ProcControllerBase
         Log(DocType.Invoice, inv.Id, match!.Ok ? "Đối chiếu 3 bên: khớp" : "Đối chiếu 3 bên: lệch", inv.MatchNote);
         Log(DocType.PO, po.Id, $"Nhận hóa đơn {inv.Number} ({inv.InvoiceNo})");
         await Db.SaveChangesAsync();
-        TempData[match.Ok ? "Success" : "Error"] = match.Ok ? $"Đã nhận {inv.Number} – khớp 3 bên." : $"Đã nhận {inv.Number} – LỆCH: {inv.MatchNote}";
+        TempData[match.Ok ? "Success" : "Error"] = match.Ok ? I18n.T("Đã nhận {0} – khớp 3 bên.", inv.Number) : I18n.T("Đã nhận {0} – LỆCH: {1}", inv.Number, inv.MatchNote);
         return RedirectToAction(nameof(Details), new { id = inv.Id });
     }
 
@@ -174,13 +174,13 @@ public class InvoicesController : ProcControllerBase
         if (accept && !(User.IsAdmin() || User.IsInRole(AppRoles.Director))) return Forbid();
         if (!accept && !(User.IsInRole(AppRoles.Accountant) || User.IsAdmin() || User.IsInRole(AppRoles.Director))) return Forbid();
         if (inv.Status is not (InvoiceStatus.Exception or InvoiceStatus.Matched or InvoiceStatus.Received)) return BadRequest();
-        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = "Nhập lý do."; return RedirectToAction(nameof(Details), new { id }); }
+        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = I18n.T("Nhập lý do."); return RedirectToAction(nameof(Details), new { id }); }
         if (accept && inv.Status != InvoiceStatus.Exception) return BadRequest();
         inv.Status = accept ? InvoiceStatus.Matched : InvoiceStatus.Rejected;
         inv.DecisionNote = reason.Trim();
         Log(DocType.Invoice, id, accept ? "Giám đốc chấp nhận hóa đơn lệch" : "Từ chối hóa đơn", reason.Trim());
         await Db.SaveChangesAsync();
-        TempData["Success"] = accept ? "Đã chấp nhận hóa đơn – có thể đề nghị thanh toán." : "Đã từ chối hóa đơn.";
+        TempData["Success"] = accept ? I18n.T("Đã chấp nhận hóa đơn – có thể đề nghị thanh toán.") : I18n.T("Đã từ chối hóa đơn.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -190,7 +190,7 @@ public class InvoicesController : ProcControllerBase
     {
         var inv = await Db.Invoices.Include(i => i.Lines).FirstOrDefaultAsync(i => i.Id == id);
         if (inv == null) return NotFound();
-        if (inv.Status != InvoiceStatus.Matched) { TempData["Error"] = "Chỉ đề nghị thanh toán hóa đơn đã khớp (hoặc đã được chấp nhận)."; return RedirectToAction(nameof(Details), new { id }); }
+        if (inv.Status != InvoiceStatus.Matched) { TempData["Error"] = I18n.T("Chỉ đề nghị thanh toán hóa đơn đã khớp (hoặc đã được chấp nhận)."); return RedirectToAction(nameof(Details), new { id }); }
         var po = (await LoadPoAsync(inv.PurchaseOrderId))!;
         var p = await _fin.ProposeAsync(inv, po);
         var pay = new Payment
@@ -207,7 +207,7 @@ public class InvoicesController : ProcControllerBase
         Log(DocType.Payment, pay.Id, $"Đề nghị thanh toán {pay.NetAmount.ToMoney()} đ", pay.Note);
         Log(DocType.Invoice, inv.Id, $"Lập đề nghị thanh toán {pay.Number}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lập {pay.Number}: thực chi {pay.NetAmount.ToMoney()} đ – chờ Giám đốc duyệt.";
+        TempData["Success"] = I18n.T("Đã lập {0}: thực chi {1} đ – chờ Giám đốc duyệt.", pay.Number, pay.NetAmount.ToMoney());
         return RedirectToAction("Details", "Payments", new { id = pay.Id });
     }
 }
@@ -247,12 +247,12 @@ public class PaymentsController : ProcControllerBase
         if (p == null) return NotFound();
         if (p.Status != PaymentStatus.Requested) return BadRequest();
         if (p.RequestedById == Me && !User.IsAdmin()) return Forbid(); // không tự đề nghị – tự duyệt
-        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do từ chối."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = I18n.T("Nhập lý do từ chối."); return RedirectToAction(nameof(Details), new { id }); }
         if (approve) { p.Status = PaymentStatus.Approved; p.ApprovedById = Me; p.ApprovedAt = DateTime.Now; }
         else { p.Status = PaymentStatus.Rejected; p.RejectReason = comment!.Trim(); if (p.Invoice != null) p.Invoice.Status = InvoiceStatus.Matched; }
         Log(DocType.Payment, id, approve ? "Giám đốc duyệt thanh toán" : "Giám đốc từ chối thanh toán", comment);
         await Db.SaveChangesAsync();
-        TempData["Success"] = approve ? $"Đã duyệt {p.Number} – chuyển kế toán chi." : $"Đã từ chối {p.Number}.";
+        TempData["Success"] = approve ? I18n.T("Đã duyệt {0} – chuyển kế toán chi.", p.Number) : I18n.T("Đã từ chối {0}.", p.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -262,16 +262,16 @@ public class PaymentsController : ProcControllerBase
     {
         var p = await Db.Payments.Include(x => x.Invoice).FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status != PaymentStatus.Approved) { TempData["Error"] = "Chỉ ghi nhận chi cho đề nghị đã được duyệt."; return RedirectToAction(nameof(Details), new { id }); }
-        if (string.IsNullOrWhiteSpace(paymentRef)) { TempData["Error"] = "Nhập số chứng từ chi / ủy nhiệm chi."; return RedirectToAction(nameof(Details), new { id }); }
-        if (paidAt.Date > DateTime.Today) { TempData["Error"] = "Ngày chi không được ở tương lai."; return RedirectToAction(nameof(Details), new { id }); }
+        if (p.Status != PaymentStatus.Approved) { TempData["Error"] = I18n.T("Chỉ ghi nhận chi cho đề nghị đã được duyệt."); return RedirectToAction(nameof(Details), new { id }); }
+        if (string.IsNullOrWhiteSpace(paymentRef)) { TempData["Error"] = I18n.T("Nhập số chứng từ chi / ủy nhiệm chi."); return RedirectToAction(nameof(Details), new { id }); }
+        if (paidAt.Date > DateTime.Today) { TempData["Error"] = I18n.T("Ngày chi không được ở tương lai."); return RedirectToAction(nameof(Details), new { id }); }
         p.Status = PaymentStatus.Paid; p.PaidAt = paidAt.Date; p.PaidById = Me; p.PaymentRef = paymentRef.Trim();
         if (p.Invoice != null) p.Invoice.Status = InvoiceStatus.Paid;
         Log(DocType.Payment, id, $"Đã chi {p.NetAmount.ToMoney()} đ", $"UNC {p.PaymentRef} ngày {p.PaidAt:dd/MM/yyyy}");
         if (p.InvoiceId.HasValue) Log(DocType.Invoice, p.InvoiceId.Value, $"Đã thanh toán theo {p.Number}");
         if (p.ContractId.HasValue) Log(DocType.Contract, p.ContractId.Value, $"Thanh toán {p.Type.GetDisplayName().ToLower()} {p.Number}: {p.NetAmount.ToMoney()} đ");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã ghi nhận chi {p.Number}.";
+        TempData["Success"] = I18n.T("Đã ghi nhận chi {0}.", p.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 }

@@ -7,20 +7,20 @@
         <div class="col-md-8"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
         <div class="col-12"><label asp-for="Basis" class="form-label"></label><textarea asp-for="Basis" rows="3" class="form-control"></textarea><partial name="_DecisionPicker" model="@("Basis")" /></div>
     </div></div>
-    <div class="card mb-3"><div class="card-header">Gói mua sắm trong kế hoạch (gói ở trạng thái Nháp)</div><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
-        <thead><tr><th></th><th>Số gói</th><th>Tên gói</th><th class="money">Giá gói</th><th>Nguồn vốn</th><th>Hình thức / phương thức</th><th>Bắt đầu LCNT</th><th>Loại HĐ</th><th class="money">Thời gian HĐ</th></tr></thead><tbody>
+    <div class="card mb-3"><div class="card-header">@L["Gói mua sắm trong kế hoạch (gói ở trạng thái Nháp)"]</div><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+        <thead><tr><th></th><th>@L["Số gói"]</th><th>@L["Tên gói"]</th><th class="money">@L["Giá gói"]</th><th>@L["Nguồn vốn"]</th><th>@L["Hình thức / phương thức"]</th><th>@L["Bắt đầu LCNT"]</th><th>@L["Loại HĐ"]</th><th class="money">@L["Thời gian HĐ"]</th></tr></thead><tbody>
         @foreach (var p in Model.Available)
         {
             <tr><td><input type="checkbox" name="PackageIds" value="@p.Id" class="form-check-input" @(Model.PackageIds.Contains(p.Id) ? "checked" : "") /></td>
                 <td><a asp-controller="Packages" asp-action="Details" asp-route-id="@p.Id" target="_blank">@p.Number</a></td><td>@p.Title</td><td class="money">@p.Budget.ToMoney()</td>
                 <td class="small">@p.FundingSource</td><td class="small">@p.Method.GetDisplayName()@(p.Method == ProcurementMethod.OpenTender ? " – " + p.EnvelopeMethod.GetDisplayName() : "")</td>
-                <td class="small">@p.PlannedStart.ToDate()</td><td class="small">@p.ContractType</td><td class="money">@p.ContractDurationDays ngày</td></tr>
+                <td class="small">@p.PlannedStart.ToDate()</td><td class="small">@p.ContractType</td><td class="money">@p.ContractDurationDays @L["ngày"]</td></tr>
         }
-        @if (!Model.Available.Any()) { <tr><td colspan="9" class="text-muted p-3">Không có gói nháp. <a asp-controller="Packages" asp-action="Create">Lập gói mua sắm</a> trước.</td></tr> }
+        @if (!Model.Available.Any()) { <tr><td colspan="9" class="text-muted p-3">@L["Không có gói nháp."] <a asp-controller="Packages" asp-action="Create">@L["Lập gói mua sắm"]</a> @L["trước."]</td></tr> }
     </tbody></table></div></div>
     <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary">Lưu nháp</button>
-        <button name="submit" value="true" class="btn btn-primary" data-confirm="Trình Giám đốc phê duyệt kế hoạch?">Lưu & trình duyệt</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
+        <button class="btn btn-outline-primary">@L["Lưu nháp"]</button>
+        <button name="submit" value="true" class="btn btn-primary" data-confirm="@L["Trình Giám đốc phê duyệt kế hoạch?"]">@L["Lưu & trình duyệt"]</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">@L["Quay lại"]</a>
     </div>
 </form>

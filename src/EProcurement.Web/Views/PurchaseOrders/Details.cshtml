@@ -28,42 +28,42 @@
 </div></div>
 @if (overCeiling.Count > 0 && Model.Status == PoStatus.Draft)
 {
-    <div class="alert alert-warning small">@Icon.Svg("alert", 14) <b>Vượt giá trần bảng giá tiêu chuẩn</b> – đơn phải trình Giám đốc duyệt:
+    <div class="alert alert-warning small">@Icon.Svg("alert", 14) <b>@L["Vượt giá trần bảng giá tiêu chuẩn"]</b> – đơn phải trình Giám đốc duyệt:
         @string.Join("; ", overCeiling.Select(o => $"{o.Description}: {o.Price.ToMoney()} > {o.Std.Ceiling.ToMoney()} ({o.Std.ListNumber})")).
-        @(string.IsNullOrEmpty(Model.StandardPriceReason) ? (Model.RfqId == null && Model.DirectAwardId == null && Model.ContractId == null ? " Sửa đơn để nhập lý do." : " Lý do ghi theo kết quả lựa chọn NCC khi trình.") : $" Lý do: {Model.StandardPriceReason}")</div>
+        @(string.IsNullOrEmpty(Model.StandardPriceReason) ? (Model.RfqId == null && Model.DirectAwardId == null && Model.ContractId == null ? L[" Sửa đơn để nhập lý do."] : L[" Lý do ghi theo kết quả lựa chọn NCC khi trình."]) : L[" Lý do: {0}", Model.StandardPriceReason])</div>
 }
 <div class="toolbar">
     @if (buyer && Model.Status == PoStatus.Draft)
     {
-        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa</a>
-        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">@(needsDirector ? "Trình Giám đốc duyệt" : "Duyệt đơn hàng")</button></form>
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">@L["Sửa"]</a>
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">@(needsDirector ? L["Trình Giám đốc duyệt"] : L["Duyệt đơn hàng"])</button></form>
     }
     @if (buyer && Model.Status == PoStatus.Approved)
     {
-        <form asp-action="Issue" asp-route-id="@Model.Id" method="post" data-confirm="Xác nhận đã gửi đơn hàng cho nhà cung cấp?"><button class="btn btn-primary">Gửi NCC</button></form>
+        <form asp-action="Issue" asp-route-id="@Model.Id" method="post" data-confirm="@L["Xác nhận đã gửi đơn hàng cho nhà cung cấp?"]"><button class="btn btn-primary">@L["Gửi NCC"]</button></form>
     }
     @if (buyer && Model.Status is PoStatus.Issued or PoStatus.PartiallyReceived)
     {
-        <a class="btn btn-success" asp-controller="GoodsReceipts" asp-action="Create" asp-route-poId="@Model.Id">Nhận hàng</a>
+        <a class="btn btn-success" asp-controller="GoodsReceipts" asp-action="Create" asp-route-poId="@Model.Id">@L["Nhận hàng"]</a>
     }
-    <a class="btn btn-outline-secondary" asp-action="Print" asp-route-id="@Model.Id" target="_blank">In đơn hàng</a>
+    <a class="btn btn-outline-secondary" asp-action="Print" asp-route-id="@Model.Id" target="_blank">@L["In đơn hàng"]</a>
     @if (buyer && Model.Status is not (PoStatus.Received or PoStatus.Cancelled) && Model.Lines.All(l => l.ReceivedQuantity == 0))
     {
-        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="Hủy đơn mua hàng này?">
-            <input name="reason" class="form-control form-control-sm" placeholder="Lý do hủy" /><button class="btn btn-sm btn-outline-danger text-nowrap">Hủy PO</button>
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="@L["Hủy đơn mua hàng này?"]">
+            <input name="reason" class="form-control form-control-sm" placeholder="@L["Lý do hủy"]" /><button class="btn btn-sm btn-outline-danger text-nowrap">@L["Hủy PO"]</button>
         </form>
     }
 </div>
 @if (canDecide)
 {
     <div class="card mb-3 border-warning"><div class="card-body">
-        <div class="fw-semibold mb-2">Phê duyệt Giám đốc – giá trị @Model.Total.ToMoney() đ@(Model.Total > threshold ? $" vượt ngưỡng {threshold.ToMoney()} đ" : "")</div>
-        @if (Model.PriceDeviationReason != null) { <div class="small mb-2 text-danger">Mua sắm trực tiếp có đơn giá cao hơn PO tham chiếu @Model.ReferencePo?.Number: @Model.PriceDeviationReason</div> }
+        <div class="fw-semibold mb-2">Phê duyệt Giám đốc – giá trị @Model.Total.ToMoney() đ@(Model.Total > threshold ? L[" vượt ngưỡng {0} đ", threshold.ToMoney()] : "")</div>
+        @if (Model.PriceDeviationReason != null) { <div class="small mb-2 text-danger">@L["Mua sắm trực tiếp có đơn giá cao hơn PO tham chiếu"] @Model.ReferencePo?.Number: @Model.PriceDeviationReason</div> }
         @if (overCeiling.Count > 0) { <div class="small mb-2 text-danger">Vượt giá trần tiêu chuẩn: @string.Join("; ", overCeiling.Select(o => $"{o.Description} {o.Price.ToMoney()} > {o.Std.Ceiling.ToMoney()}")) · Lý do: @Model.StandardPriceReason</div> }
         <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-            <input name="comment" class="form-control" placeholder="Ý kiến (bắt buộc khi trả lại)" />
-            <button name="approve" value="true" class="btn btn-success text-nowrap">Duyệt</button>
-            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">Trả lại</button>
+            <input name="comment" class="form-control" placeholder="@L["Ý kiến (bắt buộc khi trả lại)"]" />
+            <button name="approve" value="true" class="btn btn-success text-nowrap">@L["Duyệt"]</button>
+            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">@L["Trả lại"]</button>
         </form>
     </div></div>
 }
@@ -71,31 +71,31 @@
     <div class="col-lg-8">
         <div class="card mb-3"><div class="card-body">
             <dl class="row small mb-0 info">
-                <dt class="col-sm-3">Nhà cung cấp</dt><dd class="col-sm-9"><a asp-controller="Vendors" asp-action="Details" asp-route-id="@Model.VendorId" class="fw-semibold">@Model.Vendor?.Name</a> <span class="stars">@Model.Vendor?.Rating.Stars()</span></dd>
-                <dt class="col-sm-3">Nguồn</dt><dd class="col-sm-9">
+                <dt class="col-sm-3">@L["Nhà cung cấp"]</dt><dd class="col-sm-9"><a asp-controller="Vendors" asp-action="Details" asp-route-id="@Model.VendorId" class="fw-semibold">@Model.Vendor?.Name</a> <span class="stars">@Model.Vendor?.Rating.Stars()</span></dd>
+                <dt class="col-sm-3">@L["Nguồn"]</dt><dd class="col-sm-9">
                     @if (Model.PurchaseRequest != null) { <span>PR <a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@Model.PurchaseRequestId">@Model.PurchaseRequest.Number</a></span> }
                     @if (Model.Rfq != null) { <span> · RFQ <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@Model.RfqId">@Model.Rfq.Number</a></span> }
-                    @if (Model.PurchaseRequest == null && Model.Rfq == null) { <span>Lập trực tiếp</span> }</dd>
-                @if (!string.IsNullOrEmpty(Model.OrderType)) { <dt class="col-sm-3">Loại đơn hàng</dt><dd class="col-sm-9">@Model.OrderType</dd> }
+                    @if (Model.PurchaseRequest == null && Model.Rfq == null) { <span>@L["Lập trực tiếp"]</span> }</dd>
+                @if (!string.IsNullOrEmpty(Model.OrderType)) { <dt class="col-sm-3">@L["Loại đơn hàng"]</dt><dd class="col-sm-9">@Model.OrderType</dd> }
                 @if (Model.Method.HasValue)
                 {
-                    <dt class="col-sm-3">Hình thức</dt><dd class="col-sm-9"><b>@Model.Method.Value.GetDisplayName()</b>
-                        @if (Model.Contract != null) { <span> · hợp đồng <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId">@Model.Contract.Number</a>@(Model.Contract.IsFramework ? " (khung)" : "")</span> }
-                        @if (Model.DirectAward != null) { <span> · tờ trình <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@Model.DirectAwardId">@Model.DirectAward.Number</a> (@Model.DirectAward.Reason.GetDisplayName())</span> }
-                        @if (Model.ReferencePo != null) { <span> · căn cứ PO <a asp-action="Details" asp-route-id="@Model.ReferencePoId">@Model.ReferencePo.Number</a> (@Model.ReferencePo.OrderDate.ToDate())</span> }
-                        @if (Model.PriceDeviationReason != null) { <div class="text-danger">Vượt giá tham chiếu: @Model.PriceDeviationReason</div> }</dd>
+                    <dt class="col-sm-3">@L["Hình thức"]</dt><dd class="col-sm-9"><b>@Model.Method.Value.GetDisplayName()</b>
+                        @if (Model.Contract != null) { <span> @L["· hợp đồng"] <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId">@Model.Contract.Number</a>@(Model.Contract.IsFramework ? " (khung)" : "")</span> }
+                        @if (Model.DirectAward != null) { <span> @L["· tờ trình"] <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@Model.DirectAwardId">@Model.DirectAward.Number</a> (@Model.DirectAward.Reason.GetDisplayName())</span> }
+                        @if (Model.ReferencePo != null) { <span> @L["· căn cứ PO"] <a asp-action="Details" asp-route-id="@Model.ReferencePoId">@Model.ReferencePo.Number</a> (@Model.ReferencePo.OrderDate.ToDate())</span> }
+                        @if (Model.PriceDeviationReason != null) { <div class="text-danger">@L["Vượt giá tham chiếu:"] @Model.PriceDeviationReason</div> }</dd>
                 }
-                <dt class="col-sm-3">Ngày đặt / giao</dt><dd class="col-sm-9">@Model.OrderDate.ToDate() → <b class="@(Model.IsLate ? "text-danger" : "")">@Model.DeliveryDate.ToDate()</b> @if (Model.IsLate) { <span class="text-danger">(trễ hạn)</span> }</dd>
-                <dt class="col-sm-3">Giao tại</dt><dd class="col-sm-9">@Model.DeliveryAddress</dd>
-                <dt class="col-sm-3">Thanh toán</dt><dd class="col-sm-9">@Model.PaymentTerms</dd>
-                <dt class="col-sm-3">Người lập</dt><dd class="col-sm-9">@Model.Buyer?.FullName</dd>
-                @if (!string.IsNullOrEmpty(Model.Notes)) { <dt class="col-sm-3">Ghi chú</dt><dd class="col-sm-9 pre">@Model.Notes</dd> }
+                <dt class="col-sm-3">@L["Ngày đặt / giao"]</dt><dd class="col-sm-9">@Model.OrderDate.ToDate() → <b class="@(Model.IsLate ? "text-danger" : "")">@Model.DeliveryDate.ToDate()</b> @if (Model.IsLate) { <span class="text-danger">@L["(trễ hạn)"]</span> }</dd>
+                <dt class="col-sm-3">@L["Giao tại"]</dt><dd class="col-sm-9">@Model.DeliveryAddress</dd>
+                <dt class="col-sm-3">@L["Thanh toán"]</dt><dd class="col-sm-9">@Model.PaymentTerms</dd>
+                <dt class="col-sm-3">@L["Người lập"]</dt><dd class="col-sm-9">@Model.Buyer?.FullName</dd>
+                @if (!string.IsNullOrEmpty(Model.Notes)) { <dt class="col-sm-3">@L["Ghi chú"]</dt><dd class="col-sm-9 pre">@Model.Notes</dd> }
             </dl>
         </div></div>
         <div class="card mb-3"><div class="card-header d-flex justify-content-between">Chi tiết đơn hàng
-            @if (Model.Status >= PoStatus.Issued && Model.Status != PoStatus.Cancelled) { <span class="small fw-normal">Đã nhận @received.ToString("0")%</span> }</div>
+            @if (Model.Status >= PoStatus.Issued && Model.Status != PoStatus.Cancelled) { <span class="small fw-normal">@L["Đã nhận"] @received.ToString("0")%</span> }</div>
             <div class="card-body p-0"><table class="table mb-0">
-            <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL đặt</th><th class="money">Đã nhận</th><th class="money">Đơn giá</th><th class="money">Thành tiền</th></tr></thead>
+            <thead><tr><th>#</th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">@L["SL đặt"]</th><th class="money">@L["Đã nhận"]</th><th class="money">@L["Đơn giá"]</th><th class="money">@L["Thành tiền"]</th></tr></thead>
             <tbody>
             @foreach (var l in Model.Lines)
             {
@@ -105,24 +105,24 @@
             }
             </tbody>
             <tfoot>
-                <tr><td colspan="6" class="text-end">Cộng tiền hàng</td><td class="money">@Model.SubTotal.ToMoney()</td></tr>
-                <tr><td colspan="6" class="text-end">Thuế GTGT @Model.VatPercent.ToString("0.##")%</td><td class="money">@Model.VatAmount.ToMoney()</td></tr>
-                <tr class="fw-bold"><td colspan="6" class="text-end">Tổng giá trị đơn hàng</td><td class="money">@Model.Total.ToMoney()</td></tr>
+                <tr><td colspan="6" class="text-end">@L["Cộng tiền hàng"]</td><td class="money">@Model.SubTotal.ToMoney()</td></tr>
+                <tr><td colspan="6" class="text-end">@L["Thuế GTGT"] @Model.VatPercent.ToString("0.##")%</td><td class="money">@Model.VatAmount.ToMoney()</td></tr>
+                <tr class="fw-bold"><td colspan="6" class="text-end">@L["Tổng giá trị đơn hàng"]</td><td class="money">@Model.Total.ToMoney()</td></tr>
             </tfoot>
         </table></div></div>
         @if (receipts.Any())
         {
-            <div class="card mb-3"><div class="card-header">Phiếu nhận hàng</div><div class="card-body p-0"><table class="table mb-0">
-                <thead><tr><th>Số phiếu</th><th>Ngày nhận</th><th>Phiếu giao NCC</th><th class="money">SL đạt</th><th class="money">SL không đạt</th><th>Người nhận</th></tr></thead>
+            <div class="card mb-3"><div class="card-header">@L["Phiếu nhận hàng"]</div><div class="card-body p-0"><table class="table mb-0">
+                <thead><tr><th>@L["Số phiếu"]</th><th>@L["Ngày nhận"]</th><th>@L["Phiếu giao NCC"]</th><th class="money">@L["SL đạt"]</th><th class="money">@L["SL không đạt"]</th><th>@L["Người nhận"]</th></tr></thead>
                 <tbody>@foreach (var g in receipts) { <tr><td><a asp-controller="GoodsReceipts" asp-action="Details" asp-route-id="@g.Id">@g.Number</a></td><td>@g.ReceiptDate.ToDate()</td><td>@g.DeliveryNoteNo</td><td class="money">@g.Lines.Sum(l => l.QuantityAccepted).ToQty()</td><td class="money @(g.Lines.Sum(l => l.QuantityRejected) > 0 ? "text-danger" : "")">@g.Lines.Sum(l => l.QuantityRejected).ToQty()</td><td>@g.ReceivedBy?.FullName</td></tr> }</tbody>
             </table></div></div>
         }
         @if (Model.Status == PoStatus.Received)
         {
-            <div class="card"><div class="card-header">Đánh giá nhà cung cấp</div><div class="card-body">
+            <div class="card"><div class="card-header">@L["Đánh giá nhà cung cấp"]</div><div class="card-body">
             @if (eval != null)
             {
-                <div>Chất lượng <b>@eval.Quality</b> · Tiến độ <b>@eval.Delivery</b> · Giá <b>@eval.Price</b> · Dịch vụ <b>@eval.Service</b> → trung bình <span class="stars">@eval.Average.Stars()</span></div>
+                <div>@L["Chất lượng"] <b>@eval.Quality</b> @L["· Tiến độ"] <b>@eval.Delivery</b> @L["· Giá"] <b>@eval.Price</b> @L["· Dịch vụ"] <b>@eval.Service</b> @L["→ trung bình"] <span class="stars">@eval.Average.Stars()</span></div>
                 <div class="small text-muted">@eval.Comment – @eval.Evaluator?.FullName, @eval.CreatedAt.ToDate()</div>
             }
             else if (buyer)
@@ -134,8 +134,8 @@
                         <div class="col-md-2"><label class="form-label small mb-1">@label</label>
                             <select name="@name" class="form-select form-select-sm">@for (var i = 5; i >= 1; i--) { <option value="@i" selected="@(i == 4)">@i – @("★★★★★".Substring(0, i))</option> }</select></div>
                     }
-                    <div class="col-md-3"><input name="Comment" class="form-control form-control-sm" placeholder="Nhận xét" /></div>
-                    <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Lưu</button></div>
+                    <div class="col-md-3"><input name="Comment" class="form-control form-control-sm" placeholder="@L["Nhận xét"]" /></div>
+                    <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">@L["Lưu"]</button></div>
                 </form>
             }
             </div></div>
@@ -145,14 +145,14 @@
         @{ var ships = (List<PoShipment>)ViewBag.Shipments; }
         @if (Model.VendorConfirmedAt != null || Model.VendorRejectedAt != null || ships.Any() || Model.Status == PoStatus.Issued)
         {
-            <div class="card mb-3"><div class="card-header">Phản hồi của NCC (cổng NCC)</div><div class="card-body small">
-                @if (Model.VendorConfirmedAt != null) { <div class="@(Model.VendorPromisedDate > Model.DeliveryDate ? "text-warning" : "text-success")">Đã xác nhận @Model.VendorConfirmedAt.ToDateTime() – cam kết giao @Model.VendorPromisedDate.ToDate()@(Model.VendorPromisedDate > Model.DeliveryDate ? " (trễ hơn yêu cầu)" : "")</div> }
-                else if (Model.VendorRejectedAt != null) { <div class="text-danger">NCC từ chối @Model.VendorRejectedAt.ToDateTime()</div> }
-                else if (Model.Status == PoStatus.Issued) { <div class="text-muted">Chưa phản hồi.</div> }
+            <div class="card mb-3"><div class="card-header">@L["Phản hồi của NCC (cổng NCC)"]</div><div class="card-body small">
+                @if (Model.VendorConfirmedAt != null) { <div class="@(Model.VendorPromisedDate > Model.DeliveryDate ? "text-warning" : "text-success")">@L["Đã xác nhận"] @Model.VendorConfirmedAt.ToDateTime() – @L["cam kết giao"] @Model.VendorPromisedDate.ToDate()@(Model.VendorPromisedDate > Model.DeliveryDate ? " " + L["(trễ hơn yêu cầu)"] : "")</div> }
+                else if (Model.VendorRejectedAt != null) { <div class="text-danger">@L["NCC từ chối"] @Model.VendorRejectedAt.ToDateTime()</div> }
+                else if (Model.Status == PoStatus.Issued) { <div class="text-muted">@L["Chưa phản hồi."]</div> }
                 @if (!string.IsNullOrEmpty(Model.VendorResponse)) { <div class="pre">@Model.VendorResponse</div> }
-                @foreach (var s in ships) { <div class="mt-1">Báo giao @s.CreatedAt.ToDateTime(): xuất @s.ShipDate.ToDate(), dự kiến @s.ExpectedDate.ToDate() @s.Reference <span class="text-muted">@s.Note · @s.VendorUser?.FullName</span></div> }
+                @foreach (var s in ships) { <div class="mt-1">@L["Báo giao"] @s.CreatedAt.ToDateTime()@L[": xuất"] @s.ShipDate.ToDate()@L[", dự kiến"] @s.ExpectedDate.ToDate() @s.Reference <span class="text-muted">@s.Note · @s.VendorUser?.FullName</span></div> }
             </div></div>
         }
-        <div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.PO, id = Model.Id })</div></div>
+        <div class="card"><div class="card-header">@L["Nhật ký"]</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.PO, id = Model.Id })</div></div>
     </div>
 </div>

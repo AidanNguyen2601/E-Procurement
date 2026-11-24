@@ -3,24 +3,24 @@
 <form method="post" asp-action="Templates">
 <div class="row g-3">
 <div class="col-lg-7">
-    <div class="card mb-3"><div class="card-header">Mẫu email thông báo</div><div class="card-body">
-        <label class="form-label">Tiêu đề email</label>
+    <div class="card mb-3"><div class="card-header">@L["Mẫu email thông báo"]</div><div class="card-body">
+        <label class="form-label">@L["Tiêu đề email"]</label>
         <input name="Subject" id="t-subject" value="@Model.Subject" maxlength="200" class="form-control mb-3" />
-        <label class="form-label">Nội dung (HTML)</label>
+        <label class="form-label">@L["Nội dung (HTML)"]</label>
         <textarea name="Body" id="t-body" rows="10" class="form-control font-monospace small">@Model.Body</textarea>
-        <div class="small text-muted mt-2">Mã chèn:
+        <div class="small text-muted mt-2">@L["Mã chèn:"]
             @foreach (var (tk, m) in NotifyTemplates.Tokens) { <button type="button" class="btn btn-sm btn-light border py-0 px-1 me-1 mb-1 t-token" data-token="@tk" title="@m">@tk</button> }
         </div>
     </div></div>
-    <div class="card"><div class="card-header">Xem trước</div><div class="card-body">
-        <div class="small text-muted">Tiêu đề:</div><div class="fw-semibold mb-2" id="p-subject"></div>
+    <div class="card"><div class="card-header">@L["Xem trước"]</div><div class="card-body">
+        <div class="small text-muted">@L["Tiêu đề:"]</div><div class="fw-semibold mb-2" id="p-subject"></div>
         <div class="border rounded p-3" id="p-body" style="background:#fff"></div>
     </div></div>
 </div>
 <div class="col-lg-5">
-    <div class="card"><div class="card-header">Kênh nhận theo loại thông báo</div>
+    <div class="card"><div class="card-header">@L["Kênh nhận theo loại thông báo"]</div>
         <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>Loại</th><th class="text-center">Trong hệ thống</th><th class="text-center">Email</th></tr></thead>
+            <thead><tr><th>@L["Loại"]</th><th class="text-center">@L["Trong hệ thống"]</th><th class="text-center">Email</th></tr></thead>
             <tbody>
             @for (var i = 0; i < NotifyTemplates.Groups.Length; i++)
             {
@@ -32,13 +32,13 @@
             }
             </tbody>
         </table>
-        <div class="card-body small text-muted">Tắt "Trong hệ thống" thì không tạo thông báo (và không gửi email) cho loại đó. Ngưỡng nhắc hạn chỉnh ở <a asp-action="Alerts">Cảnh báo</a>; máy chủ gửi ở <a asp-action="Email">Email, thông báo</a>.</div>
+        <div class="card-body small text-muted">@L["Tắt \"Trong hệ thống\" thì không tạo thông báo (và không gửi email) cho loại đó. Ngưỡng nhắc hạn chỉnh ở"] <a asp-action="Alerts">@L["Cảnh báo"]</a>@L["; máy chủ gửi ở"] <a asp-action="Email">@L["Email, thông báo"]</a>.</div>
     </div>
 </div>
 </div>
 <div class="d-flex gap-2 mt-3">
-    <button class="btn btn-primary">Lưu</button>
-    <button class="btn btn-light" name="reset" value="true" data-confirm="Khôi phục tiêu đề và nội dung email mặc định?">Khôi phục mẫu email mặc định</button>
+    <button class="btn btn-primary">@L["Lưu"]</button>
+    <button class="btn btn-light" name="reset" value="true" data-confirm="@L["Khôi phục tiêu đề và nội dung email mặc định?"]">@L["Khôi phục mẫu email mặc định"]</button>
 </div>
 </form>
 <script>

@@ -68,19 +68,19 @@ public class CategoriesController : Controller
     {
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Index), new { edit = id == 0 ? (int?)null : id }); }
         code = code?.Trim().ToUpperInvariant() ?? ""; name = name?.Trim() ?? "";
-        if (code.Length == 0 || name.Length == 0) return Fail("Nhập mã và tên nhóm hàng.");
-        if (code.Length > 20 || name.Length > 150) return Fail("Mã tối đa 20, tên tối đa 150 ký tự.");
+        if (code.Length == 0 || name.Length == 0) return Fail(I18n.T("Nhập mã và tên nhóm hàng."));
+        if (code.Length > 20 || name.Length > 150) return Fail(I18n.T("Mã tối đa 20, tên tối đa 150 ký tự."));
         var all = await _db.Categories.AsNoTracking().ToListAsync();
-        if (all.Any(c => c.Id != id && string.Equals(c.Code, code, StringComparison.OrdinalIgnoreCase))) return Fail("Mã nhóm hàng đã tồn tại.");
+        if (all.Any(c => c.Id != id && string.Equals(c.Code, code, StringComparison.OrdinalIgnoreCase))) return Fail(I18n.T("Mã nhóm hàng đã tồn tại."));
         if (parentId.HasValue && (all.All(c => c.Id != parentId) || (id != 0 && SubtreeIds(all, id).Contains(parentId.Value))))
-            return Fail("Không chọn chính nhóm hoặc nhóm con của nó làm nhóm cấp trên.");
+            return Fail(I18n.T("Không chọn chính nhóm hoặc nhóm con của nó làm nhóm cấp trên."));
         Category c;
         if (id == 0) { c = new Category(); _db.Categories.Add(c); }
         else c = await _db.Categories.FindAsync(id) ?? throw new KeyNotFoundException();
         c.Code = code; c.Name = name; c.ParentId = parentId; c.SortOrder = sortOrder; c.IsActive = isActive;
         c.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()[..Math.Min(500, description.Trim().Length)];
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu nhóm hàng {c.Code} – {c.Name}.";
+        TempData["Success"] = I18n.T("Đã lưu nhóm hàng {0} – {1}.", c.Code, c.Name);
         return RedirectToAction(nameof(Index));
     }
 
@@ -93,10 +93,10 @@ public class CategoriesController : Controller
         var used = await _db.Categories.CountAsync(x => x.ParentId == id) + await _db.Items.CountAsync(i => i.CategoryId == id)
                    + await _db.VendorCategories.CountAsync(v => v.CategoryId == id) + await _db.CriteriaSets.CountAsync(s => s.CategoryId == id)
                    + await _db.Prequalifications.CountAsync(p => p.CategoryId == id);
-        if (used > 0) { TempData["Error"] = $"Nhóm {c.Name} đang có nhóm con / hàng hóa / NCC / đợt sơ tuyển – chọn \"Ngừng sử dụng\" thay vì xóa."; return RedirectToAction(nameof(Index)); }
+        if (used > 0) { TempData["Error"] = I18n.T("Nhóm {0} đang có nhóm con / hàng hóa / NCC / đợt sơ tuyển – chọn \"Ngừng sử dụng\" thay vì xóa.", c.Name); return RedirectToAction(nameof(Index)); }
         _db.Categories.Remove(c);
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã xóa nhóm {c.Name}.";
+        TempData["Success"] = I18n.T("Đã xóa nhóm {0}.", c.Name);
         return RedirectToAction(nameof(Index));
     }
 }

@@ -52,12 +52,12 @@ public class OrderingController : ProcControllerBase
     public async Task<IActionResult> Order(int contractId, List<int> lineIds, List<decimal> quantities, string? purpose, DateTime? neededDate)
     {
         var c = await Db.Contracts.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == contractId && x.IsFramework && x.Status == ContractStatus.Active);
-        if (c == null || c.EndDate < DateTime.Today) { TempData["Error"] = "Hợp đồng khung không còn hiệu lực."; return RedirectToAction(nameof(Index)); }
+        if (c == null || c.EndDate < DateTime.Today) { TempData["Error"] = I18n.T("Hợp đồng khung không còn hiệu lực."); return RedirectToAction(nameof(Index)); }
         var avail = await AvailabilityAsync(Db, c);
         var picked = lineIds.Zip(quantities).Where(x => x.Second > 0).ToList();
-        if (picked.Count == 0) { TempData["Error"] = "Nhập số lượng cho ít nhất một hạng mục."; return RedirectToAction(nameof(Index)); }
+        if (picked.Count == 0) { TempData["Error"] = I18n.T("Nhập số lượng cho ít nhất một hạng mục."); return RedirectToAction(nameof(Index)); }
         foreach (var (lid, q) in picked)
-            if (!avail.TryGetValue(lid, out var a) || q > a.Available) { TempData["Error"] = $"Số lượng vượt khối lượng còn đặt được ({a?.Available.ToQty() ?? "0"})."; return RedirectToAction(nameof(Index)); }
+            if (!avail.TryGetValue(lid, out var a) || q > a.Available) { TempData["Error"] = I18n.T("Số lượng vượt khối lượng còn đặt được ({0}).", a?.Available.ToQty() ?? "0"); return RedirectToAction(nameof(Index)); }
         var pr = new PurchaseRequest
         {
             Number = await DocNumbers.NextAsync(Db.PurchaseRequests.Select(p => p.Number), "PR"),
@@ -77,7 +77,7 @@ public class OrderingController : ProcControllerBase
         await Db.SaveChangesAsync();
         Log(DocType.PR, pr.Id, $"Lập đề nghị từ catalog hợp đồng khung {c.Number}", $"{pr.Lines.Count} hạng mục · {pr.EstimatedTotal.ToMoney()} đ (đơn giá hợp đồng)");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã tạo {pr.Number} theo hợp đồng khung (nháp). Kiểm tra và gửi duyệt.";
+        TempData["Success"] = I18n.T("Đã tạo {0} theo hợp đồng khung (nháp). Kiểm tra và gửi duyệt.", pr.Number);
         return RedirectToAction("Details", "PurchaseRequests", new { id = pr.Id });
     }
 }

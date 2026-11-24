@@ -7,7 +7,17 @@ namespace EProcurement.Web.Infrastructure;
 /// </summary>
 public static partial class I18n
 {
-    public static readonly Dictionary<string, string> En = new(StringComparer.Ordinal)
+    /// <summary>Từ điển hợp nhất từ các phần: lõi (file này) + các phần mở rộng I18n.En.Ext*.cs</summary>
+    public static readonly Dictionary<string, string> En = BuildEn();
+
+    private static Dictionary<string, string> BuildEn()
+    {
+        var d = new Dictionary<string, string>(Core(), StringComparer.Ordinal);
+        foreach (var part in ExtParts()) foreach (var kv in part) d[kv.Key] = kv.Value;
+        return d;
+    }
+
+    private static Dictionary<string, string> Core() => new(StringComparer.Ordinal)
     {
         // ------------------------------------------------------------------ chung
         [" (giá {0}% · kỹ thuật {1}% · tiến độ {2}%)"] = " (price {0}% · technical {1}% · delivery {2}%)",

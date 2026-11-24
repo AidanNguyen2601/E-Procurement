@@ -15,4 +15,7 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Using Include="EProcurement.Web.Infrastructure.I18n" Alias="I18n" />
+  </ItemGroup>
 </Project>

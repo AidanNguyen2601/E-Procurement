@@ -3,9 +3,9 @@
 <div class="row g-3">
 <div class="col-lg-8">
 <form method="post" asp-action="SupplierCriteria" class="card">
-    <div class="card-header">Tiêu chí đánh giá định kỳ (thang điểm 1–5)</div>
+    <div class="card-header">@L["Tiêu chí đánh giá định kỳ (thang điểm 1–5)"]</div>
     <div class="table-responsive"><table class="table align-middle mb-0">
-        <thead><tr><th style="width:28%">Tên tiêu chí</th><th style="width:14%">Trọng số</th><th>Hướng dẫn chấm điểm</th></tr></thead>
+        <thead><tr><th style="width:28%">@L["Tên tiêu chí"]</th><th style="width:14%">@L["Trọng số"]</th><th>@L["Hướng dẫn chấm điểm"]</th></tr></thead>
         <tbody>
         @for (var i = 0; i < 4; i++)
         {
@@ -18,16 +18,15 @@
             </tr>
         }
         </tbody>
-        <tfoot><tr><td class="text-end">Tổng</td><td><b id="w-sum"></b></td><td class="small text-muted">Trọng số được quy về tỷ lệ – tổng không bắt buộc 100.</td></tr></tfoot>
+        <tfoot><tr><td class="text-end">@L["Tổng"]</td><td><b id="w-sum"></b></td><td class="small text-muted">@L["Trọng số được quy về tỷ lệ – tổng không bắt buộc 100."]</td></tr></tfoot>
     </table></div>
-    <div class="card-footer"><button class="btn btn-primary">Lưu</button></div>
+    <div class="card-footer"><button class="btn btn-primary">@L["Lưu"]</button></div>
 </form>
 </div>
 <div class="col-lg-4">
-    <div class="card"><div class="card-header">Xếp loại theo điểm tổng hợp</div><ul class="list-group list-group-flush small">
+    <div class="card"><div class="card-header">@L["Xếp loại theo điểm tổng hợp"]</div><ul class="list-group list-group-flush small">
         @foreach (var l in levels.OrderByDescending(l => l.Min)) { <li class="list-group-item d-flex justify-content-between"><span><b>@l.Code</b> – @l.Label</span><span>≥ @l.Min.ToString("0.##")</span></li> }
-    </ul><div class="card-body small text-muted">Ngưỡng xếp loại chỉnh trong <a asp-controller="Catalogs" asp-action="Index" asp-route-type="@CatalogType.SupplierGrade">Danh mục → Xếp loại NCC</a>.
-        Điểm tổng hợp = trung bình có trọng số các tiêu chí trên phiếu đánh giá; NCC chưa có phiếu dùng tỷ lệ giao đúng hạn và hàng đạt.</div></div>
+    </ul><div class="card-body small text-muted">@L["Ngưỡng xếp loại chỉnh trong"] <a asp-controller="Catalogs" asp-action="Index" asp-route-type="@CatalogType.SupplierGrade">@L["Danh mục → Xếp loại NCC"]</a>@L[". Điểm tổng hợp = trung bình có trọng số các tiêu chí trên phiếu đánh giá; NCC chưa có phiếu dùng tỷ lệ giao đúng hạn và hàng đạt."]</div></div>
 </div>
 </div>
 <script>

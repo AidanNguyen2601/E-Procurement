@@ -58,7 +58,7 @@ public class SelectionPlansController : ProcControllerBase
     {
         var plan = await Db.SelectionPlans.Include(x => x.Packages).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (plan == null) return NotFound();
-        if (plan.Status is not (SelectionPlanStatus.Draft or SelectionPlanStatus.Returned)) { TempData["Error"] = "Chỉ sửa kế hoạch nháp hoặc bị trả lại."; return RedirectToAction(nameof(Details), new { id }); }
+        if (plan.Status is not (SelectionPlanStatus.Draft or SelectionPlanStatus.Returned)) { TempData["Error"] = I18n.T("Chỉ sửa kế hoạch nháp hoặc bị trả lại."); return RedirectToAction(nameof(Details), new { id }); }
         var vm = new SelectionPlanForm { Id = id, Number = plan.Number, Title = plan.Title, Basis = plan.Basis, PackageIds = plan.Packages.Select(p => p.Id).ToList() };
         await FillAsync(vm);
         return View("Form", vm);
@@ -77,7 +77,7 @@ public class SelectionPlansController : ProcControllerBase
         }
         await FillAsync(vm);
         vm.PackageIds = vm.PackageIds.Distinct().Where(id => vm.Available.Any(p => p.Id == id)).ToList();
-        if (vm.PackageIds.Count == 0) ModelState.AddModelError(nameof(vm.PackageIds), "Chọn ít nhất một gói mua sắm (trạng thái Nháp).");
+        if (vm.PackageIds.Count == 0) ModelState.AddModelError(nameof(vm.PackageIds), I18n.T("Chọn ít nhất một gói mua sắm (trạng thái Nháp)."));
         if (!ModelState.IsValid) return View("Form", vm);
 
         if (plan == null)
@@ -91,7 +91,7 @@ public class SelectionPlansController : ProcControllerBase
         await Db.SaveChangesAsync();
         if (vm.Id == 0) { Log(DocType.SelectionPlan, plan.Id, "Lập kế hoạch lựa chọn NCC", $"{vm.PackageIds.Count} gói"); await Db.SaveChangesAsync(); }
         if (submit) return await Submit(plan.Id);
-        TempData["Success"] = $"Đã lưu {plan.Number}.";
+        TempData["Success"] = I18n.T("Đã lưu {0}.", plan.Number);
         return RedirectToAction(nameof(Details), new { id = plan.Id });
     }
 
@@ -124,15 +124,15 @@ public class SelectionPlansController : ProcControllerBase
         var plan = await Db.SelectionPlans.Include(x => x.Packages).ThenInclude(p => p.PurchaseRequests).FirstOrDefaultAsync(x => x.Id == id);
         if (plan == null) return NotFound();
         IActionResult Fail(string m) { TempData["Error"] = m; return RedirectToAction(nameof(Details), new { id }); }
-        if (plan.Status is not (SelectionPlanStatus.Draft or SelectionPlanStatus.Returned)) return Fail("Kế hoạch đã được trình.");
-        if (plan.Packages.Count == 0) return Fail("Kế hoạch chưa có gói mua sắm nào.");
-        if (plan.Packages.Any(p => p.Status != PackageStatus.Draft)) return Fail("Chỉ trình các gói ở trạng thái Nháp.");
-        if (plan.Packages.FirstOrDefault(p => p.PurchaseRequests.Count == 0) is { } empty) return Fail($"Gói {empty.Number} không còn đề nghị mua hàng nào.");
+        if (plan.Status is not (SelectionPlanStatus.Draft or SelectionPlanStatus.Returned)) return Fail(I18n.T("Kế hoạch đã được trình."));
+        if (plan.Packages.Count == 0) return Fail(I18n.T("Kế hoạch chưa có gói mua sắm nào."));
+        if (plan.Packages.Any(p => p.Status != PackageStatus.Draft)) return Fail(I18n.T("Chỉ trình các gói ở trạng thái Nháp."));
+        if (plan.Packages.FirstOrDefault(p => p.PurchaseRequests.Count == 0) is { } empty) return Fail(I18n.T("Gói {0} không còn đề nghị mua hàng nào.", empty.Number));
         plan.Status = SelectionPlanStatus.Submitted; plan.SubmittedAt = DateTime.Now;
         foreach (var p in plan.Packages) { p.Status = PackageStatus.InPlan; Log(DocType.Package, p.Id, $"Trình duyệt trong {plan.Number}"); }
         Log(DocType.SelectionPlan, id, "Trình Giám đốc phê duyệt KHLCNT", $"{plan.Packages.Count} gói · tổng giá gói {plan.Packages.Sum(p => p.Budget).ToMoney()} đ");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã trình {plan.Number} cho Giám đốc phê duyệt.";
+        TempData["Success"] = I18n.T("Đã trình {0} cho Giám đốc phê duyệt.", plan.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -144,7 +144,7 @@ public class SelectionPlansController : ProcControllerBase
         var plan = await Db.SelectionPlans.Include(x => x.Packages).ThenInclude(p => p.PurchaseRequests).FirstOrDefaultAsync(x => x.Id == id);
         if (plan == null) return NotFound();
         if (plan.Status != SelectionPlanStatus.Submitted) return BadRequest();
-        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do trả lại."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = I18n.T("Nhập lý do trả lại."); return RedirectToAction(nameof(Details), new { id }); }
         plan.Status = approve ? SelectionPlanStatus.Approved : SelectionPlanStatus.Returned;
         plan.DecidedById = Me; plan.DecidedAt = DateTime.Now; plan.DecisionNote = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
         foreach (var p in plan.Packages)
@@ -155,7 +155,7 @@ public class SelectionPlansController : ProcControllerBase
         }
         Log(DocType.SelectionPlan, id, approve ? "Giám đốc phê duyệt KHLCNT" : "Giám đốc trả lại KHLCNT", plan.DecisionNote);
         await Db.SaveChangesAsync();
-        TempData["Success"] = approve ? $"Đã phê duyệt {plan.Number}. Mua hàng lập hồ sơ lựa chọn NCC cho từng gói." : $"Đã trả lại {plan.Number}.";
+        TempData["Success"] = approve ? I18n.T("Đã phê duyệt {0}. Mua hàng lập hồ sơ lựa chọn NCC cho từng gói.", plan.Number) : I18n.T("Đã trả lại {0}.", plan.Number);
         return !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
     }
 }

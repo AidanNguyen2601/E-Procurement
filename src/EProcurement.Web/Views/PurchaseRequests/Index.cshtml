@@ -9,24 +9,24 @@
     Func<int, string> pageUrl = p => Url.Action("Index", new { scope, status, keyword, page = p })!;
 }
 <ul class="nav nav-pills mb-3">
-    <li class="nav-item"><a class="nav-link @Tab("mine")" asp-route-scope="mine">Của tôi</a></li>
-    @if (isApprover || seesAll) { <li class="nav-item"><a class="nav-link @Tab("dept")" asp-route-scope="dept">Phòng tôi</a></li> }
+    <li class="nav-item"><a class="nav-link @Tab("mine")" asp-route-scope="mine">@L["Của tôi"]</a></li>
+    @if (isApprover || seesAll) { <li class="nav-item"><a class="nav-link @Tab("dept")" asp-route-scope="dept">@L["Phòng tôi"]</a></li> }
     @if (seesAll)
     {
-        <li class="nav-item"><a class="nav-link @Tab("approved")" asp-route-scope="approved">Đã duyệt – cần mua</a></li>
-        <li class="nav-item"><a class="nav-link @Tab("all")" asp-route-scope="all">Tất cả</a></li>
+        <li class="nav-item"><a class="nav-link @Tab("approved")" asp-route-scope="approved">@L["Đã duyệt – cần mua"]</a></li>
+        <li class="nav-item"><a class="nav-link @Tab("all")" asp-route-scope="all">@L["Tất cả"]</a></li>
     }
 </ul>
 <form method="get" class="toolbar">
     <input type="hidden" name="scope" value="@scope" />
-    <div><label class="form-label small mb-1">Tìm kiếm</label><input name="keyword" value="@keyword" class="form-control" placeholder="Số PR, nội dung" /></div>
-    <div><label class="form-label small mb-1">Trạng thái</label><select name="status" class="form-select" asp-items="statusItems"><option value="">-- Tất cả --</option></select></div>
-    <button class="btn btn-outline-primary">Lọc</button>
-    <a class="btn btn-primary ms-auto" asp-action="Create">+ Tạo đề nghị</a>
+    <div><label class="form-label small mb-1">@L["Tìm kiếm"]</label><input name="keyword" value="@keyword" class="form-control" placeholder="@L["Số PR, nội dung"]" /></div>
+    <div><label class="form-label small mb-1">@L["Trạng thái"]</label><select name="status" class="form-select" asp-items="statusItems"><option value="">@L["-- Tất cả --"]</option></select></div>
+    <button class="btn btn-outline-primary">@L["Lọc"]</button>
+    <a class="btn btn-primary ms-auto" asp-action="Create">@L["+ Tạo đề nghị"]</a>
 </form>
 <div class="card"><div class="card-body p-0">
 <table class="table table-hover mb-0">
-    <thead><tr><th>Số PR</th><th>Nội dung</th><th>Người đề nghị</th><th>Phòng ban</th><th>Ngày đề nghị</th><th>Cần hàng</th><th>Mức độ</th><th class="money">Dự toán</th><th>Trạng thái</th></tr></thead>
+    <thead><tr><th>@L["Số PR"]</th><th>@L["Nội dung"]</th><th>@L["Người đề nghị"]</th><th>@L["Phòng ban"]</th><th>@L["Ngày đề nghị"]</th><th>@L["Cần hàng"]</th><th>@L["Mức độ"]</th><th class="money">@L["Dự toán"]</th><th>@L["Trạng thái"]</th></tr></thead>
     <tbody>
     @foreach (var p in Model.Items)
     {
@@ -39,11 +39,11 @@
             <td><partial name="_Badge" model="p.Status" /></td>
         </tr>
     }
-    @if (!Model.Items.Any()) { <tr><td colspan="9" class="text-center text-muted p-4">Không có đề nghị.</td></tr> }
+    @if (!Model.Items.Any()) { <tr><td colspan="9" class="text-center text-muted p-4">@L["Không có đề nghị."]</td></tr> }
     </tbody>
 </table>
 </div>
 <div class="card-footer bg-white d-flex justify-content-between align-items-center">
-    <span class="small text-muted">Tổng: @Model.TotalCount đề nghị</span>
+    <span class="small text-muted">@L["Tổng:"] @Model.TotalCount @L["đề nghị"]</span>
     <partial name="_Pager" model="(Model.Page, Model.TotalPages, pageUrl)" />
 </div></div>

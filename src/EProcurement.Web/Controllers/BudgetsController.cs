@@ -55,18 +55,18 @@ public class BudgetsController : Controller
     public async Task<IActionResult> Save(Budget model)
     {
         IActionResult Back(string? err = null) { if (err != null) TempData["Error"] = err; return RedirectToAction(nameof(Index), new { year = model.Year, edit = err != null && model.Id > 0 ? model.Id : (int?)null }); }
-        if (model.Year is < 2000 or > 2100) return Back("Năm không hợp lệ.");
-        if (model.Amount < 0) return Back("Ngân sách không được âm.");
+        if (model.Year is < 2000 or > 2100) return Back(I18n.T("Năm không hợp lệ."));
+        if (model.Amount < 0) return Back(I18n.T("Ngân sách không được âm."));
         var catalog = HttpContext.RequestServices.GetRequiredService<CatalogService>();
         var old = model.Id > 0 ? await _db.Budgets.FindAsync(model.Id) : null;
-        if (!await catalog.IsValidAsync(CatalogType.Department, model.Department, old?.Department)) return Back("Chọn phòng ban trong danh mục.");
+        if (!await catalog.IsValidAsync(CatalogType.Department, model.Department, old?.Department)) return Back(I18n.T("Chọn phòng ban trong danh mục."));
         if (await _db.Budgets.AnyAsync(b => b.Year == model.Year && b.Department == model.Department && b.CategoryId == model.CategoryId && b.Id != model.Id))
-            return Back("Đã có dòng ngân sách cho phòng ban / nhóm hàng này trong năm – sửa dòng đó.");
+            return Back(I18n.T("Đã có dòng ngân sách cho phòng ban / nhóm hàng này trong năm – sửa dòng đó."));
         var b = old ?? _db.Budgets.Add(new Budget { CreatedAt = DateTime.Now }).Entity;
         b.Year = model.Year; b.Department = model.Department.Trim(); b.CategoryId = model.CategoryId; b.Amount = model.Amount;
         b.Note = string.IsNullOrWhiteSpace(model.Note) ? null : model.Note.Trim(); b.UpdatedAt = DateTime.Now;
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu ngân sách {b.Department} năm {b.Year}: {b.Amount.ToMoney()} đ.";
+        TempData["Success"] = I18n.T("Đã lưu ngân sách {0} năm {1}: {2} đ.", b.Department, b.Year, b.Amount.ToMoney());
         return RedirectToAction(nameof(Index), new { year = model.Year });
     }
 
@@ -77,7 +77,7 @@ public class BudgetsController : Controller
         if (b == null) return NotFound();
         _db.Budgets.Remove(b);
         await _db.SaveChangesAsync();
-        TempData["Success"] = "Đã xóa dòng ngân sách.";
+        TempData["Success"] = I18n.T("Đã xóa dòng ngân sách.");
         return RedirectToAction(nameof(Index), new { year = b.Year });
     }
 
@@ -85,7 +85,7 @@ public class BudgetsController : Controller
     [HttpPost, ValidateAntiForgeryToken, Authorize(Roles = AppRoles.Admin + "," + AppRoles.Director)]
     public async Task<IActionResult> CopyYear(int from, int to, decimal percent = 0)
     {
-        if (from == to || to is < 2000 or > 2100) { TempData["Error"] = "Năm không hợp lệ."; return RedirectToAction(nameof(Index), new { year = to }); }
+        if (from == to || to is < 2000 or > 2100) { TempData["Error"] = I18n.T("Năm không hợp lệ."); return RedirectToAction(nameof(Index), new { year = to }); }
         var src = await _db.Budgets.AsNoTracking().Where(b => b.Year == from).ToListAsync();
         var have = await _db.Budgets.Where(b => b.Year == to).Select(b => new { b.Department, b.CategoryId }).ToListAsync();
         var n = 0;
@@ -95,7 +95,7 @@ public class BudgetsController : Controller
             n++;
         }
         await _db.SaveChangesAsync();
-        TempData["Success"] = n == 0 ? $"Năm {to} đã có đủ các dòng của năm {from}." : $"Đã tạo {n} dòng ngân sách năm {to} từ năm {from} ({percent:+0.#;-0.#;0}%).";
+        TempData["Success"] = n == 0 ? I18n.T("Năm {0} đã có đủ các dòng của năm {1}.", to, from) : I18n.T("Đã tạo {0} dòng ngân sách năm {1} từ năm {2} ({3:+0.#;-0.#;0}%).", n, to, from, percent);
         return RedirectToAction(nameof(Index), new { year = to });
     }
 }

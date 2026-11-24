@@ -9,14 +9,14 @@
     var spend = (Dictionary<int, decimal>)ViewBag.Spend;
 }
 <form method="get" class="toolbar">
-    <div><label class="form-label small mb-1">Tìm kiếm</label><input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Tên, mã, MST" /></div>
-    <div><label class="form-label small mb-1">Trạng thái</label><select name="status" class="form-select" asp-items="statusItems"><option value="">-- Tất cả --</option></select></div>
-    <div><label class="form-label small mb-1">Nhóm hàng</label><select name="categoryId" class="form-select"><option value="">-- Tất cả --</option>@foreach (var c in cats) { <option value="@c.Id" selected="@(c.Id == catId)">@c.Name</option> }</select></div>
-    <button class="btn btn-outline-primary">Lọc</button>
-    @if (User.IsPurchasing()) { <a class="btn btn-primary ms-auto" asp-action="Create">+ Đăng ký NCC</a> }
+    <div><label class="form-label small mb-1">@L["Tìm kiếm"]</label><input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="@L["Tên, mã, MST"]" /></div>
+    <div><label class="form-label small mb-1">@L["Trạng thái"]</label><select name="status" class="form-select" asp-items="statusItems"><option value="">@L["-- Tất cả --"]</option></select></div>
+    <div><label class="form-label small mb-1">@L["Nhóm hàng"]</label><select name="categoryId" class="form-select"><option value="">@L["-- Tất cả --"]</option>@foreach (var c in cats) { <option value="@c.Id" selected="@(c.Id == catId)">@c.Name</option> }</select></div>
+    <button class="btn btn-outline-primary">@L["Lọc"]</button>
+    @if (User.IsPurchasing()) { <a class="btn btn-primary ms-auto" asp-action="Create">@L["+ Đăng ký NCC"]</a> }
 </form>
 <div class="card"><div class="card-body p-0"><table class="table table-hover mb-0">
-    <thead><tr><th>Mã</th><th>Nhà cung cấp</th><th>MST</th><th>Nhóm hàng</th><th>Liên hệ</th><th>Đánh giá</th><th class="money">Giá trị đã mua</th><th>Trạng thái</th></tr></thead>
+    <thead><tr><th>@L["Mã"]</th><th>@L["Nhà cung cấp"]</th><th>MST</th><th>@L["Nhóm hàng"]</th><th>@L["Liên hệ"]</th><th>@L["Đánh giá"]</th><th class="money">@L["Giá trị đã mua"]</th><th>@L["Trạng thái"]</th></tr></thead>
     <tbody>
     @foreach (var v in Model)
     {

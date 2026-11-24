@@ -30,7 +30,7 @@
         <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Đóng thầu"]</span><div class="fw-semibold">@t.ClosingAt.ToDateTime()</div></div>
         <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Hạn đề nghị làm rõ HSMT"]</span><div>@Model.QuestionDeadline.ToDateTime()</div></div>
         <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Mở thầu"]</span><div>@(opened ? t.OpenedAt.ToDateTime() : L["Ngay sau đóng thầu"])</div></div>
-        <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Bảo đảm dự thầu"]</span><div>@(t.BidSecurityAmount > 0 ? t.BidSecurityAmount.ToMoney() + " đ, " + L["hiệu lực đến ≥ {0}", secNeedDate.ToDate()] : L["Không yêu cầu"])</div></div>
+        <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Bảo đảm dự thầu"]</span><div>@(t.BidSecurityAmount > 0 ? t.BidSecurityAmount.ToMoney() + L[" đ, "] + L["hiệu lực đến ≥ {0}", secNeedDate.ToDate()] : L["Không yêu cầu"])</div></div>
         <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Hiệu lực HSDT tối thiểu"]</span><div>@L["{0} ngày", t.BidValidityDays]</div></div>
         <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Bảo đảm thực hiện HĐ"]</span><div>@L["{0}% giá hợp đồng", t.PerformanceSecurityPercent.ToString("0.#")]</div></div>
         <div class="col-sm-6 col-lg-3"><span class="text-muted">@L["Bên mời thầu"]</span><div>@t.Buyer?.FullName</div></div>

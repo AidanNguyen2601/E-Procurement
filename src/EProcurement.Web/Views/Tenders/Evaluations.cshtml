@@ -1,7 +1,7 @@
 @model List<Tender>
 @{ ViewData["Title"] = "Đánh giá HSDT / HSCG"; var meId = User.GetUserId(); }
 <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-    <thead><tr><th>Gói thầu</th><th class="money">HSDT</th><th>Hợp lệ & năng lực</th><th>Chấm kỹ thuật</th><th>Hồ sơ tài chính</th><th>Việc của tôi</th><th></th></tr></thead>
+    <thead><tr><th>@L["Gói thầu"]</th><th class="money">HSDT</th><th>@L["Hợp lệ & năng lực"]</th><th>@L["Chấm kỹ thuật"]</th><th>@L["Hồ sơ tài chính"]</th><th>@L["Việc của tôi"]</th><th></th></tr></thead>
     <tbody>
     @foreach (var t in Model)
     {
@@ -12,17 +12,17 @@
         var task = t.Status == TenderStatus.Published ? (User.IsPurchasing() ? "Đã đóng thầu – mở thầu" : "")
             : me == null ? "" : me.ConflictDeclaredAt == null ? "Cam kết không xung đột lợi ích" : me.ScoringCompletedAt == null ? "Chấm điểm kỹ thuật" : "Đã nộp phiếu chấm";
         <tr><td><a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold">@t.Number</a><div class="small">@t.Title</div>
-                <div class="small text-muted">@t.EnvelopeMethod.GetDisplayName() · đóng thầu @t.ClosingAt.ToDateTime()</div></td>
+                <div class="small text-muted">@t.EnvelopeMethod.GetDisplayName() @L["· đóng thầu"] @t.ClosingAt.ToDateTime()</div></td>
             <td class="money">@bids.Count</td>
-            <td class="small">@(t.OpenedAt == null ? "Chưa mở thầu" : $"{screened}/{bids.Count}")</td>
-            <td class="small">@(t.OpenedAt == null ? "" : $"{done}/{t.Committee.Count} thành viên")</td>
-            <td class="small">@(t.EnvelopeMethod == EnvelopeMethod.OneEnvelope ? "Một túi" : t.FinancialOpenedAt.HasValue ? $"Đã mở {t.FinancialOpenedAt:dd/MM}" : "Niêm phong")</td>
+            <td class="small">@(t.OpenedAt == null ? L["Chưa mở thầu"] : $"{screened}/{bids.Count}")</td>
+            <td class="small">@(t.OpenedAt == null ? "" : L["{0}/{1} thành viên", done, t.Committee.Count])</td>
+            <td class="small">@(t.EnvelopeMethod == EnvelopeMethod.OneEnvelope ? L["Một túi"] : t.FinancialOpenedAt.HasValue ? L["Đã mở {0:dd/MM}", t.FinancialOpenedAt] : L["Niêm phong"])</td>
             <td class="small">@if (!string.IsNullOrEmpty(task)) { <span class="badge @(task.StartsWith("Đã") ? "bg-light text-dark border" : "bg-warning text-dark")">@task</span> }</td>
             <td class="text-end text-nowrap">
-                @if (t.Status == TenderStatus.Opened && (User.IsPurchasing() || me?.IsLeader == true)) { <a asp-action="Screen" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary">Đánh giá hợp lệ</a> }
-                @if (t.Status == TenderStatus.Opened && me != null) { <a asp-action="Score" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary">Chấm điểm</a> }
-                <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary">Chi tiết</a></td></tr>
+                @if (t.Status == TenderStatus.Opened && (User.IsPurchasing() || me?.IsLeader == true)) { <a asp-action="Screen" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary">@L["Đánh giá hợp lệ"]</a> }
+                @if (t.Status == TenderStatus.Opened && me != null) { <a asp-action="Score" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary">@L["Chấm điểm"]</a> }
+                <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary">@L["Chi tiết"]</a></td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">Không có gói thầu đang đánh giá.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="7" class="text-muted p-3">@L["Không có gói thầu đang đánh giá."]</td></tr> }
     </tbody>
 </table></div></div></div>

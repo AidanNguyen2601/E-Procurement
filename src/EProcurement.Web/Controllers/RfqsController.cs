@@ -67,10 +67,10 @@ public class RfqsController : ProcControllerBase
         vm.Lines = CleanLines(vm.Lines);
         vm.VendorIds = vm.VendorIds.Distinct().ToList();
         if (vm.VendorIds.Count < Settings.MinVendorsPerRfq)
-            ModelState.AddModelError(nameof(vm.VendorIds), $"Cần mời tối thiểu {Settings.MinVendorsPerRfq} nhà cung cấp để đảm bảo cạnh tranh.");
-        if (vm.Deadline < DateTime.Today) ModelState.AddModelError(nameof(vm.Deadline), "Hạn nộp báo giá không được ở quá khứ");
+            ModelState.AddModelError(nameof(vm.VendorIds), I18n.T("Cần mời tối thiểu {0} nhà cung cấp để đảm bảo cạnh tranh.", Settings.MinVendorsPerRfq));
+        if (vm.Deadline < DateTime.Today) ModelState.AddModelError(nameof(vm.Deadline), I18n.T("Hạn nộp báo giá không được ở quá khứ"));
         if (vm.EvaluationMethod == EvaluationMethod.WeightedScore && vm.PriceWeight + vm.TechnicalWeight + vm.DeliveryWeight != 100)
-            ModelState.AddModelError(nameof(vm.PriceWeight), "Tổng trọng số giá + kỹ thuật + tiến độ phải bằng 100%.");
+            ModelState.AddModelError(nameof(vm.PriceWeight), I18n.T("Tổng trọng số giá + kỹ thuật + tiến độ phải bằng 100%."));
         // Có đề nghị → bắt buộc theo gói đã duyệt; đề nghị / gói lấy lại từ gói, không tin form
         ProcurementPackage? pkg = null;
         if (vm.PackageId.HasValue || vm.PurchaseRequestId.HasValue)
@@ -80,7 +80,7 @@ public class RfqsController : ProcControllerBase
             if (pkg != null) { vm.PackageId = pkg.Id; vm.PurchaseRequestId = Packages.Lead(pkg).Id; }
         }
         var invalid = await Db.Vendors.Where(v => vm.VendorIds.Contains(v.Id) && v.Status != VendorStatus.Approved).Select(v => v.Name).ToListAsync();
-        if (invalid.Count > 0) ModelState.AddModelError(nameof(vm.VendorIds), "NCC chưa được phê duyệt: " + string.Join(", ", invalid));
+        if (invalid.Count > 0) ModelState.AddModelError(nameof(vm.VendorIds), I18n.T("NCC chưa được phê duyệt: ") + string.Join(", ", invalid));
         if (!ModelState.IsValid)
         {
             if (vm.Lines.Count == 0) vm.Lines.Add(new LineInput());
@@ -112,7 +112,7 @@ public class RfqsController : ProcControllerBase
             await Packages.StartAsync(Db, pkg.Id);
         }
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã tạo {rfq.Number}, mời {vm.VendorIds.Count} nhà cung cấp.";
+        TempData["Success"] = I18n.T("Đã tạo {0}, mời {1} nhà cung cấp.", rfq.Number, vm.VendorIds.Count);
         return RedirectToAction(nameof(Details), new { id = rfq.Id });
     }
 
@@ -125,14 +125,14 @@ public class RfqsController : ProcControllerBase
         if (r.Status != RfqStatus.Draft) return BadRequest();
         if (r.Deadline < DateTime.Today)
         {
-            TempData["Error"] = "Hạn nộp báo giá đã qua. Gia hạn trước khi phát hành.";
+            TempData["Error"] = I18n.T("Hạn nộp báo giá đã qua. Gia hạn trước khi phát hành.");
             return RedirectToAction(nameof(Details), new { id });
         }
         r.Status = RfqStatus.Open;
         r.IssueDate = DateTime.Today;
         Log(DocType.RFQ, id, "Phát hành RFQ", $"Hạn nộp báo giá {r.Deadline.ToDate()}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã phát hành {r.Number}. In thư mời gửi NCC từ trang chi tiết.";
+        TempData["Success"] = I18n.T("Đã phát hành {0}. In thư mời gửi NCC từ trang chi tiết.", r.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -145,15 +145,15 @@ public class RfqsController : ProcControllerBase
         if (r == null) return NotFound();
         if (r.Status is not (RfqStatus.Draft or RfqStatus.Open)) return BadRequest();
         if (newDeadline.Date <= r.Deadline || newDeadline.Date < DateTime.Today)
-            TempData["Error"] = "Hạn mới phải sau hạn hiện tại và không ở quá khứ.";
+            TempData["Error"] = I18n.T("Hạn mới phải sau hạn hiện tại và không ở quá khứ.");
         else if (string.IsNullOrWhiteSpace(reason))
-            TempData["Error"] = "Nhập lý do gia hạn.";
+            TempData["Error"] = I18n.T("Nhập lý do gia hạn.");
         else
         {
             Log(DocType.RFQ, id, $"Gia hạn nộp báo giá {r.Deadline.ToDate()} → {newDeadline.ToDate()}", reason);
             r.Deadline = newDeadline.Date;
             await Db.SaveChangesAsync();
-            TempData["Success"] = $"Đã gia hạn {r.Number} đến {r.Deadline.ToDate()}. Thông báo lại cho các NCC được mời.";
+            TempData["Success"] = I18n.T("Đã gia hạn {0} đến {1}. Thông báo lại cho các NCC được mời.", r.Number, r.Deadline.ToDate());
         }
         return RedirectToAction(nameof(Details), new { id });
     }
@@ -182,7 +182,7 @@ public class RfqsController : ProcControllerBase
         var missing = r.Vendors.Count(v => !v.Responded);
         Log(DocType.RFQ, id, $"Mở báo giá – {r.Vendors.Count(v => v.Responded)} báo giá" + (missing > 0 ? $", {missing} NCC không nộp" : ""), summary);
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã mở báo giá. Tiếp theo: đánh giá kỹ thuật từng báo giá.";
+        TempData["Success"] = I18n.T("Đã mở báo giá. Tiếp theo: đánh giá kỹ thuật từng báo giá.");
         return RedirectToAction(nameof(Evaluate), new { id });
     }
 
@@ -194,7 +194,7 @@ public class RfqsController : ProcControllerBase
         if (r == null) return NotFound();
         if (r.Status != RfqStatus.Opened)
         {
-            TempData["Error"] = "Chỉ đánh giá kỹ thuật sau khi mở báo giá và trước khi đề xuất kết quả.";
+            TempData["Error"] = I18n.T("Chỉ đánh giá kỹ thuật sau khi mở báo giá và trước khi đề xuất kết quả.");
             return RedirectToAction(nameof(Details), new { id });
         }
         return View(new TechnicalEvaluationViewModel
@@ -214,10 +214,10 @@ public class RfqsController : ProcControllerBase
         if (r.Status != RfqStatus.Opened) return BadRequest();
         foreach (var l in vm.Lines)
         {
-            if (l.Pass == null) ModelState.AddModelError(string.Empty, $"{l.VendorName}: chọn Đạt hoặc Không đạt.");
-            if (l.Pass == false && string.IsNullOrWhiteSpace(l.Note)) ModelState.AddModelError(string.Empty, $"{l.VendorName}: nhập lý do không đạt kỹ thuật.");
+            if (l.Pass == null) ModelState.AddModelError(string.Empty, I18n.T("{0}: chọn Đạt hoặc Không đạt.", l.VendorName));
+            if (l.Pass == false && string.IsNullOrWhiteSpace(l.Note)) ModelState.AddModelError(string.Empty, I18n.T("{0}: nhập lý do không đạt kỹ thuật.", l.VendorName));
             if (l.Pass == true && r.EvaluationMethod == EvaluationMethod.WeightedScore && l.Score == null)
-                ModelState.AddModelError(string.Empty, $"{l.VendorName}: nhập điểm kỹ thuật (0–100).");
+                ModelState.AddModelError(string.Empty, I18n.T("{0}: nhập điểm kỹ thuật (0–100).", l.VendorName));
         }
         if (!ModelState.IsValid) { vm.Rfq = r; return View(vm); }
 
@@ -232,7 +232,7 @@ public class RfqsController : ProcControllerBase
         var failed = r.Vendors.Where(v => v.TechnicalPass == false).Select(v => v.Vendor?.Name).ToList();
         Log(DocType.RFQ, r.Id, "Đánh giá kỹ thuật", failed.Count == 0 ? "Tất cả báo giá đạt kỹ thuật" : "Không đạt: " + string.Join(", ", failed));
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã lưu đánh giá kỹ thuật. Xem bảng so sánh & xếp hạng để đề xuất NCC.";
+        TempData["Success"] = I18n.T("Đã lưu đánh giá kỹ thuật. Xem bảng so sánh & xếp hạng để đề xuất NCC.");
         return RedirectToAction(nameof(Compare), new { id = r.Id });
     }
 
@@ -256,12 +256,12 @@ public class RfqsController : ProcControllerBase
         if (rv == null) return NotFound();
         if (rv.Rfq!.Status != RfqStatus.Open)
         {
-            TempData["Error"] = "Chỉ nhập báo giá khi RFQ đang mở.";
+            TempData["Error"] = I18n.T("Chỉ nhập báo giá khi RFQ đang mở.");
             return RedirectToAction(nameof(Details), new { id = rv.RfqId });
         }
         if (await Db.VendorSubmissions.AnyAsync(s => s.RfqVendorId == rv.Id && s.IsLatest && !s.IsWithdrawn))
         {
-            TempData["Error"] = $"{rv.Vendor?.Name} đã nộp báo giá online (niêm phong) – không nhập thay.";
+            TempData["Error"] = I18n.T("{0} đã nộp báo giá online (niêm phong) – không nhập thay.", rv.Vendor?.Name);
             return RedirectToAction(nameof(Details), new { id = rv.RfqId });
         }
         return View(new QuoteEntryViewModel
@@ -287,11 +287,11 @@ public class RfqsController : ProcControllerBase
         if (rv == null) return NotFound();
         if (rv.Rfq!.Status != RfqStatus.Open) return BadRequest();
         if (await Db.VendorSubmissions.AnyAsync(s => s.RfqVendorId == rv.Id && s.IsLatest && !s.IsWithdrawn)) return BadRequest();
-        if (vm.Lines.All(l => l.UnitPrice <= 0)) ModelState.AddModelError(string.Empty, "Nhập đơn giá cho ít nhất một dòng.");
+        if (vm.Lines.All(l => l.UnitPrice <= 0)) ModelState.AddModelError(string.Empty, I18n.T("Nhập đơn giá cho ít nhất một dòng."));
         if (vm.ReceivedDate.Date > rv.Rfq.Deadline)
-            ModelState.AddModelError(nameof(vm.ReceivedDate), $"Báo giá gửi sau hạn {rv.Rfq.Deadline.ToDate()} – không được chấp nhận.");
+            ModelState.AddModelError(nameof(vm.ReceivedDate), I18n.T("Báo giá gửi sau hạn {0} – không được chấp nhận.", rv.Rfq.Deadline.ToDate()));
         if (vm.ReceivedDate.Date > DateTime.Today || vm.ReceivedDate.Date < rv.Rfq.IssueDate)
-            ModelState.AddModelError(nameof(vm.ReceivedDate), "Ngày gửi báo giá phải từ ngày phát hành RFQ đến hôm nay.");
+            ModelState.AddModelError(nameof(vm.ReceivedDate), I18n.T("Ngày gửi báo giá phải từ ngày phát hành RFQ đến hôm nay."));
         if (!ModelState.IsValid)
         {
             vm.RfqVendor = await Db.RfqVendors.Include(x => x.Vendor).Include(x => x.Rfq).FirstOrDefaultAsync(x => x.Id == vm.RfqVendorId);
@@ -312,7 +312,7 @@ public class RfqsController : ProcControllerBase
         rv.LeadTimeDays = vm.LeadTimeDays; rv.PaymentTerms = vm.PaymentTerms; rv.Warranty = vm.Warranty;
         rv.VatPercent = vm.VatPercent; rv.Note = vm.Note;
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã lưu báo giá của nhà cung cấp.";
+        TempData["Success"] = I18n.T("Đã lưu báo giá của nhà cung cấp.");
         return RedirectToAction(nameof(Details), new { id = rv.RfqId });
     }
 
@@ -323,7 +323,7 @@ public class RfqsController : ProcControllerBase
         if (r == null) return NotFound();
         if (!RfqEvaluation.IsUnsealed(r))
         {
-            TempData["Error"] = "Báo giá đang niêm phong – chỉ so sánh được sau khi mở báo giá.";
+            TempData["Error"] = I18n.T("Báo giá đang niêm phong – chỉ so sánh được sau khi mở báo giá.");
             return RedirectToAction(nameof(Details), new { id });
         }
         var vm = new ComparisonViewModel { Rfq = r, MinValidQuotes = Settings.MinValidQuotes, Scores = RfqEvaluation.Evaluate(r) };
@@ -356,11 +356,11 @@ public class RfqsController : ProcControllerBase
         if (r == null) return NotFound();
         if (r.Status != RfqStatus.Opened) return BadRequest();
         IActionResult Fail(string msg) { TempData["Error"] = msg; return RedirectToAction(nameof(Compare), new { id }); }
-        if (string.IsNullOrWhiteSpace(reason)) return Fail("Nhập lý do chọn nhà cung cấp.");
-        if (!RfqEvaluation.AllTechnicallyEvaluated(r)) return Fail("Đánh giá kỹ thuật tất cả báo giá trước khi đề xuất kết quả.");
+        if (string.IsNullOrWhiteSpace(reason)) return Fail(I18n.T("Nhập lý do chọn nhà cung cấp."));
+        if (!RfqEvaluation.AllTechnicallyEvaluated(r)) return Fail(I18n.T("Đánh giá kỹ thuật tất cả báo giá trước khi đề xuất kết quả."));
         var scores = RfqEvaluation.Evaluate(r);
         var chosen = scores.FirstOrDefault(s => s.Quote.VendorId == vendorId);
-        if (chosen == null || !chosen.Valid) return Fail("Chỉ chọn được báo giá hợp lệ (chào đủ các dòng và đạt kỹ thuật).");
+        if (chosen == null || !chosen.Valid) return Fail(I18n.T("Chỉ chọn được báo giá hợp lệ (chào đủ các dòng và đạt kỹ thuật)."));
 
         var approvalReasons = new List<string>();
         if (chosen.Rank != 1) approvalReasons.Add($"Không chọn NCC xếp hạng 1 (chọn hạng {chosen.Rank})");
@@ -377,13 +377,13 @@ public class RfqsController : ProcControllerBase
             r.ResultApprovalReason = string.Join("; ", approvalReasons);
             Log(DocType.RFQ, id, "Trình Giám đốc duyệt kết quả", r.ResultApprovalReason);
             await Db.SaveChangesAsync();
-            TempData["Success"] = $"Đã đề xuất {chosen.Quote.Vendor.Name}. Kết quả cần Giám đốc duyệt: {r.ResultApprovalReason}.";
+            TempData["Success"] = I18n.T("Đã đề xuất {0}. Kết quả cần Giám đốc duyệt: {1}.", chosen.Quote.Vendor.Name, r.ResultApprovalReason);
             return RedirectToAction(nameof(Details), new { id });
         }
         r.ResultApprovalReason = approvalReasons.Count > 0 ? string.Join("; ", approvalReasons) : null;
         Log(DocType.RFQ, id, approvalReasons.Count > 0 ? "Quản trị duyệt kết quả" : "Duyệt kết quả (NCC hạng 1, đủ báo giá hợp lệ)");
         var po = await FinalizeAwardAsync(r);
-        TempData["Success"] = $"Đã chọn {chosen.Quote.Vendor.Name} và tạo đơn mua hàng nháp {po.Number}. Kiểm tra rồi trình duyệt / gửi NCC.";
+        TempData["Success"] = I18n.T("Đã chọn {0} và tạo đơn mua hàng nháp {1}. Kiểm tra rồi trình duyệt / gửi NCC.", chosen.Quote.Vendor.Name, po.Number);
         return RedirectToAction("Details", "PurchaseOrders", new { id = po.Id });
     }
 
@@ -398,7 +398,7 @@ public class RfqsController : ProcControllerBase
         if (r.Status != RfqStatus.PendingApproval || r.ProposedVendorId == null) return BadRequest();
         if (!approve && string.IsNullOrWhiteSpace(comment))
         {
-            TempData["Error"] = "Nhập lý do trả lại.";
+            TempData["Error"] = I18n.T("Nhập lý do trả lại.");
             return RedirectToAction(nameof(Details), new { id });
         }
         IActionResult Back() => !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
@@ -409,12 +409,12 @@ public class RfqsController : ProcControllerBase
             r.ProposedVendorId = null;
             r.ResultApprovalReason = null;
             await Db.SaveChangesAsync();
-            TempData["Success"] = $"Đã trả lại kết quả {r.Number} để đánh giá lại.";
+            TempData["Success"] = I18n.T("Đã trả lại kết quả {0} để đánh giá lại.", r.Number);
             return Back();
         }
         Log(DocType.RFQ, id, "Giám đốc duyệt kết quả", comment);
         var po = await FinalizeAwardAsync(r);
-        TempData["Success"] = $"Đã duyệt kết quả {r.Number}, tạo đơn mua hàng nháp {po.Number}.";
+        TempData["Success"] = I18n.T("Đã duyệt kết quả {0}, tạo đơn mua hàng nháp {1}.", r.Number, po.Number);
         return Back();
     }
 
@@ -481,7 +481,7 @@ public class RfqsController : ProcControllerBase
         r.Status = RfqStatus.Cancelled;
         Log(DocType.RFQ, id, "Hủy RFQ", reason);
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã hủy {r.Number}.";
+        TempData["Success"] = I18n.T("Đã hủy {0}.", r.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 

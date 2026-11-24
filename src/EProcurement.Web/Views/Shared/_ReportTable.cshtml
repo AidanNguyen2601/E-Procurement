@@ -12,13 +12,13 @@
 }
 <div class="card h-100">
     <div class="card-header d-flex justify-content-between"><span>@t.Title</span>
-        @if (t.Chart != ChartKind.None && points.Any()) { <span class="small fw-normal text-muted">Biểu đồ: @t.Columns[t.ChartValue].Title</span> }</div>
+        @if (t.Chart != ChartKind.None && points.Any()) { <span class="small fw-normal text-muted">@L["Biểu đồ:"] @t.Columns[t.ChartValue].Title</span> }</div>
     @if (t.Chart != ChartKind.None && points.Any(p => p.Value > 0))
     {
         <div class="card-body pb-0">
             @if (t.Chart == ChartKind.Column)
             {
-                <div class="cols" role="img" aria-label="Biểu đồ cột @t.Columns[t.ChartValue].Title theo @t.Columns[t.ChartLabel].Title">
+                <div class="cols" role="img" aria-label="@L["Biểu đồ cột {0} theo {1}", t.Columns[t.ChartValue].Title, t.Columns[t.ChartLabel].Title]">
                     @foreach (var p in points)
                     {
                         var h = max <= 0 || p.Value <= 0 ? 0 : (int)Math.Round(p.Value * 140 / max);
@@ -49,7 +49,7 @@
         {
             <tr>@for (var i = 0; i < t.Columns.Count; i++) { <td class="@(ReportFormat.IsNumeric(t.Columns[i].Kind) ? "money" : "")">@ReportFormat.Cell(r.ElementAtOrDefault(i), t.Columns[i].Kind)</td> }</tr>
         }
-        @if (!t.Rows.Any()) { <tr><td colspan="@t.Columns.Count" class="text-muted p-3">Không có dữ liệu trong phạm vi lọc.</td></tr> }
+        @if (!t.Rows.Any()) { <tr><td colspan="@t.Columns.Count" class="text-muted p-3">@L["Không có dữ liệu trong phạm vi lọc."]</td></tr> }
         </tbody>
         @if (t.Totals != null && t.Rows.Any())
         {

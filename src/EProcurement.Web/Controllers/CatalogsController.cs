@@ -83,7 +83,7 @@ public class CatalogsController : Controller
         await _db.SaveChangesAsync();
         var cascaded = renamedFrom == null ? 0 : await CascadeRenameAsync(model.Type, renamedFrom, name);
         await tx.CommitAsync();
-        TempData["Success"] = $"Đã lưu \"{name}\"." + (cascaded > 0 ? $" Cập nhật tên mới cho {cascaded} bản ghi đang dùng." : "");
+        TempData["Success"] = I18n.T("Đã lưu \"{0}\".", name) + (cascaded > 0 ? I18n.T(" Cập nhật tên mới cho {0} bản ghi đang dùng.", cascaded) : "");
         return RedirectToAction(nameof(Index), new { type = model.Type });
     }
 
@@ -95,7 +95,7 @@ public class CatalogsController : Controller
         if (!CanEdit(Catalogs.Info(e.Type))) return Forbid();
         e.IsActive = !e.IsActive;
         await _db.SaveChangesAsync();
-        TempData["Success"] = e.IsActive ? $"Đã dùng lại \"{e.Name}\"." : $"Đã ngưng sử dụng \"{e.Name}\" (dữ liệu cũ giữ nguyên, không chọn mới được).";
+        TempData["Success"] = e.IsActive ? I18n.T("Đã dùng lại \"{0}\".", e.Name) : I18n.T("Đã ngưng sử dụng \"{0}\" (dữ liệu cũ giữ nguyên, không chọn mới được).", e.Name);
         return RedirectToAction(nameof(Index), new { type = e.Type });
     }
 
@@ -108,12 +108,12 @@ public class CatalogsController : Controller
         var used = (await UsageAsync(e.Type)).GetValueOrDefault(e.Name);
         if (used > 0)
         {
-            TempData["Error"] = $"\"{e.Name}\" đang được dùng ở {used} bản ghi – chọn \"Ngưng dùng\" thay vì xóa.";
+            TempData["Error"] = I18n.T("\"{0}\" đang được dùng ở {1} bản ghi – chọn \"Ngưng dùng\" thay vì xóa.", e.Name, used);
             return RedirectToAction(nameof(Index), new { type = e.Type });
         }
         _db.CatalogEntries.Remove(e);
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã xóa \"{e.Name}\".";
+        TempData["Success"] = I18n.T("Đã xóa \"{0}\".", e.Name);
         return RedirectToAction(nameof(Index), new { type = e.Type });
     }
 

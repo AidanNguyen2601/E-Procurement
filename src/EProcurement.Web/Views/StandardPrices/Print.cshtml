@@ -1,22 +1,22 @@
 @model StandardPriceList
 @inject SettingsStore SettingsDb
 @{ ViewData["Title"] = $"Bảng giá {Model.Number}"; var approved = Model.Status == StandardPriceStatus.Approved; }
-<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button></div>
 <div class="card paper mb-4"><div class="card-body p-4">@{ var printCfg = await SettingsDb.GetAsync(SettingsStore.Print, () => new PrintSettings()); }<partial name="_PrintHeader" model="printCfg" />
-    <div class="text-center mb-3"><h4 class="mb-0">BẢNG GIÁ TIÊU CHUẨN HÀNG HÓA, VẬT TƯ</h4>
-        <div>@Model.Title</div><div class="text-muted">Số @Model.Number · hiệu lực từ @Model.EffectiveFrom.ToDate()@(Model.EffectiveTo.HasValue ? " đến " + Model.EffectiveTo.ToDate() : "")</div></div>
-    @if (!string.IsNullOrEmpty(Model.Basis)) { <p class="small"><b>Căn cứ:</b> @Model.Basis</p> }
+    <div class="text-center mb-3"><h4 class="mb-0">@L["BẢNG GIÁ TIÊU CHUẨN HÀNG HÓA, VẬT TƯ"]</h4>
+        <div>@Model.Title</div><div class="text-muted">@L["Số"] @Model.Number @L["· hiệu lực từ"] @Model.EffectiveFrom.ToDate()@(Model.EffectiveTo.HasValue ? L[" đến "] + Model.EffectiveTo.ToDate() : "")</div></div>
+    @if (!string.IsNullOrEmpty(Model.Basis)) { <p class="small"><b>@L["Căn cứ:"]</b> @Model.Basis</p> }
     <table class="table table-bordered table-sm small">
-        <thead><tr><th>TT</th><th>Mã</th><th>Tên hàng hóa, vật tư</th><th>ĐVT</th><th class="money">Giá tiêu chuẩn (đồng, chưa VAT)</th><th class="money">Giá trần</th></tr></thead>
+        <thead><tr><th>TT</th><th>@L["Mã"]</th><th>@L["Tên hàng hóa, vật tư"]</th><th>@L["ĐVT"]</th><th class="money">@L["Giá tiêu chuẩn (đồng, chưa VAT)"]</th><th class="money">@L["Giá trần"]</th></tr></thead>
         <tbody>
         @{ var n = 1; }
         @foreach (var l in Model.Lines.OrderBy(l => l.Item?.Code)) { <tr><td>@(n++)</td><td>@l.Item?.Code</td><td>@l.Item?.Name</td><td>@l.Item?.Unit</td><td class="money">@l.StandardPrice.ToMoney()</td><td class="money">@l.CeilingPrice.ToMoney()</td></tr> }
         </tbody>
     </table>
-    <p class="small">Mua với đơn giá vượt giá trần phải nêu lý do trên đơn mua hàng và được Giám đốc phê duyệt.</p>
+    <p class="small">@L["Mua với đơn giá vượt giá trần phải nêu lý do trên đơn mua hàng và được Giám đốc phê duyệt."]</p>
     <div class="row text-center mt-4 small">
-        <div class="col">NGƯỜI LẬP<br /><br /><br /><br />@Model.CreatedBy?.FullName</div>
-        <div class="col">GIÁM ĐỐC<br />@(approved ? $"(đã ký điện tử {Model.DecidedAt:dd/MM/yyyy HH:mm})" : "")<br /><br /><br />@Model.DecidedBy?.FullName</div>
+        <div class="col">@L["NGƯỜI LẬP"]<br /><br /><br /><br />@Model.CreatedBy?.FullName</div>
+        <div class="col">@L["GIÁM ĐỐC"]<br />@(approved ? L["(đã ký điện tử {0:dd/MM/yyyy HH:mm})", Model.DecidedAt] : "")<br /><br /><br />@Model.DecidedBy?.FullName</div>
     </div>
     @if (printCfg.Footer != null) { <div class="small text-muted text-end border-top mt-4 pt-1">@printCfg.Footer</div> }
 </div></div>

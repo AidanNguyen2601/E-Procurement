@@ -1,7 +1,7 @@
 @model List<SignatureCheck>
 @if (Model.Any())
 {
-    <div class="card mt-3"><div class="card-header d-flex align-items-center gap-2">@Icon.Svg("shield-check", 16) Chữ ký phê duyệt</div>
+    <div class="card mt-3"><div class="card-header d-flex align-items-center gap-2">@Icon.Svg("shield-check", 16) @L["Chữ ký phê duyệt"]</div>
         <ul class="list-group list-group-flush small">
             @foreach (var c in Model)
             {
@@ -10,10 +10,10 @@
                     <div class="d-flex justify-content-between gap-2"><b>@s.User?.FullName</b><span class="text-muted">@s.SignedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
                     <div>@s.Action</div>
                     <div class="mt-1">
-                        @if (!c.Authentic) { <span class="badge bg-danger">Chữ ký không hợp lệ</span> }
-                        else { <span class="badge bg-success-subtle text-success">Chữ ký hợp lệ</span> }
-                        @if (c.ContentUnchanged) { <span class="badge bg-success-subtle text-success">Nội dung không đổi từ khi ký</span> }
-                        else { <span class="badge bg-warning text-dark" title="Nội dung chính (dòng hàng, giá trị, NCC…) khác với lúc ký">Nội dung đã thay đổi sau khi ký</span> }
+                        @if (!c.Authentic) { <span class="badge bg-danger">@L["Chữ ký không hợp lệ"]</span> }
+                        else { <span class="badge bg-success-subtle text-success">@L["Chữ ký hợp lệ"]</span> }
+                        @if (c.ContentUnchanged) { <span class="badge bg-success-subtle text-success">@L["Nội dung không đổi từ khi ký"]</span> }
+                        else { <span class="badge bg-warning text-dark" title="@L["Nội dung chính (dòng hàng, giá trị, NCC…) khác với lúc ký"]">@L["Nội dung đã thay đổi sau khi ký"]</span> }
                     </div>
                     <div class="text-muted text-break" style="font-size:.72rem">SHA-256 @s.ContentHash · @s.Method@(s.IpAddress != null ? " · " + s.IpAddress : "")</div>
                 </li>

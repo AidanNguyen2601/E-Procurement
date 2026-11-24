@@ -5,28 +5,27 @@
     var won = Model.AwardedVendorId == r.Bid.VendorId;
     ViewData["Title"] = $"Thông báo kết quả {Model.Number} – {r.Bid.Vendor?.Name}";
 }
-<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button></div>
 <div class="card paper"><div class="card-body p-4">
-    <div class="mb-3"><h4 class="mb-0">THÔNG BÁO KẾT QUẢ LỰA CHỌN NHÀ THẦU</h4>
-        <div class="text-muted">Gói thầu @Model.Number – @Model.Title · Ngày @DateTime.Today.ToDate()</div></div>
-    <p>Kính gửi: <b>@r.Bid.Vendor?.Name</b></p>
-    <p>Bên mời thầu thông báo kết quả lựa chọn nhà thầu gói thầu <b>@Model.Title</b> đã được phê duyệt như sau:</p>
+    <div class="mb-3"><h4 class="mb-0">@L["THÔNG BÁO KẾT QUẢ LỰA CHỌN NHÀ THẦU"]</h4>
+        <div class="text-muted">@L["Gói thầu"] @Model.Number – @Model.Title @L["· Ngày"] @DateTime.Today.ToDate()</div></div>
+    <p>@L["Kính gửi:"] <b>@r.Bid.Vendor?.Name</b></p>
+    <p>@L["Bên mời thầu thông báo kết quả lựa chọn nhà thầu gói thầu"] <b>@Model.Title</b> @L["đã được phê duyệt như sau:"]</p>
     <ul>
-        <li>Nhà thầu trúng thầu: <b>@Model.AwardedVendor?.Name</b></li>
-        <li>Giá trúng thầu: <b>@Model.AwardPrice?.ToMoney() đ</b> (chưa VAT)</li>
-        <li>Loại hợp đồng: @Model.ContractType · thời gian thực hiện @Model.ContractDurationDays ngày</li>
+        <li>@L["Nhà thầu trúng thầu:"] <b>@Model.AwardedVendor?.Name</b></li>
+        <li>@L["Giá trúng thầu:"] <b>@Model.AwardPrice?.ToMoney() đ</b> @L["(chưa VAT)"]</li>
+        <li>@L["Loại hợp đồng:"] @Model.ContractType @L["· thời gian thực hiện"] @Model.ContractDurationDays @L["ngày"]</li>
     </ul>
     @if (won)
     {
-        <p>Đề nghị Quý công ty chuẩn bị bảo đảm thực hiện hợp đồng (@Model.PerformanceSecurityPercent.ToString("0.##")% giá hợp đồng) và cử đại diện hoàn thiện, ký kết hợp đồng
-            sau khi hết thời hạn kiến nghị (@Model.ComplaintDeadline.ToDateTime()).</p>
+        <p>@L["Đề nghị Quý công ty chuẩn bị bảo đảm thực hiện hợp đồng ("]@Model.PerformanceSecurityPercent.ToString("0.##")@L["% giá hợp đồng) và cử đại diện hoàn thiện, ký kết hợp đồng sau khi hết thời hạn kiến nghị ("]@Model.ComplaintDeadline.ToDateTime()).</p>
     }
     else
     {
         <p>Hồ sơ dự thầu của Quý công ty không được lựa chọn. Lý do:
-            @(r.Rank.HasValue ? $"xếp hạng thứ {r.Rank} theo phương pháp đánh giá của HSMT." : string.Join("; ", r.Issues) + ".")</p>
-        <p>Bảo đảm dự thầu (@r.Bid.BidSecurityRef) sẽ được hoàn trả theo quy định.</p>
+            @(r.Rank.HasValue ? L["xếp hạng thứ {0} theo phương pháp đánh giá của HSMT.", r.Rank] : string.Join("; ", r.Issues) + ".")</p>
+        <p>@L["Bảo đảm dự thầu ("]@r.Bid.BidSecurityRef@L[") sẽ được hoàn trả theo quy định."]</p>
     }
-    <p>Nếu không đồng ý với kết quả, Quý công ty có quyền gửi kiến nghị đến bên mời thầu trước <b>@Model.ComplaintDeadline.ToDateTime()</b>.</p>
-    <p class="mt-4">Liên hệ: @Model.Buyer?.FullName – @Model.Buyer?.Email</p>
+    <p>@L["Nếu không đồng ý với kết quả, Quý công ty có quyền gửi kiến nghị đến bên mời thầu trước"] <b>@Model.ComplaintDeadline.ToDateTime()</b>.</p>
+    <p class="mt-4">@L["Liên hệ:"] @Model.Buyer?.FullName – @Model.Buyer?.Email</p>
 </div></div>

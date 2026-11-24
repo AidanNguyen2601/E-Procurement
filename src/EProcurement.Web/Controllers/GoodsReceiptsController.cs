@@ -33,7 +33,7 @@ public class GoodsReceiptsController : ProcControllerBase
         if (po == null) return NotFound();
         if (po.Status is not (PoStatus.Issued or PoStatus.PartiallyReceived))
         {
-            TempData["Error"] = "Chỉ nhận hàng cho PO đã gửi NCC.";
+            TempData["Error"] = I18n.T("Chỉ nhận hàng cho PO đã gửi NCC.");
             return RedirectToAction("Details", "PurchaseOrders", new { id = poId });
         }
         return View(new ReceiptFormViewModel
@@ -60,12 +60,12 @@ public class GoodsReceiptsController : ProcControllerBase
             var pl = po.Lines.FirstOrDefault(x => x.Id == l.PurchaseOrderLineId);
             if (pl == null) continue;
             if (l.QuantityAccepted > pl.RemainingQuantity)
-                ModelState.AddModelError(string.Empty, $"\"{pl.Description}\": số nhận đạt ({l.QuantityAccepted.ToQty()}) vượt số còn lại ({pl.RemainingQuantity.ToQty()}).");
+                ModelState.AddModelError(string.Empty, I18n.T("\"{0}\": số nhận đạt ({1}) vượt số còn lại ({2}).", pl.Description, l.QuantityAccepted.ToQty(), pl.RemainingQuantity.ToQty()));
             l.Description = pl.Description; l.Unit = pl.Unit; l.Ordered = pl.Quantity; l.Received = pl.ReceivedQuantity;
         }
         if (vm.Lines.All(l => l.QuantityAccepted <= 0 && l.QuantityRejected <= 0))
-            ModelState.AddModelError(string.Empty, "Nhập số lượng nhận cho ít nhất một dòng.");
-        if (vm.ReceiptDate > DateTime.Today) ModelState.AddModelError(nameof(vm.ReceiptDate), "Ngày nhận không được ở tương lai");
+            ModelState.AddModelError(string.Empty, I18n.T("Nhập số lượng nhận cho ít nhất một dòng."));
+        if (vm.ReceiptDate > DateTime.Today) ModelState.AddModelError(nameof(vm.ReceiptDate), I18n.T("Ngày nhận không được ở tương lai"));
         if (!ModelState.IsValid)
         {
             vm.PurchaseOrder = po;
@@ -109,7 +109,7 @@ public class GoodsReceiptsController : ProcControllerBase
         }
         await Db.SaveChangesAsync();
 
-        TempData["Success"] = $"Đã lập {g.Number}. Đơn hàng: {po.Status.GetDisplayName()}." + (po.Status == PoStatus.Received ? " Hãy đánh giá nhà cung cấp." : "");
+        TempData["Success"] = I18n.T("Đã lập {0}. Đơn hàng: {1}.", g.Number, po.Status.GetDisplayName()) + (po.Status == PoStatus.Received ? I18n.T(" Hãy đánh giá nhà cung cấp.") : "");
         return RedirectToAction("Details", "PurchaseOrders", new { id = po.Id });
     }
 }

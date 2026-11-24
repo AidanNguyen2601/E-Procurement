@@ -9,65 +9,65 @@
     var combined = Model.EvaluationMethod == TenderEvaluationMethod.Combined;
     var members = Model.Committee.OrderByDescending(m => m.IsLeader).ThenBy(m => m.User?.FullName).ToList();
 }
-<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">In / Lưu PDF</button></div>
+<div class="toolbar no-print"><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button></div>
 
 <div class="card paper mb-4"><div class="card-body p-4">
-    <div class="text-center mb-3"><h4 class="mb-0">BIÊN BẢN MỞ THẦU</h4><div class="text-muted">Gói thầu @Model.Number – @Model.Title</div></div>
-    <p class="small">Thời điểm đóng thầu: @Model.ClosingAt.ToDateTime() · Thời điểm mở thầu: @Model.OpenedAt.ToDateTime() · Phương thức: @Model.EnvelopeMethod.GetDisplayName().<br />
-        Số nhà thầu nhận HSMT: @Model.Bidders.Count · Số HSDT nộp đúng hạn: @submitted.Count.</p>
+    <div class="text-center mb-3"><h4 class="mb-0">@L["BIÊN BẢN MỞ THẦU"]</h4><div class="text-muted">@L["Gói thầu"] @Model.Number – @Model.Title</div></div>
+    <p class="small">@L["Thời điểm đóng thầu:"] @Model.ClosingAt.ToDateTime() @L["· Thời điểm mở thầu:"] @Model.OpenedAt.ToDateTime() @L["· Phương thức:"] @Model.EnvelopeMethod.GetDisplayName().<br />
+        @L["Số nhà thầu nhận HSMT:"] @Model.Bidders.Count @L["· Số HSDT nộp đúng hạn:"] @submitted.Count.</p>
     <table class="table table-bordered table-sm small">
-        <thead><tr><th>STT</th><th>Nhà thầu</th><th>Thời điểm nộp</th>
-            @if (Model.EnvelopeMethod == EnvelopeMethod.OneEnvelope) { <th class="money">Giá dự thầu</th><th class="money">Giảm giá</th> }
-            <th class="money">Bảo đảm dự thầu</th><th>Số bảo lãnh / hiệu lực</th><th>Hiệu lực HSDT</th><th>Thời gian giao</th></tr></thead>
+        <thead><tr><th>STT</th><th>@L["Nhà thầu"]</th><th>@L["Thời điểm nộp"]</th>
+            @if (Model.EnvelopeMethod == EnvelopeMethod.OneEnvelope) { <th class="money">@L["Giá dự thầu"]</th><th class="money">@L["Giảm giá"]</th> }
+            <th class="money">@L["Bảo đảm dự thầu"]</th><th>@L["Số bảo lãnh / hiệu lực"]</th><th>@L["Hiệu lực HSDT"]</th><th>@L["Thời gian giao"]</th></tr></thead>
         <tbody>
         @{ var n = 1; }
         @foreach (var b in submitted)
         {
             <tr><td>@(n++)</td><td>@b.Vendor?.Name</td><td>@b.SubmittedAt.ToDateTime()</td>
                 @if (Model.EnvelopeMethod == EnvelopeMethod.OneEnvelope) { <td class="money">@b.BidPrice.ToMoney()</td><td class="money">@b.DiscountPercent.ToString("0.##")%</td> }
-                <td class="money">@b.BidSecurityAmount.ToMoney()</td><td>@b.BidSecurityRef · @b.BidSecurityExpiry.ToDate()</td><td>@b.ValidityDays ngày</td><td>@b.LeadTimeDays ngày</td></tr>
+                <td class="money">@b.BidSecurityAmount.ToMoney()</td><td>@b.BidSecurityRef · @b.BidSecurityExpiry.ToDate()</td><td>@b.ValidityDays @L["ngày"]</td><td>@b.LeadTimeDays @L["ngày"]</td></tr>
         }
         </tbody>
     </table>
-    @if (Model.EnvelopeMethod == EnvelopeMethod.TwoEnvelope) { <p class="small">Hồ sơ đề xuất tài chính được niêm phong, mở sau khi hoàn thành đánh giá kỹ thuật@(Model.FinancialOpenedAt.HasValue ? $" (đã mở lúc {Model.FinancialOpenedAt.ToDateTime()})" : "").</p> }
+    @if (Model.EnvelopeMethod == EnvelopeMethod.TwoEnvelope) { <p class="small">@L["Hồ sơ đề xuất tài chính được niêm phong, mở sau khi hoàn thành đánh giá kỹ thuật"]@(Model.FinancialOpenedAt.HasValue ? L[" (đã mở lúc {0})", Model.FinancialOpenedAt.ToDateTime()] : "").</p> }
 </div></div>
 
 <div class="card paper" style="page-break-before:always"><div class="card-body p-4">
-    <div class="text-center mb-3"><h4 class="mb-0">BÁO CÁO ĐÁNH GIÁ HỒ SƠ DỰ THẦU</h4><div class="text-muted">Gói thầu @Model.Number – @Model.Title · Giá gói thầu @Model.PackageBudget.ToMoney() đ</div></div>
-    <p class="mb-1"><b>1. Tổ chuyên gia</b></p>
+    <div class="text-center mb-3"><h4 class="mb-0">@L["BÁO CÁO ĐÁNH GIÁ HỒ SƠ DỰ THẦU"]</h4><div class="text-muted">@L["Gói thầu"] @Model.Number – @Model.Title @L["· Giá gói thầu"] @Model.PackageBudget.ToMoney() đ</div></div>
+    <p class="mb-1"><b>@L["1. Tổ chuyên gia"]</b></p>
     <ul class="small">
-        @foreach (var m in members) { <li>@m.User?.FullName – @m.User?.Department @(m.IsLeader ? "(tổ trưởng)" : "") · cam kết không xung đột lợi ích: @(m.ConflictDeclaredAt?.ToDateTime() ?? "chưa") · nộp phiếu chấm: @(m.ScoringCompletedAt?.ToDateTime() ?? "chưa")</li> }
+        @foreach (var m in members) { <li>@m.User?.FullName – @m.User?.Department @(m.IsLeader ? L["(tổ trưởng)"] : "") @L["· cam kết không xung đột lợi ích:"] @(m.ConflictDeclaredAt?.ToDateTime() ?? L["chưa"]) @L["· nộp phiếu chấm:"] @(m.ScoringCompletedAt?.ToDateTime() ?? L["chưa"])</li> }
     </ul>
-    <p class="mb-1"><b>2. Đánh giá hợp lệ và năng lực, kinh nghiệm</b></p>
+    <p class="mb-1"><b>@L["2. Đánh giá hợp lệ và năng lực, kinh nghiệm"]</b></p>
     <table class="table table-bordered table-sm small">
-        <thead><tr><th>Nhà thầu</th><th>Hợp lệ</th><th>Năng lực, kinh nghiệm</th></tr></thead>
+        <thead><tr><th>@L["Nhà thầu"]</th><th>@L["Hợp lệ"]</th><th>@L["Năng lực, kinh nghiệm"]</th></tr></thead>
         <tbody>@foreach (var b in submitted)
         {
             <tr><td>@b.Vendor?.Name</td>
-                <td>@(b.Valid == true ? "Đạt" : b.Valid == false ? "Không đạt" : "—") @b.ValidNote</td>
-                <td>@(b.Qualified == true ? "Đạt" : b.Qualified == false ? "Không đạt" : "—") @b.QualifiedNote</td></tr>
+                <td>@(b.Valid == true ? L["Đạt"] : b.Valid == false ? L["Không đạt"] : "—") @b.ValidNote</td>
+                <td>@(b.Qualified == true ? L["Đạt"] : b.Qualified == false ? L["Không đạt"] : "—") @b.QualifiedNote</td></tr>
         }</tbody>
     </table>
-    <p class="mb-1"><b>3. Đánh giá kỹ thuật</b> (đạt khi điểm trung bình ≥ @Model.MinTechnicalScore)</p>
+    <p class="mb-1"><b>@L["3. Đánh giá kỹ thuật"]</b> @L["(đạt khi điểm trung bình ≥"] @Model.MinTechnicalScore)</p>
     @if (scoringDone)
     {
         <table class="table table-bordered table-sm small">
-            <thead><tr><th>Nhà thầu</th>@foreach (var m in members) { <th class="money">@m.User?.FullName</th> }<th class="money">Trung bình</th><th>Kết quả</th></tr></thead>
+            <thead><tr><th>@L["Nhà thầu"]</th>@foreach (var m in members) { <th class="money">@m.User?.FullName</th> }<th class="money">@L["Trung bình"]</th><th>@L["Kết quả"]</th></tr></thead>
             <tbody>@foreach (var r in results.Where(r => r.Responsive))
             {
                 <tr><td>@r.Bid.Vendor?.Name</td>
                     @foreach (var m in members) { var sc = r.Bid.Scores.FirstOrDefault(x => x.MemberUserId == m.UserId); <td class="money" title="@sc?.Comment">@sc?.TechnicalScore</td> }
-                    <td class="money fw-semibold">@r.TechnicalAverage?.ToString("0.##")</td><td>@(r.TechnicalPass ? "Đạt" : "Không đạt")</td></tr>
+                    <td class="money fw-semibold">@r.TechnicalAverage?.ToString("0.##")</td><td>@(r.TechnicalPass ? L["Đạt"] : L["Không đạt"])</td></tr>
             }</tbody>
         </table>
     }
-    else { <p class="small text-muted">Tổ chuyên gia chưa hoàn thành chấm điểm – điểm từng thành viên chưa được công khai.</p> }
+    else { <p class="small text-muted">@L["Tổ chuyên gia chưa hoàn thành chấm điểm – điểm từng thành viên chưa được công khai."]</p> }
 
-    <p class="mb-1"><b>4. Đánh giá về giá và xếp hạng</b> – @Model.EvaluationMethod.GetDisplayName()@(combined ? $" (KT {Model.TechnicalWeight}%, giá {Model.PriceWeight}%)" : "")</p>
+    <p class="mb-1"><b>@L["4. Đánh giá về giá và xếp hạng"]</b> – @Model.EvaluationMethod.GetDisplayName()@(combined ? L[" (KT {0}%, giá {1}%)", Model.TechnicalWeight, Model.PriceWeight] : "")</p>
     @if (pricesVisible && scoringDone)
     {
         <table class="table table-bordered table-sm small">
-            <thead><tr><th>Hạng</th><th>Nhà thầu</th><th class="money">Giá dự thầu</th><th class="money">Giảm giá</th><th class="money">Giá đánh giá (gồm VAT)</th>@if (combined) { <th class="money">Điểm giá</th><th class="money">Tổng điểm</th> }</tr></thead>
+            <thead><tr><th>@L["Hạng"]</th><th>@L["Nhà thầu"]</th><th class="money">@L["Giá dự thầu"]</th><th class="money">@L["Giảm giá"]</th><th class="money">@L["Giá đánh giá (gồm VAT)"]</th>@if (combined) { <th class="money">@L["Điểm giá"]</th><th class="money">@L["Tổng điểm"]</th> }</tr></thead>
             <tbody>@foreach (var r in results.Where(r => r.TechnicalPass))
             {
                 <tr class="@(r.Rank == 1 ? "table-success" : "")"><td>@r.Rank</td><td>@r.Bid.Vendor?.Name</td><td class="money">@r.Bid.BidPrice.ToMoney()</td><td class="money">@r.Bid.DiscountPercent.ToString("0.##")%</td>
@@ -75,20 +75,20 @@
             }</tbody>
         </table>
     }
-    else { <p class="small text-muted">Chưa xếp hạng.</p> }
+    else { <p class="small text-muted">@L["Chưa xếp hạng."]</p> }
 
-    <p class="mb-1"><b>5. Kết luận</b></p>
+    <p class="mb-1"><b>@L["5. Kết luận"]</b></p>
     @if (Model.AwardedVendor != null)
     {
-        <p class="small">Đề nghị lựa chọn <b>@Model.AwardedVendor.Name</b>, giá trúng thầu @Model.AwardPrice?.ToMoney() đ (trước VAT)
-            @if (Model.AwardPrice > Model.PackageBudget) { <span class="text-danger">– vượt giá gói thầu</span> }. @Model.AwardReason</p>
+        <p class="small">@L["Đề nghị lựa chọn"] <b>@Model.AwardedVendor.Name</b>, giá trúng thầu @Model.AwardPrice?.ToMoney() đ (trước VAT)
+            @if (Model.AwardPrice > Model.PackageBudget) { <span class="text-danger">@L["– vượt giá gói thầu"]</span> }. @Model.AwardReason</p>
     }
-    else { <p class="small text-muted">Chưa có kết luận.</p> }
+    else { <p class="small text-muted">@L["Chưa có kết luận."]</p> }
 
-    <p class="mb-1"><b>6. Diễn biến</b></p>
+    <p class="mb-1"><b>@L["6. Diễn biến"]</b></p>
     <ul class="small">@foreach (var h in history) { <li>@h.CreatedAt.ToDateTime() – @h.User?.FullName: @h.Action@(string.IsNullOrEmpty(h.Comment) ? "" : " – " + h.Comment)</li> }</ul>
 
     <div class="row text-center mt-4 small">
-        @foreach (var m in members) { <div class="col">@(m.IsLeader ? "TỔ TRƯỞNG" : "THÀNH VIÊN")<br /><br /><br /><br />@m.User?.FullName</div> }
+        @foreach (var m in members) { <div class="col">@(m.IsLeader ? L["TỔ TRƯỞNG"] : L["THÀNH VIÊN"])<br /><br /><br /><br />@m.User?.FullName</div> }
     </div>
 </div></div>

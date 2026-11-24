@@ -31,13 +31,13 @@ public class SampleDataController : Controller
         {
             await SampleDataSeeder.LoadAsync(_db, _hasher);
             var s = await SampleDataSeeder.StatusAsync(_db);
-            TempData["Success"] = $"Đã nạp dữ liệu mẫu: {s.Requests} đề nghị, {s.Rfqs} RFQ, {s.DirectAwards} tờ trình chỉ định, {s.Tenders} gói thầu, {s.Contracts} hợp đồng, {s.Orders} PO, {s.Receipts} phiếu nhận hàng.";
+            TempData["Success"] = I18n.T("Đã nạp dữ liệu mẫu: {0} đề nghị, {1} RFQ, {2} tờ trình chỉ định, {3} gói thầu, {4} hợp đồng, {5} PO, {6} phiếu nhận hàng.", s.Requests, s.Rfqs, s.DirectAwards, s.Tenders, s.Contracts, s.Orders, s.Receipts);
         }
         catch (InvalidOperationException ex) { TempData["Error"] = ex.Message; }
         catch (Exception ex)
         {
             _log.LogError(ex, "Nạp dữ liệu mẫu thất bại");
-            TempData["Error"] = "Nạp dữ liệu mẫu thất bại, không có thay đổi nào được lưu: " + ex.GetBaseException().Message;
+            TempData["Error"] = I18n.T("Nạp dữ liệu mẫu thất bại, không có thay đổi nào được lưu: ") + ex.GetBaseException().Message;
         }
         return RedirectToAction(nameof(Index));
     }
@@ -48,12 +48,12 @@ public class SampleDataController : Controller
         try
         {
             await SampleDataSeeder.RemoveAsync(_db);
-            TempData["Success"] = "Đã gỡ toàn bộ chứng từ mẫu. Danh mục người dùng, hàng hóa, NCC được giữ lại.";
+            TempData["Success"] = I18n.T("Đã gỡ toàn bộ chứng từ mẫu. Danh mục người dùng, hàng hóa, NCC được giữ lại.");
         }
         catch (Exception ex)
         {
             _log.LogError(ex, "Gỡ dữ liệu mẫu thất bại");
-            TempData["Error"] = "Gỡ dữ liệu mẫu thất bại, không có thay đổi nào được lưu: " + ex.GetBaseException().Message;
+            TempData["Error"] = I18n.T("Gỡ dữ liệu mẫu thất bại, không có thay đổi nào được lưu: ") + ex.GetBaseException().Message;
         }
         return RedirectToAction(nameof(Index));
     }
@@ -66,13 +66,13 @@ public class SampleDataController : Controller
             await using var tx = await _db.Database.BeginTransactionAsync();
             var done = await SampleFlows.LoadAsync(_db);
             await tx.CommitAsync();
-            TempData["Success"] = done.Count == 0 ? "Các luồng bổ sung đã có đủ, không nạp thêm." : "Đã nạp bổ sung: " + string.Join("; ", done) + ".";
+            TempData["Success"] = done.Count == 0 ? I18n.T("Các luồng bổ sung đã có đủ, không nạp thêm.") : I18n.T("Đã nạp bổ sung: ") + string.Join("; ", done) + ".";
         }
         catch (InvalidOperationException ex) { TempData["Error"] = ex.Message; }
         catch (Exception ex)
         {
             _log.LogError(ex, "Nạp luồng bổ sung thất bại");
-            TempData["Error"] = "Nạp bổ sung thất bại, không có thay đổi nào được lưu: " + ex.GetBaseException().Message;
+            TempData["Error"] = I18n.T("Nạp bổ sung thất bại, không có thay đổi nào được lưu: ") + ex.GetBaseException().Message;
         }
         return RedirectToAction(nameof(Index));
     }

@@ -206,6 +206,9 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
+# Thư mục Views/Packages (giao diện Gói mua sắm) KHÔNG phải thư mục NuGet
+!**/Views/Packages/
+!**/Views/Packages/**
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files

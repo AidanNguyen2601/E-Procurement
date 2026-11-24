@@ -111,11 +111,11 @@ public abstract class ProcControllerBase : Controller
     protected List<LineInput> CleanLines(List<LineInput> lines, string prefix = "Lines")
     {
         var result = lines.Where(l => l.ItemId.HasValue || !string.IsNullOrWhiteSpace(l.Description)).ToList();
-        if (result.Count == 0) ModelState.AddModelError(string.Empty, "Chứng từ cần ít nhất một dòng hàng hóa / dịch vụ.");
+        if (result.Count == 0) ModelState.AddModelError(string.Empty, I18n.T("Chứng từ cần ít nhất một dòng hàng hóa / dịch vụ."));
         foreach (var l in result)
         {
-            if (string.IsNullOrWhiteSpace(l.Description)) ModelState.AddModelError(string.Empty, "Mỗi dòng cần có diễn giải.");
-            if (l.Quantity <= 0) ModelState.AddModelError(string.Empty, $"Số lượng dòng \"{l.Description}\" phải lớn hơn 0.");
+            if (string.IsNullOrWhiteSpace(l.Description)) ModelState.AddModelError(string.Empty, I18n.T("Mỗi dòng cần có diễn giải."));
+            if (l.Quantity <= 0) ModelState.AddModelError(string.Empty, I18n.T("Số lượng dòng \"{0}\" phải lớn hơn 0.", l.Description));
         }
         return result;
     }

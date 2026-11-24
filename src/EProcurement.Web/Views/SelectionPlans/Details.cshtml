@@ -8,42 +8,42 @@
     <partial name="_Badge" model="Model.Status" />
     @if (buyer && Model.Status is SelectionPlanStatus.Draft or SelectionPlanStatus.Returned)
     {
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">Sửa kế hoạch</a>
-        <form asp-action="Submit" asp-route-id="@Model.Id" method="post" data-confirm="Trình Giám đốc phê duyệt kế hoạch?"><button class="btn btn-primary">Trình duyệt</button></form>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">@L["Sửa kế hoạch"]</a>
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post" data-confirm="@L["Trình Giám đốc phê duyệt kế hoạch?"]"><button class="btn btn-primary">@L["Trình duyệt"]</button></form>
     }
-    <a asp-action="Print" asp-route-id="@Model.Id" class="btn btn-outline-secondary ms-auto" target="_blank">In tờ trình / quyết định</a>
+    <a asp-action="Print" asp-route-id="@Model.Id" class="btn btn-outline-secondary ms-auto" target="_blank">@L["In tờ trình / quyết định"]</a>
 </div>
 <div class="row g-3">
 <div class="col-lg-8">
     <div class="card mb-3"><div class="card-body">
         <h5>@Model.Title</h5>
         <dl class="row small mb-0 info">
-            <dt class="col-sm-3">Căn cứ</dt><dd class="col-sm-9 pre">@Model.Basis</dd>
-            <dt class="col-sm-3">Người lập</dt><dd class="col-sm-9">@Model.CreatedBy?.FullName – @Model.CreatedAt.ToDate()</dd>
-            @if (Model.DecidedAt.HasValue) { <dt class="col-sm-3">@(Model.Status == SelectionPlanStatus.Approved ? "Phê duyệt" : "Trả lại")</dt><dd class="col-sm-9">@Model.DecidedBy?.FullName – @Model.DecidedAt.ToDateTime()@(string.IsNullOrEmpty(Model.DecisionNote) ? "" : ": " + Model.DecisionNote)</dd> }
+            <dt class="col-sm-3">@L["Căn cứ"]</dt><dd class="col-sm-9 pre">@Model.Basis</dd>
+            <dt class="col-sm-3">@L["Người lập"]</dt><dd class="col-sm-9">@Model.CreatedBy?.FullName – @Model.CreatedAt.ToDate()</dd>
+            @if (Model.DecidedAt.HasValue) { <dt class="col-sm-3">@(Model.Status == SelectionPlanStatus.Approved ? L["Phê duyệt"] : L["Trả lại"])</dt><dd class="col-sm-9">@Model.DecidedBy?.FullName – @Model.DecidedAt.ToDateTime()@(string.IsNullOrEmpty(Model.DecisionNote) ? "" : ": " + Model.DecisionNote)</dd> }
         </dl>
     </div></div>
-    <div class="card mb-3"><div class="card-header">Danh sách gói (@Model.Packages.Count) – tổng giá gói @Model.Packages.Sum(p => p.Budget).ToMoney() đ</div>
+    <div class="card mb-3"><div class="card-header">@L["Danh sách gói"] (@Model.Packages.Count) – @L["tổng giá gói"] @Model.Packages.Sum(p => p.Budget).ToMoney() đ</div>
     <div class="table-responsive"><table class="table table-sm mb-0 align-middle small">
-        <thead><tr><th>Số gói</th><th>Tên gói</th><th class="money">Giá gói</th><th>Nguồn vốn</th><th>Hình thức</th><th>Phương thức</th><th>Bắt đầu LCNT</th><th>Loại HĐ</th><th class="money">Thời gian HĐ</th><th>Trạng thái</th></tr></thead><tbody>
+        <thead><tr><th>@L["Số gói"]</th><th>@L["Tên gói"]</th><th class="money">@L["Giá gói"]</th><th>@L["Nguồn vốn"]</th><th>@L["Hình thức"]</th><th>@L["Phương thức"]</th><th>@L["Bắt đầu LCNT"]</th><th>@L["Loại HĐ"]</th><th class="money">@L["Thời gian HĐ"]</th><th>@L["Trạng thái"]</th></tr></thead><tbody>
         @foreach (var p in Model.Packages.OrderBy(p => p.PlannedStart))
         {
             <tr><td><a asp-controller="Packages" asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a></td><td>@p.Title<div class="text-muted">@string.Join(", ", p.PurchaseRequests.Select(r => r.Number))</div></td>
                 <td class="money">@p.Budget.ToMoney()</td><td>@p.FundingSource</td><td>@p.Method.GetDisplayName()@if (!string.IsNullOrEmpty(p.MethodReason)) { <div class="text-muted">@p.MethodReason</div> }</td>
-                <td>@(p.Method == ProcurementMethod.OpenTender ? p.EnvelopeMethod.GetDisplayName() : "–")</td><td>@p.PlannedStart.ToDate()</td><td>@p.ContractType</td><td class="money">@p.ContractDurationDays ngày</td>
+                <td>@(p.Method == ProcurementMethod.OpenTender ? p.EnvelopeMethod.GetDisplayName() : "–")</td><td>@p.PlannedStart.ToDate()</td><td>@p.ContractType</td><td class="money">@p.ContractDurationDays @L["ngày"]</td>
                 <td><partial name="_Badge" model="p.Status" /></td></tr>
         }
     </tbody></table></div></div>
     @if (canDecide)
     {
         <div class="card border-warning"><div class="card-body">
-            <div class="fw-semibold mb-2">Phê duyệt kế hoạch lựa chọn nhà cung cấp</div>
+            <div class="fw-semibold mb-2">@L["Phê duyệt kế hoạch lựa chọn nhà cung cấp"]</div>
             <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex flex-wrap gap-2">
-                <input name="comment" class="form-control form-control-sm" style="flex:1" placeholder="Ý kiến (bắt buộc khi trả lại)" />
-                <button name="approve" value="true" class="btn btn-sm btn-success text-nowrap">Phê duyệt</button>
-                <button name="approve" value="false" class="btn btn-sm btn-outline-danger text-nowrap">Trả lại</button>
+                <input name="comment" class="form-control form-control-sm" style="flex:1" placeholder="@L["Ý kiến (bắt buộc khi trả lại)"]" />
+                <button name="approve" value="true" class="btn btn-sm btn-success text-nowrap">@L["Phê duyệt"]</button>
+                <button name="approve" value="false" class="btn btn-sm btn-outline-danger text-nowrap">@L["Trả lại"]</button>
             </form></div></div>
     }
 </div>
-<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.SelectionPlan, id = Model.Id })</div></div></div>
+<div class="col-lg-4"><div class="card"><div class="card-header">@L["Nhật ký"]</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.SelectionPlan, id = Model.Id })</div></div></div>
 </div>

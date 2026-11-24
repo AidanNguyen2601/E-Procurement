@@ -14,8 +14,8 @@
     var needsDirector = Model.EstimatedTotal > threshold;
     var steps = new List<(string Name, PrStatus[] DoneAt)>
     {
-        ("Nháp", new[] { PrStatus.Submitted, PrStatus.PendingDirector, PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }),
-        ("Trưởng bộ phận duyệt", new[] { PrStatus.PendingDirector, PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }),
+        (L["Nháp"], new[] { PrStatus.Submitted, PrStatus.PendingDirector, PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }),
+        (L["Trưởng bộ phận duyệt"], new[] { PrStatus.PendingDirector, PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }),
     };
     if (needsDirector) steps.Add(("Giám đốc duyệt", new[] { PrStatus.Approved, PrStatus.Processing, PrStatus.Completed }));
     steps.Add(("Mua hàng", new[] { PrStatus.Completed }));
@@ -41,28 +41,28 @@
 <div class="toolbar">
     @if (mine && Model.Status is PrStatus.Draft or PrStatus.Rejected)
     {
-        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa</a>
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Id">@L["Sửa"]</a>
     }
     @if (mine && Model.Status == PrStatus.Draft)
     {
-        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">Gửi duyệt</button></form>
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary">@L["Gửi duyệt"]</button></form>
     }
     @if (User.IsPurchasing() && Model.ContractId == null && Model.Status is PrStatus.Approved or PrStatus.Processing)
     {
         @if (pkg == null && Model.Status == PrStatus.Approved && !rfqs.Any() && !orders.Any() && !awards.Any() && !tenders.Any())
         {
-            <a class="btn btn-primary" asp-controller="Packages" asp-action="Create" asp-route-prId="@Model.Id">Lập gói mua sắm</a>
+            <a class="btn btn-primary" asp-controller="Packages" asp-action="Create" asp-route-prId="@Model.Id">@L["Lập gói mua sắm"]</a>
         }
         else if (pkg != null)
         {
-            <a class="btn btn-primary" asp-controller="Packages" asp-action="Details" asp-route-id="@pkg.Id">Gói @pkg.Number</a>
+            <a class="btn btn-primary" asp-controller="Packages" asp-action="Details" asp-route-id="@pkg.Id">@L["Gói"] @pkg.Number</a>
         }
     }
     @if ((mine && Model.Status is PrStatus.Draft or PrStatus.Submitted or PrStatus.Rejected) || (User.IsPurchasing() && Model.Status == PrStatus.Approved))
     {
-        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="Hủy đề nghị này?">
-            <input name="comment" class="form-control form-control-sm" placeholder="Lý do hủy" />
-            <button class="btn btn-outline-danger btn-sm text-nowrap">Hủy đề nghị</button>
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1" data-confirm="@L["Hủy đề nghị này?"]">
+            <input name="comment" class="form-control form-control-sm" placeholder="@L["Lý do hủy"]" />
+            <button class="btn btn-outline-danger btn-sm text-nowrap">@L["Hủy đề nghị"]</button>
         </form>
     }
 </div>
@@ -72,28 +72,28 @@
 {
     <div class="card mb-3 border-info"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
         <span class="text-info d-inline-flex">@Icon.Svg("file-check", 18)</span>
-        <span>Đặt hàng theo <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId">hợp đồng khung</a> – đơn giá đã lựa chọn qua đấu thầu, không chào giá lại.</span>
+        <span>@L["Đặt hàng theo"] <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId">@L["hợp đồng khung"]</a> @L["– đơn giá đã lựa chọn qua đấu thầu, không chào giá lại."]</span>
         @if (Model.Status == PrStatus.Approved && User.IsPurchasing())
         {
             <form asp-controller="Contracts" asp-action="CreatePoFromPr" method="post" class="ms-auto"><input type="hidden" name="prId" value="@Model.Id" />
-                <button class="btn btn-sm btn-primary">Lập đơn đặt hàng theo hợp đồng</button></form>
+                <button class="btn btn-sm btn-primary">@L["Lập đơn đặt hàng theo hợp đồng"]</button></form>
         }
     </div></div>
 }
 @if (ViewBag.OutOfPlan is List<string> oop && oop.Count > 0)
 {
-    <div class="alert alert-warning small">@Icon.Svg("alert", 14) <b>Ngoài kế hoạch mua sắm năm @Model.RequestDate.Year</b> đã duyệt của @Model.Department: @string.Join(", ", oop). Người duyệt cân nhắc lý do phát sinh.</div>
+    <div class="alert alert-warning small">@Icon.Svg("alert", 14) <b>@L["Ngoài kế hoạch mua sắm năm"] @Model.RequestDate.Year</b> @L["đã duyệt của"] @Model.Department: @string.Join(", ", oop)@L[". Người duyệt cân nhắc lý do phát sinh."]</div>
 }
 
 @if (canApprove)
 {
     <div class="card mb-3 border-warning"><div class="card-body">
-        <div class="fw-semibold mb-2">Phê duyệt – @(Model.Status == PrStatus.Submitted ? "cấp Trưởng bộ phận" : "cấp Giám đốc")
-            @if (Model.Status == PrStatus.Submitted && needsDirector) { <span class="small text-muted">(dự toán vượt @threshold.ToMoney() đ → sau khi duyệt sẽ chuyển Giám đốc)</span> }</div>
+        <div class="fw-semibold mb-2">@L["Phê duyệt –"] @(Model.Status == PrStatus.Submitted ? L["cấp Trưởng bộ phận"] : L["cấp Giám đốc"])
+            @if (Model.Status == PrStatus.Submitted && needsDirector) { <span class="small text-muted">@L["(dự toán vượt"] @threshold.ToMoney() @L["đ → sau khi duyệt sẽ chuyển Giám đốc)"]</span> }</div>
         <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-            <input name="comment" class="form-control" placeholder="Ý kiến phê duyệt (bắt buộc khi từ chối)" />
-            <button name="approve" value="true" class="btn btn-success text-nowrap">Duyệt</button>
-            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">Từ chối</button>
+            <input name="comment" class="form-control" placeholder="@L["Ý kiến phê duyệt (bắt buộc khi từ chối)"]" />
+            <button name="approve" value="true" class="btn btn-success text-nowrap">@L["Duyệt"]</button>
+            <button name="approve" value="false" class="btn btn-outline-danger text-nowrap">@L["Từ chối"]</button>
         </form>
     </div></div>
 }
@@ -103,13 +103,13 @@
         <div class="card mb-3"><div class="card-body">
             <h5>@Model.Title</h5>
             <dl class="row small mb-0 info">
-                <dt class="col-sm-3">Người đề nghị</dt><dd class="col-sm-9">@Model.Requester?.FullName – @Model.Department</dd>
-                <dt class="col-sm-3">Ngày đề nghị</dt><dd class="col-sm-9">@Model.RequestDate.ToDate()</dd>
-                <dt class="col-sm-3">Ngày cần hàng</dt><dd class="col-sm-9">@Model.NeededDate.ToDate()</dd>
-                <dt class="col-sm-3">Mục đích</dt><dd class="col-sm-9 pre">@Model.Purpose</dd>
+                <dt class="col-sm-3">@L["Người đề nghị"]</dt><dd class="col-sm-9">@Model.Requester?.FullName – @Model.Department</dd>
+                <dt class="col-sm-3">@L["Ngày đề nghị"]</dt><dd class="col-sm-9">@Model.RequestDate.ToDate()</dd>
+                <dt class="col-sm-3">@L["Ngày cần hàng"]</dt><dd class="col-sm-9">@Model.NeededDate.ToDate()</dd>
+                <dt class="col-sm-3">@L["Mục đích"]</dt><dd class="col-sm-9 pre">@Model.Purpose</dd>
                 @if (Model.Method.HasValue)
                 {
-                    <dt class="col-sm-3">Hình thức lựa chọn NCC</dt>
+                    <dt class="col-sm-3">@L["Hình thức lựa chọn NCC"]</dt>
                     <dd class="col-sm-9"><b>@Model.Method.Value.GetDisplayName()</b>@if (!string.IsNullOrEmpty(Model.MethodReason)) { <span class="text-muted"> – @Model.MethodReason</span> }</dd>
                 }
             </dl>
@@ -117,18 +117,18 @@
         @if (pkg != null)
         {
             <div class="card mb-3 border-info"><div class="card-body small d-flex flex-wrap gap-2 align-items-center">
-                <span>Thuộc gói mua sắm <a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg.Id" class="fw-semibold">@pkg.Number</a> – @pkg.Title
-                    · @pkg.Method.GetDisplayName() · giá gói @pkg.Budget.ToMoney() đ@(pkg.PurchaseRequests.Count > 1 ? $" · gom {pkg.PurchaseRequests.Count} đề nghị" : "")
+                <span>@L["Thuộc gói mua sắm"] <a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg.Id" class="fw-semibold">@pkg.Number</a> – @pkg.Title
+                    · @pkg.Method.GetDisplayName() · giá gói @pkg.Budget.ToMoney() đ@(pkg.PurchaseRequests.Count > 1 ? L[" · gom {0} đề nghị", pkg.PurchaseRequests.Count] : "")
                     @if (pkg.SelectionPlan != null) { <span>· KHLCNT <a asp-controller="SelectionPlans" asp-action="Details" asp-route-id="@pkg.SelectionPlanId">@pkg.SelectionPlan.Number</a></span> }</span>
                 <span class="ms-auto"><partial name="_Badge" model="pkg.Status" /></span>
             </div></div>
         }
         else if (User.IsPurchasing() && Model.ContractId == null && Model.Status == PrStatus.Approved)
         {
-            <div class="alert alert-info small">Đề nghị đã duyệt, chờ gom vào <b>gói mua sắm</b>. Hình thức lựa chọn NCC được xác định ở gói và phê duyệt trong kế hoạch lựa chọn NCC (KHLCNT).</div>
+            <div class="alert alert-info small">@L["Đề nghị đã duyệt, chờ gom vào"] <b>@L["gói mua sắm"]</b>@L[". Hình thức lựa chọn NCC được xác định ở gói và phê duyệt trong kế hoạch lựa chọn NCC (KHLCNT)."]</div>
         }
         <div class="card mb-3"><div class="card-body p-0"><table class="table mb-0">
-            <thead><tr><th>#</th><th>Hàng hóa / dịch vụ</th><th>ĐVT</th><th class="money">SL</th><th class="money">Đơn giá dự toán</th><th class="money">Thành tiền</th></tr></thead>
+            <thead><tr><th>#</th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">SL</th><th class="money">@L["Đơn giá dự toán"]</th><th class="money">@L["Thành tiền"]</th></tr></thead>
             <tbody>
             @{ var n = 1; }
             @foreach (var l in Model.Lines)
@@ -136,19 +136,19 @@
                 <tr><td>@(n++)</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.EstimatedPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr>
             }
             </tbody>
-            <tfoot><tr class="fw-bold"><td colspan="5" class="text-end">Tổng dự toán</td><td class="money">@Model.EstimatedTotal.ToMoney()</td></tr></tfoot>
+            <tfoot><tr class="fw-bold"><td colspan="5" class="text-end">@L["Tổng dự toán"]</td><td class="money">@Model.EstimatedTotal.ToMoney()</td></tr></tfoot>
         </table></div></div>
         @if (rfqs.Any() || orders.Any() || awards.Any() || tenders.Any())
         {
-            <div class="card"><div class="card-header">Xử lý mua hàng</div><ul class="list-group list-group-flush">
+            <div class="card"><div class="card-header">@L["Xử lý mua hàng"]</div><ul class="list-group list-group-flush">
                 @foreach (var r in rfqs) { <li class="list-group-item d-flex justify-content-between"><span>RFQ <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@r.Id">@r.Number</a> – @r.Title</span><partial name="_Badge" model="r.Status" /></li> }
-                @foreach (var t in tenders) { <li class="list-group-item d-flex justify-content-between"><span>Gói thầu <a asp-controller="Tenders" asp-action="Details" asp-route-id="@t.Id">@t.Number</a> – @t.Title@(t.AwardedVendor != null ? " · " + t.AwardedVendor.Name : "")</span><partial name="_Badge" model="t.Status" /></li> }
-                @foreach (var a in awards) { <li class="list-group-item d-flex justify-content-between"><span>Tờ trình <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@a.Id">@a.Number</a> – @a.Vendor?.Name · @a.NegotiatedTotal.ToMoney() đ</span><partial name="_Badge" model="a.Status" /></li> }
+                @foreach (var t in tenders) { <li class="list-group-item d-flex justify-content-between"><span>@L["Gói thầu"] <a asp-controller="Tenders" asp-action="Details" asp-route-id="@t.Id">@t.Number</a> – @t.Title@(t.AwardedVendor != null ? " · " + t.AwardedVendor.Name : "")</span><partial name="_Badge" model="t.Status" /></li> }
+                @foreach (var a in awards) { <li class="list-group-item d-flex justify-content-between"><span>@L["Tờ trình"] <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@a.Id">@a.Number</a> – @a.Vendor?.Name · @a.NegotiatedTotal.ToMoney() đ</span><partial name="_Badge" model="a.Status" /></li> }
                 @foreach (var o in orders) { <li class="list-group-item d-flex justify-content-between"><span>PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@o.Id">@o.Number</a> – @o.Vendor?.Name · @o.Total.ToMoney() đ</span><partial name="_Badge" model="o.Status" /></li> }
             </ul></div>
         }
     </div>
     <div class="col-lg-4">
-        <div class="card"><div class="card-header">Nhật ký phê duyệt</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.PR, id = Model.Id })</div></div>
+        <div class="card"><div class="card-header">@L["Nhật ký phê duyệt"]</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.PR, id = Model.Id })</div></div>
     </div>
 </div>

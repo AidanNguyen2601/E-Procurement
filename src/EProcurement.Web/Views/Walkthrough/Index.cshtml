@@ -18,19 +18,18 @@
 </style>
 @if (!loaded)
 {
-    <div class="alert alert-warning">Chưa có dữ liệu mẫu – các bước bên dưới sẽ ít chứng từ để mở.
-        @if (User.IsAdmin()) { <a asp-controller="SampleData" asp-action="Index" class="alert-link">Nạp dữ liệu mẫu</a> } else { <span>Nhờ Quản trị nạp dữ liệu mẫu.</span> }</div>
+    <div class="alert alert-warning">@L["Chưa có dữ liệu mẫu – các bước bên dưới sẽ ít chứng từ để mở."]
+        @if (User.IsAdmin()) { <a asp-controller="SampleData" asp-action="Index" class="alert-link">@L["Nạp dữ liệu mẫu"]</a> } else { <span>@L["Nhờ Quản trị nạp dữ liệu mẫu."]</span> }</div>
 }
 <div class="row g-3">
     <div class="col-lg-3">
         <div class="card mb-3" style="position:sticky;top:12px"><div class="card-body p-2 wt-nav">
             @foreach (var f in Model) { <a href="#@f.Key">@Icon.Svg(f.Icon, 15)<span>@f.Title</span></a> }
-            <a href="#accounts">@Icon.Svg("users", 15)<span>Tài khoản dùng thử</span></a>
+            <a href="#accounts">@Icon.Svg("users", 15)<span>@L["Tài khoản dùng thử"]</span></a>
         </div></div>
     </div>
     <div class="col-lg-9">
-        <p class="text-muted">Mỗi luồng gồm các bước theo thứ tự; nhãn cạnh tên bước là <b>tài khoản nên đăng nhập</b> để làm bước đó (mật khẩu mẫu <code>Abc@123</code>).
-            Bấm vào số chứng từ để mở chứng từ đang ở đúng bước – chứng từ mẫu có số <code>MAU-…</code>.</p>
+        <p class="text-muted">@L["Mỗi luồng gồm các bước theo thứ tự; nhãn cạnh tên bước là"] <b>@L["tài khoản nên đăng nhập"]</b> @L["để làm bước đó (mật khẩu mẫu"] <code>Abc@123</code>@L["). Bấm vào số chứng từ để mở chứng từ đang ở đúng bước – chứng từ mẫu có số"] <code>MAU-…</code>.</p>
         @foreach (var f in Model)
         {
             <div class="card mb-3" id="@f.Key">
@@ -45,7 +44,7 @@
                                 <div class="small">@s.Description</div>
                                 <div>
                                     @foreach (var d in s.Links) { <a class="wt-doc" href="@d.Url">@d.Label @if (d.Note != null) { <small>@d.Note</small> }</a> }
-                                    @if (s.Links.Count == 0) { <span class="small text-muted fst-italic">Hiện không có chứng từ ở bước này.</span> }
+                                    @if (s.Links.Count == 0) { <span class="small text-muted fst-italic">@L["Hiện không có chứng từ ở bước này."]</span> }
                                 </div>
                             </li>
                         }
@@ -53,12 +52,12 @@
                 </div>
             </div>
         }
-        <div class="card" id="accounts"><div class="card-header">Tài khoản dùng thử (mật khẩu mẫu <code>Abc@123</code>)</div>
+        <div class="card" id="accounts"><div class="card-header">@L["Tài khoản dùng thử (mật khẩu mẫu"] <code>Abc@123</code>)</div>
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>Vai trò</th><th>Phòng ban</th></tr></thead>
+                <thead><tr><th>@L["Tên đăng nhập"]</th><th>@L["Họ tên"]</th><th>@L["Vai trò"]</th><th>@L["Phòng ban"]</th></tr></thead>
                 <tbody>@foreach (var a in accounts) { <tr><td><code>@a.Username</code></td><td>@a.Name</td><td>@AppRoles.DisplayName(a.Role)</td><td>@a.Department</td></tr> }</tbody>
             </table></div>
-            <div class="card-body small text-muted border-top">Cổng nhà cung cấp: <code>ncc1@ncc-mau.vn</code> … <code>ncc4@ncc-mau.vn</code> / <code>Abc@123</code> – mở ở cửa sổ ẩn danh. Tài khoản do người dùng tự đổi mật khẩu thì không dùng mật khẩu mẫu.</div>
+            <div class="card-body small text-muted border-top">@L["Cổng nhà cung cấp:"] <code>ncc1@ncc-mau.vn</code> … <code>ncc4@ncc-mau.vn</code> / <code>Abc@123</code> @L["– mở ở cửa sổ ẩn danh. Tài khoản do người dùng tự đổi mật khẩu thì không dùng mật khẩu mẫu."]</div>
         </div>
     </div>
 </div>

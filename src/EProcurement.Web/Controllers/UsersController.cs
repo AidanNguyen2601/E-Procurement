@@ -48,16 +48,16 @@ public class UsersController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(UserFormViewModel vm)
     {
-        if (!AppRoles.All.Contains(vm.Role)) ModelState.AddModelError(nameof(vm.Role), "Vai trò không hợp lệ");
+        if (!AppRoles.All.Contains(vm.Role)) ModelState.AddModelError(nameof(vm.Role), I18n.T("Vai trò không hợp lệ"));
         if (await _db.Users.AnyAsync(u => u.Username == vm.Username && u.Id != vm.Id))
-            ModelState.AddModelError(nameof(vm.Username), "Tên đăng nhập đã tồn tại");
+            ModelState.AddModelError(nameof(vm.Username), I18n.T("Tên đăng nhập đã tồn tại"));
         if (vm.Id == 0 && string.IsNullOrWhiteSpace(vm.Password))
-            ModelState.AddModelError(nameof(vm.Password), "Vui lòng nhập mật khẩu");
+            ModelState.AddModelError(nameof(vm.Password), I18n.T("Vui lòng nhập mật khẩu"));
         if (vm.Id == User.GetUserId() && (!vm.IsActive || vm.Role != AppRoles.Admin))
-            ModelState.AddModelError(string.Empty, "Không thể tự khóa hoặc hạ quyền tài khoản đang đăng nhập.");
+            ModelState.AddModelError(string.Empty, I18n.T("Không thể tự khóa hoặc hạ quyền tài khoản đang đăng nhập."));
         var oldDept = vm.Id == 0 ? null : await _db.Users.Where(u => u.Id == vm.Id).Select(u => u.Department).FirstOrDefaultAsync();
         if (!await HttpContext.RequestServices.GetRequiredService<CatalogService>().IsValidAsync(CatalogType.Department, vm.Department, oldDept))
-            ModelState.AddModelError(nameof(vm.Department), "Chọn phòng ban trong danh mục");
+            ModelState.AddModelError(nameof(vm.Department), I18n.T("Chọn phòng ban trong danh mục"));
         if (!ModelState.IsValid)
         {
             LoadRoles();
@@ -79,7 +79,7 @@ public class UsersController : Controller
         user.IsActive = vm.IsActive;
         if (!string.IsNullOrWhiteSpace(vm.Password)) { user.PasswordHash = _hasher.HashPassword(user, vm.Password); user.FailedLogins = 0; user.LockoutEnd = null; }
         await _db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lưu tài khoản {user.Username}.";
+        TempData["Success"] = I18n.T("Đã lưu tài khoản {0}.", user.Username);
         return RedirectToAction(nameof(Index));
     }
 

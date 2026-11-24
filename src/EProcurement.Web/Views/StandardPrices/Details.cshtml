@@ -7,19 +7,19 @@
     <span class="badge bg-light text-dark border">@Model.Status.GetDisplayName()</span>
     @if (buyer && Model.Status is StandardPriceStatus.Draft or StandardPriceStatus.Returned)
     {
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">Sửa</a>
-        <form asp-action="Submit" asp-route-id="@Model.Id" method="post" data-confirm="Trình Giám đốc phê duyệt?"><button class="btn btn-primary">Trình duyệt</button></form>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">@L["Sửa"]</a>
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post" data-confirm="@L["Trình Giám đốc phê duyệt?"]"><button class="btn btn-primary">@L["Trình duyệt"]</button></form>
     }
-    <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-secondary ms-auto">In bảng giá</a>
+    <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-secondary ms-auto">@L["In bảng giá"]</a>
 </div>
 @if (canDecide)
 {
     <div class="card mb-3 border-warning"><div class="card-body">
-        <div class="fw-semibold mb-2">Phê duyệt bảng giá tiêu chuẩn – @Model.Lines.Count mặt hàng, hiệu lực từ @Model.EffectiveFrom.ToDate()</div>
+        <div class="fw-semibold mb-2">@L["Phê duyệt bảng giá tiêu chuẩn –"] @Model.Lines.Count @L["mặt hàng, hiệu lực từ"] @Model.EffectiveFrom.ToDate()</div>
         <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-            <input name="comment" class="form-control form-control-sm" placeholder="Ý kiến (bắt buộc khi trả lại)" />
-            <button name="approve" value="true" class="btn btn-sm btn-success text-nowrap">Phê duyệt</button>
-            <button name="approve" value="false" class="btn btn-sm btn-outline-danger text-nowrap">Trả lại</button>
+            <input name="comment" class="form-control form-control-sm" placeholder="@L["Ý kiến (bắt buộc khi trả lại)"]" />
+            <button name="approve" value="true" class="btn btn-sm btn-success text-nowrap">@L["Phê duyệt"]</button>
+            <button name="approve" value="false" class="btn btn-sm btn-outline-danger text-nowrap">@L["Trả lại"]</button>
         </form></div></div>
 }
 <div class="row g-3">
@@ -27,14 +27,14 @@
     <div class="card mb-3"><div class="card-body">
         <h5>@Model.Title</h5>
         <dl class="row small mb-0 info">
-            <dt class="col-sm-3">Hiệu lực</dt><dd class="col-sm-9">@Model.EffectiveFrom.ToDate() → @(Model.EffectiveTo?.ToDate() ?? "không thời hạn")</dd>
-            <dt class="col-sm-3">Căn cứ</dt><dd class="col-sm-9">@Model.Basis</dd>
-            <dt class="col-sm-3">Người lập</dt><dd class="col-sm-9">@Model.CreatedBy?.FullName – @Model.CreatedAt.ToDate()</dd>
-            @if (Model.DecidedAt.HasValue) { <dt class="col-sm-3">Quyết định</dt><dd class="col-sm-9">@Model.DecidedBy?.FullName – @Model.DecidedAt.ToDateTime() @Model.DecisionNote</dd> }
+            <dt class="col-sm-3">@L["Hiệu lực"]</dt><dd class="col-sm-9">@Model.EffectiveFrom.ToDate() → @(Model.EffectiveTo?.ToDate() ?? L["không thời hạn"])</dd>
+            <dt class="col-sm-3">@L["Căn cứ"]</dt><dd class="col-sm-9">@Model.Basis</dd>
+            <dt class="col-sm-3">@L["Người lập"]</dt><dd class="col-sm-9">@Model.CreatedBy?.FullName – @Model.CreatedAt.ToDate()</dd>
+            @if (Model.DecidedAt.HasValue) { <dt class="col-sm-3">@L["Quyết định"]</dt><dd class="col-sm-9">@Model.DecidedBy?.FullName – @Model.DecidedAt.ToDateTime() @Model.DecisionNote</dd> }
         </dl>
     </div></div>
     <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0">
-        <thead><tr><th>Mã</th><th>Hàng hóa</th><th>Nhóm</th><th>ĐVT</th><th class="money">Giá tiêu chuẩn</th><th class="money">Giá trần</th><th>Căn cứ</th></tr></thead><tbody>
+        <thead><tr><th>@L["Mã"]</th><th>@L["Hàng hóa"]</th><th>@L["Nhóm"]</th><th>@L["ĐVT"]</th><th class="money">@L["Giá tiêu chuẩn"]</th><th class="money">@L["Giá trần"]</th><th>@L["Căn cứ"]</th></tr></thead><tbody>
         @foreach (var l in Model.Lines.OrderBy(l => l.Item?.Code))
         {
             <tr><td><a asp-controller="PriceBank" asp-action="Item" asp-route-id="@l.ItemId">@l.Item?.Code</a></td><td>@l.Item?.Name</td><td class="small">@l.Item?.Category?.Name</td><td>@l.Item?.Unit</td>
@@ -42,5 +42,5 @@
         }
     </tbody></table></div></div></div>
 </div>
-<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.StandardPriceList, id = Model.Id })</div></div></div>
+<div class="col-lg-4"><div class="card"><div class="card-header">@L["Nhật ký"]</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.StandardPriceList, id = Model.Id })</div></div></div>
 </div>

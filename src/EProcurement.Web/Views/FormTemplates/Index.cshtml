@@ -10,62 +10,62 @@
 <div class="row g-3">
 <div class="col-lg-3">
     <div class="card"><div class="list-group list-group-flush">
-        <a asp-action="Index" class="list-group-item list-group-item-action d-flex @(group == null ? "active" : "")"><span class="flex-grow-1">Tất cả</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@counts.Values.Sum()</span></a>
+        <a asp-action="Index" class="list-group-item list-group-item-action d-flex @(group == null ? "active" : "")"><span class="flex-grow-1">@L["Tất cả"]</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@counts.Values.Sum()</span></a>
         @foreach (var g in FormTemplatesController.Groups)
         { <a asp-action="Index" asp-route-group="@g" class="list-group-item list-group-item-action d-flex @(group == g ? "active" : "")"><span class="flex-grow-1">@g</span><span class="badge rounded-pill bg-secondary-subtle text-secondary">@counts.GetValueOrDefault(g)</span></a> }
     </div></div>
     @if (User.IsAdmin())
     {
-        <a asp-controller="Settings" asp-action="Print" class="btn btn-outline-secondary btn-sm w-100 mt-2">@Icon.Svg("settings", 14) Thông tin in trên chứng từ</a>
+        <a asp-controller="Settings" asp-action="Print" class="btn btn-outline-secondary btn-sm w-100 mt-2">@Icon.Svg("settings", 14) @L["Thông tin in trên chứng từ"]</a>
     }
 </div>
 <div class="col-lg-9">
     <div class="toolbar d-flex gap-2">
-        <form method="get" class="d-flex gap-2 flex-grow-1"><input type="hidden" name="group" value="@group" /><input name="q" value="@ViewBag.Q" class="form-control form-control-sm" placeholder="Tìm tên, mã, hướng dẫn" /><button class="btn btn-sm btn-outline-primary">Tìm</button></form>
-        @if (manage) { <a asp-action="Index" asp-route-group="@group" asp-route-inactive="@(!inactive)" class="btn btn-sm btn-light">@(inactive ? "Ẩn mẫu ngừng dùng" : "Hiện cả mẫu ngừng dùng")</a> }
+        <form method="get" class="d-flex gap-2 flex-grow-1"><input type="hidden" name="group" value="@group" /><input name="q" value="@ViewBag.Q" class="form-control form-control-sm" placeholder="@L["Tìm tên, mã, hướng dẫn"]" /><button class="btn btn-sm btn-outline-primary">@L["Tìm"]</button></form>
+        @if (manage) { <a asp-action="Index" asp-route-group="@group" asp-route-inactive="@(!inactive)" class="btn btn-sm btn-light">@(inactive ? L["Ẩn mẫu ngừng dùng"] : L["Hiện cả mẫu ngừng dùng"])</a> }
     </div>
     @if (manage)
     {
         <form asp-action="Save" method="post" enctype="multipart/form-data" class="card mb-3">
-            <div class="card-header">@(editing == null ? "Thêm biểu mẫu" : "Sửa: " + editing.Name)</div>
+            <div class="card-header">@(editing == null ? L["Thêm biểu mẫu"] : L["Sửa: "] + editing.Name)</div>
             <div class="card-body row g-2">
                 <input type="hidden" name="id" value="@(editing?.Id ?? 0)" />
-                <div class="col-md-5"><label class="form-label small mb-0">Tên biểu mẫu *</label><input name="name" value="@editing?.Name" maxlength="200" class="form-control form-control-sm" required /></div>
-                <div class="col-md-2"><label class="form-label small mb-0">Mã</label><input name="code" value="@editing?.Code" maxlength="30" class="form-control form-control-sm" placeholder="BM-01" /></div>
-                <div class="col-md-3"><label class="form-label small mb-0">Nhóm</label><select name="group" class="form-select form-select-sm">@foreach (var g in FormTemplatesController.Groups) { <option selected="@((editing?.Group ?? group) == g)">@g</option> }</select></div>
-                <div class="col-md-2"><label class="form-label small mb-0">Phiên bản</label><input name="version" value="@editing?.Version" maxlength="20" class="form-control form-control-sm" placeholder="v1.0" /></div>
-                <div class="col-md-7"><label class="form-label small mb-0">Hướng dẫn sử dụng</label><input name="description" value="@editing?.Description" maxlength="1000" class="form-control form-control-sm" /></div>
-                <div class="col-md-5"><label class="form-label small mb-0">File @(editing == null ? "*" : "(để trống: giữ file cũ)")</label><input type="file" name="file" class="form-control form-control-sm" @(editing == null ? "required" : "") accept=".doc,.docx,.xls,.xlsx,.pdf,.ppt,.pptx,.odt,.ods,.txt,.zip,.rar,.7z" /></div>
+                <div class="col-md-5"><label class="form-label small mb-0">@L["Tên biểu mẫu *"]</label><input name="name" value="@editing?.Name" maxlength="200" class="form-control form-control-sm" required /></div>
+                <div class="col-md-2"><label class="form-label small mb-0">@L["Mã"]</label><input name="code" value="@editing?.Code" maxlength="30" class="form-control form-control-sm" placeholder="BM-01" /></div>
+                <div class="col-md-3"><label class="form-label small mb-0">@L["Nhóm"]</label><select name="group" class="form-select form-select-sm">@foreach (var g in FormTemplatesController.Groups) { <option selected="@((editing?.Group ?? group) == g)">@g</option> }</select></div>
+                <div class="col-md-2"><label class="form-label small mb-0">@L["Phiên bản"]</label><input name="version" value="@editing?.Version" maxlength="20" class="form-control form-control-sm" placeholder="v1.0" /></div>
+                <div class="col-md-7"><label class="form-label small mb-0">@L["Hướng dẫn sử dụng"]</label><input name="description" value="@editing?.Description" maxlength="1000" class="form-control form-control-sm" /></div>
+                <div class="col-md-5"><label class="form-label small mb-0">File @(editing == null ? "*" : L["(để trống: giữ file cũ)"])</label><input type="file" name="file" class="form-control form-control-sm" @(editing == null ? "required" : "") accept=".doc,.docx,.xls,.xlsx,.pdf,.ppt,.pptx,.odt,.ods,.txt,.zip,.rar,.7z" /></div>
                 <div class="col-12 d-flex gap-2 align-items-center">
-                    <div class="form-check me-auto"><input type="checkbox" class="form-check-input" name="isActive" value="true" id="fa" checked="@(editing?.IsActive ?? true)" /><input type="hidden" name="isActive" value="false" /><label for="fa" class="form-check-label small">Đang sử dụng</label></div>
-                    @if (editing != null) { <a asp-action="Index" asp-route-group="@group" class="btn btn-sm btn-light">Hủy</a> }
-                    <button class="btn btn-sm btn-primary">@(editing == null ? "Tải lên" : "Lưu")</button>
+                    <div class="form-check me-auto"><input type="checkbox" class="form-check-input" name="isActive" value="true" id="fa" checked="@(editing?.IsActive ?? true)" /><input type="hidden" name="isActive" value="false" /><label for="fa" class="form-check-label small">@L["Đang sử dụng"]</label></div>
+                    @if (editing != null) { <a asp-action="Index" asp-route-group="@group" class="btn btn-sm btn-light">@L["Hủy"]</a> }
+                    <button class="btn btn-sm btn-primary">@(editing == null ? L["Tải lên"] : L["Lưu"])</button>
                 </div>
             </div>
         </form>
     }
     <div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Biểu mẫu</th><th>Nhóm</th><th>File</th><th class="text-end">Lượt tải</th><th></th></tr></thead>
+        <thead><tr><th>@L["Biểu mẫu"]</th><th>@L["Nhóm"]</th><th>File</th><th class="text-end">@L["Lượt tải"]</th><th></th></tr></thead>
         <tbody>
         @foreach (var f in Model)
         {
             <tr class="@(f.IsActive ? "" : "text-muted")">
-                <td>@if (f.Code != null) { <code class="me-1">@f.Code</code> }<b>@f.Name</b> @if (f.Version != null) { <span class="badge bg-light text-dark border">@f.Version</span> } @if (!f.IsActive) { <span class="badge bg-secondary">Ngừng dùng</span> }
+                <td>@if (f.Code != null) { <code class="me-1">@f.Code</code> }<b>@f.Name</b> @if (f.Version != null) { <span class="badge bg-light text-dark border">@f.Version</span> } @if (!f.IsActive) { <span class="badge bg-secondary">@L["Ngừng dùng"]</span> }
                     @if (f.Description != null) { <div class="small text-muted">@f.Description</div> }</td>
                 <td class="small">@f.Group</td>
                 <td class="small">@f.FileName<div class="text-muted">@Size(f.Size) · @f.UploadedAt.ToDate() · @f.UploadedBy?.FullName</div></td>
                 <td class="text-end">@f.Downloads</td>
                 <td class="text-end text-nowrap">
-                    <a asp-action="Download" asp-route-id="@f.Id" class="btn btn-sm btn-primary">Tải về</a>
+                    <a asp-action="Download" asp-route-id="@f.Id" class="btn btn-sm btn-primary">@L["Tải về"]</a>
                     @if (manage)
                     {
-                        <a asp-action="Index" asp-route-group="@group" asp-route-edit="@f.Id" asp-route-inactive="@inactive" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                        <form asp-action="Delete" asp-route-id="@f.Id" method="post" class="d-inline" data-confirm="Xóa biểu mẫu @f.Name?"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
+                        <a asp-action="Index" asp-route-group="@group" asp-route-edit="@f.Id" asp-route-inactive="@inactive" class="btn btn-sm btn-outline-secondary">@L["Sửa"]</a>
+                        <form asp-action="Delete" asp-route-id="@f.Id" method="post" class="d-inline" data-confirm="@L["Xóa biểu mẫu {0}?", f.Name]"><button class="btn btn-sm btn-outline-danger">@L["Xóa"]</button></form>
                     }
                 </td>
             </tr>
         }
-        @if (Model.Count == 0) { <tr><td colspan="5" class="text-muted">Chưa có biểu mẫu@(manage ? " – tải file mẫu lên ở khung trên." : ".")</td></tr> }
+        @if (Model.Count == 0) { <tr><td colspan="5" class="text-muted">@L["Chưa có biểu mẫu"]@(manage ? L[" – tải file mẫu lên ở khung trên."] : ".")</td></tr> }
         </tbody>
     </table></div></div>
 </div>

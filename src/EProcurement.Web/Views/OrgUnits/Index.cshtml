@@ -39,28 +39,28 @@
 
 <div class="toolbar d-flex flex-wrap gap-2 align-items-center">
     <div class="btn-group btn-group-sm">
-        <a asp-action="Index" class="btn @(Model.View == "tree" ? "btn-primary" : "btn-outline-primary")">@Icon.Svg("list") Dạng cây</a>
-        <a asp-action="Index" asp-route-view="chart" class="btn @(Model.View == "chart" ? "btn-primary" : "btn-outline-primary")">@Icon.Svg("network") Sơ đồ tổ chức</a>
+        <a asp-action="Index" class="btn @(Model.View == "tree" ? "btn-primary" : "btn-outline-primary")">@Icon.Svg("list") @L["Dạng cây"]</a>
+        <a asp-action="Index" asp-route-view="chart" class="btn @(Model.View == "chart" ? "btn-primary" : "btn-outline-primary")">@Icon.Svg("network") @L["Sơ đồ tổ chức"]</a>
     </div>
     @if (Model.View == "tree")
     {
-        <input type="search" id="org-filter" class="form-control form-control-sm" style="max-width:260px" placeholder="Tìm đơn vị, mã, trưởng đơn vị…" autocomplete="off" />
+        <input type="search" id="org-filter" class="form-control form-control-sm" style="max-width:260px" placeholder="@L["Tìm đơn vị, mã, trưởng đơn vị…"]" autocomplete="off" />
     }
     <div class="ms-auto d-flex gap-2">
-        @if (admin) { <a asp-action="Create" asp-route-parentId="@roots.FirstOrDefault()?.Unit.Id" class="btn btn-sm btn-primary">+ Thêm đơn vị</a> }
+        @if (admin) { <a asp-action="Create" asp-route-parentId="@roots.FirstOrDefault()?.Unit.Id" class="btn btn-sm btn-primary">@L["+ Thêm đơn vị"]</a> }
     </div>
 </div>
 
 <div class="row g-3 mb-3">
-    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Đơn vị</div><div class="value">@nodes.Count(n => n.Unit.IsActive)</div></div></div>
-    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Khối / chi nhánh</div><div class="value">@nodes.Count(n => n.Unit.IsActive && n.Unit.Type is OrgUnitType.Division or OrgUnitType.Branch)</div></div></div>
-    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Phòng ban / tổ</div><div class="value">@nodes.Count(n => n.Unit.IsActive && n.Unit.Type is OrgUnitType.Department or OrgUnitType.Team)</div></div></div>
-    <div class="col-6 col-md-3"><div class="card stat"><div class="label">Nhân sự đang hoạt động</div><div class="value">@Model.Headcount.Values.Sum()</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Đơn vị"]</div><div class="value">@nodes.Count(n => n.Unit.IsActive)</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Khối / chi nhánh"]</div><div class="value">@nodes.Count(n => n.Unit.IsActive && n.Unit.Type is OrgUnitType.Division or OrgUnitType.Branch)</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Phòng ban / tổ"]</div><div class="value">@nodes.Count(n => n.Unit.IsActive && n.Unit.Type is OrgUnitType.Department or OrgUnitType.Team)</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Nhân sự đang hoạt động"]</div><div class="value">@Model.Headcount.Values.Sum()</div></div></div>
 </div>
 
 @if (nodes.Count == 0)
 {
-    <div class="card"><div class="card-body text-muted">Chưa có đơn vị nào.</div></div>
+    <div class="card"><div class="card-body text-muted">@L["Chưa có đơn vị nào."]</div></div>
 }
 else if (Model.View == "chart")
 {
@@ -71,7 +71,7 @@ else if (Model.View == "chart")
             <a asp-action="Details" asp-route-id="@u.Id" class="org-box lv@(Math.Min(n.Depth, 2)) @(u.IsActive ? "" : "inactive")">
                 <div class="small text-muted">@u.Type.GetDisplayName() · @u.Code</div>
                 <div class="t">@u.Name</div>
-                <div class="small text-muted mt-1">@(u.Manager?.FullName ?? "Chưa có trưởng đơn vị")</div>
+                <div class="small text-muted mt-1">@(u.Manager?.FullName ?? L["Chưa có trưởng đơn vị"])</div>
                 <div class="small">@Icon.Svg("users", 12) @total.GetValueOrDefault(u.Id)</div>
             </a>
             @if (kids[u.Id].Any())
@@ -83,12 +83,12 @@ else if (Model.View == "chart")
     <div class="card"><div class="card-body org-chart">
         <ul>@foreach (var r in roots) { await Branch(r); }</ul>
     </div></div>
-    <div class="small text-muted mt-2">Số người = nhân sự đang hoạt động của đơn vị và các đơn vị cấp dưới. Bấm vào ô để xem chi tiết.</div>
+    <div class="small text-muted mt-2">@L["Số người = nhân sự đang hoạt động của đơn vị và các đơn vị cấp dưới. Bấm vào ô để xem chi tiết."]</div>
 }
 else
 {
     <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover table-sm align-middle mb-0 org-tree" id="org-tree">
-        <thead><tr><th>Đơn vị</th><th>Mã</th><th>Loại</th><th>Trưởng đơn vị</th><th class="text-end">Nhân sự</th><th class="text-end" title="Gồm cả đơn vị cấp dưới">Cả khối</th><th>Trạng thái</th>@if (admin) { <th></th> }</tr></thead>
+        <thead><tr><th>@L["Đơn vị"]</th><th>@L["Mã"]</th><th>@L["Loại"]</th><th>@L["Trưởng đơn vị"]</th><th class="text-end">@L["Nhân sự"]</th><th class="text-end" title="@L["Gồm cả đơn vị cấp dưới"]">@L["Cả khối"]</th><th>@L["Trạng thái"]</th>@if (admin) { <th></th> }</tr></thead>
         <tbody>
         @foreach (var n in nodes)
         {
@@ -104,12 +104,12 @@ else
                 <td>@u.Manager?.FullName</td>
                 <td class="text-end">@Model.Headcount.GetValueOrDefault(u.Name)</td>
                 <td class="text-end text-muted">@(hasKids ? total.GetValueOrDefault(u.Id).ToString() : "")</td>
-                <td>@if (u.IsActive) { <span class="badge bg-success-subtle text-success">Hoạt động</span> } else { <span class="badge bg-secondary">Ngừng</span> }</td>
+                <td>@if (u.IsActive) { <span class="badge bg-success-subtle text-success">@L["Hoạt động"]</span> } else { <span class="badge bg-secondary">@L["Ngừng"]</span> }</td>
                 @if (admin)
                 {
                     <td class="text-end text-nowrap">
-                        <a asp-action="Create" asp-route-parentId="@u.Id" class="btn btn-sm btn-outline-primary" title="Thêm đơn vị cấp dưới">+</a>
-                        <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary">Sửa</a>
+                        <a asp-action="Create" asp-route-parentId="@u.Id" class="btn btn-sm btn-outline-primary" title="@L["Thêm đơn vị cấp dưới"]">+</a>
+                        <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary">@L["Sửa"]</a>
                     </td>
                 }
             </tr>
@@ -117,8 +117,7 @@ else
         </tbody>
     </table></div></div></div>
     <div class="small text-muted mt-2">
-        Tên đơn vị chính là <b>phòng ban</b> dùng trong người dùng, đề nghị mua hàng, ngân sách, kế hoạch và hạn mức duyệt (danh mục Phòng ban tự đồng bộ theo cây này).
-        Duyệt đề nghị vẫn theo phòng ban: Trưởng bộ phận cùng phòng → Ban Giám đốc nếu vượt ngưỡng. Báo cáo lọc theo một khối / chi nhánh sẽ gộp cả các đơn vị cấp dưới.
+        @L["Tên đơn vị chính là"] <b>@L["phòng ban"]</b> @L["dùng trong người dùng, đề nghị mua hàng, ngân sách, kế hoạch và hạn mức duyệt (danh mục Phòng ban tự đồng bộ theo cây này). Duyệt đề nghị vẫn theo phòng ban: Trưởng bộ phận cùng phòng → Ban Giám đốc nếu vượt ngưỡng. Báo cáo lọc theo một khối / chi nhánh sẽ gộp cả các đơn vị cấp dưới."]
     </div>
     <script>
         (function () {

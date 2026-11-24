@@ -96,7 +96,7 @@ public class PurchaseOrdersController : ProcControllerBase
         if (po == null) return NotFound();
         if (po.Status != PoStatus.Draft)
         {
-            TempData["Error"] = "Chỉ sửa được PO ở trạng thái Nháp.";
+            TempData["Error"] = I18n.T("Chỉ sửa được PO ở trạng thái Nháp.");
             return RedirectToAction(nameof(Details), new { id });
         }
         var vm = new PoFormViewModel
@@ -115,10 +115,10 @@ public class PurchaseOrdersController : ProcControllerBase
     public async Task<IActionResult> Save(PoFormViewModel vm, bool submit = false)
     {
         vm.Lines = CleanLines(vm.Lines);
-        if (vm.DeliveryDate < vm.OrderDate) ModelState.AddModelError(nameof(vm.DeliveryDate), "Ngày giao hàng phải sau ngày đặt hàng");
+        if (vm.DeliveryDate < vm.OrderDate) ModelState.AddModelError(nameof(vm.DeliveryDate), I18n.T("Ngày giao hàng phải sau ngày đặt hàng"));
         var vendor = vm.VendorId.HasValue ? await Db.Vendors.FindAsync(vm.VendorId) : null;
         if (vendor != null && vendor.Status != VendorStatus.Approved)
-            ModelState.AddModelError(nameof(vm.VendorId), $"NCC đang ở trạng thái \"{vendor.Status.GetDisplayName()}\", không được đặt hàng.");
+            ModelState.AddModelError(nameof(vm.VendorId), I18n.T("NCC đang ở trạng thái \"{0}\", không được đặt hàng.", vendor.Status.GetDisplayName()));
 
         // Hình thức + PO tham chiếu: khi sửa lấy theo PO đã lưu, khi tạo mới lấy theo PR (không tin dữ liệu form)
         var existing = vm.Id == 0 ? null : await Db.PurchaseOrders.AsNoTracking().FirstOrDefaultAsync(p => p.Id == vm.Id);
@@ -146,7 +146,7 @@ public class PurchaseOrdersController : ProcControllerBase
             var ids = vm.Lines.Where(l => l.ItemId.HasValue).Select(l => l.ItemId!.Value).Distinct().ToList();
             var std = await StandardPrices.CurrentAsync(Db, ids, vm.OrderDate);
             foreach (var o in StandardPrices.Exceeding(vm.Lines.Select(l => (l.ItemId, l.Description, l.Price)), std))
-                ModelState.AddModelError(nameof(vm.StandardPriceReason), $"\"{o.Description}\": {o.Price.ToMoney()} vượt giá trần {o.Std.Ceiling.ToMoney()} ({o.Std.ListNumber}) – nhập lý do vượt giá trần.");
+                ModelState.AddModelError(nameof(vm.StandardPriceReason), I18n.T("\"{0}\": {1} vượt giá trần {2} ({3}) – nhập lý do vượt giá trần.", o.Description, o.Price.ToMoney(), o.Std.Ceiling.ToMoney(), o.Std.ListNumber));
         }
 
         if (!ModelState.IsValid)
@@ -198,7 +198,7 @@ public class PurchaseOrdersController : ProcControllerBase
             await Db.SaveChangesAsync();
         }
         if (submit) return await Submit(po.Id);
-        TempData["Success"] = $"Đã lưu {po.Number}.";
+        TempData["Success"] = I18n.T("Đã lưu {0}.", po.Number);
         return RedirectToAction(nameof(Details), new { id = po.Id });
     }
 
@@ -224,7 +224,7 @@ public class PurchaseOrdersController : ProcControllerBase
                 : po.RfqId.HasValue ? "chào giá cạnh tranh " + await Db.Rfqs.Where(r => r.Id == po.RfqId).Select(r => r.Number).FirstOrDefaultAsync() : null;
             if (source == null)
             {
-                TempData["Error"] = "Có dòng vượt giá trần bảng giá tiêu chuẩn – sửa đơn, nhập lý do vượt giá trần trước khi trình.";
+                TempData["Error"] = I18n.T("Có dòng vượt giá trần bảng giá tiêu chuẩn – sửa đơn, nhập lý do vượt giá trần trước khi trình.");
                 return RedirectToAction(nameof(Details), new { id });
             }
             po.StandardPriceReason = $"Đơn giá theo kết quả lựa chọn NCC ({source})";
@@ -277,13 +277,13 @@ public class PurchaseOrdersController : ProcControllerBase
         if (po.Status != PoStatus.PendingApproval) return BadRequest();
         if (!approve && string.IsNullOrWhiteSpace(comment))
         {
-            TempData["Error"] = "Vui lòng nhập lý do trả lại.";
+            TempData["Error"] = I18n.T("Vui lòng nhập lý do trả lại.");
             return RedirectToAction(nameof(Details), new { id });
         }
         po.Status = approve ? PoStatus.Approved : PoStatus.Draft;
         Log(DocType.PO, id, approve ? "Giám đốc duyệt" : "Giám đốc trả lại", comment);
         await Db.SaveChangesAsync();
-        TempData["Success"] = approve ? $"Đã duyệt {po.Number}." : $"Đã trả lại {po.Number} để chỉnh sửa.";
+        TempData["Success"] = approve ? I18n.T("Đã duyệt {0}.", po.Number) : I18n.T("Đã trả lại {0} để chỉnh sửa.", po.Number);
         return !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
     }
 
@@ -299,7 +299,7 @@ public class PurchaseOrdersController : ProcControllerBase
         po.IssuedAt = DateTime.Now;
         Log(DocType.PO, id, "Gửi NCC");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã gửi {po.Number} cho nhà cung cấp. Dùng nút In để xuất đơn đặt hàng.";
+        TempData["Success"] = I18n.T("Đã gửi {0} cho nhà cung cấp. Dùng nút In để xuất đơn đặt hàng.", po.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -311,18 +311,18 @@ public class PurchaseOrdersController : ProcControllerBase
         if (po == null) return NotFound();
         if (po.Status is PoStatus.Received or PoStatus.Cancelled || po.Lines.Any(l => l.ReceivedQuantity > 0))
         {
-            TempData["Error"] = "Không thể hủy PO đã nhận hàng.";
+            TempData["Error"] = I18n.T("Không thể hủy PO đã nhận hàng.");
             return RedirectToAction(nameof(Details), new { id });
         }
         if (string.IsNullOrWhiteSpace(reason))
         {
-            TempData["Error"] = "Vui lòng nhập lý do hủy.";
+            TempData["Error"] = I18n.T("Vui lòng nhập lý do hủy.");
             return RedirectToAction(nameof(Details), new { id });
         }
         po.Status = PoStatus.Cancelled;
         Log(DocType.PO, id, "Hủy đơn mua hàng", reason);
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã hủy {po.Number}.";
+        TempData["Success"] = I18n.T("Đã hủy {0}.", po.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -336,7 +336,7 @@ public class PurchaseOrdersController : ProcControllerBase
         if (po.Status != PoStatus.Received) return BadRequest();
         if (await Db.VendorEvaluations.AnyAsync(e => e.PurchaseOrderId == id))
         {
-            TempData["Error"] = "Đơn hàng này đã được đánh giá.";
+            TempData["Error"] = I18n.T("Đơn hàng này đã được đánh giá.");
             return RedirectToAction(nameof(Details), new { id });
         }
         int Clamp(int v) => Math.Clamp(v, 1, 5);
@@ -351,7 +351,7 @@ public class PurchaseOrdersController : ProcControllerBase
         var vendor = await Db.Vendors.FindAsync(po.VendorId);
         if (vendor != null) vendor.Rating = Math.Round(evals.Average(e => e.Average), 2);
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã đánh giá nhà cung cấp. Điểm trung bình mới: {vendor?.Rating:0.00}/5.";
+        TempData["Success"] = I18n.T("Đã đánh giá nhà cung cấp. Điểm trung bình mới: {0:0.00}/5.", vendor?.Rating);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -375,13 +375,13 @@ public class PurchaseOrdersController : ProcControllerBase
         var refPo = vm.ReferencePoId.HasValue
             ? await Db.PurchaseOrders.Include(p => p.Lines).AsNoTracking().FirstOrDefaultAsync(p => p.Id == vm.ReferencePoId)
             : null;
-        if (refPo == null) { ModelState.AddModelError(string.Empty, "Mua sắm trực tiếp cần có PO tham chiếu."); return false; }
+        if (refPo == null) { ModelState.AddModelError(string.Empty, I18n.T("Mua sắm trực tiếp cần có PO tham chiếu.")); return false; }
         if (refPo.Status != PoStatus.Received)
-            ModelState.AddModelError(string.Empty, $"PO tham chiếu {refPo.Number} chưa nhận đủ hàng.");
+            ModelState.AddModelError(string.Empty, I18n.T("PO tham chiếu {0} chưa nhận đủ hàng.", refPo.Number));
         if (vm.Id == 0 && refPo.OrderDate < ProcurementRules.ReferenceCutoff(Settings))
-            ModelState.AddModelError(string.Empty, $"PO tham chiếu {refPo.Number} đã quá {Settings.DirectPurchaseMonths} tháng.");
+            ModelState.AddModelError(string.Empty, I18n.T("PO tham chiếu {0} đã quá {1} tháng.", refPo.Number, Settings.DirectPurchaseMonths));
         if (vm.VendorId != refPo.VendorId)
-            ModelState.AddModelError(nameof(vm.VendorId), $"Mua sắm trực tiếp phải đặt cùng NCC với PO tham chiếu {refPo.Number}.");
+            ModelState.AddModelError(nameof(vm.VendorId), I18n.T("Mua sắm trực tiếp phải đặt cùng NCC với PO tham chiếu {0}.", refPo.Number));
 
         var c = await ProcurementRules.BuildCandidateAsync(Db, refPo, Settings, excludePoId: vm.Id == 0 ? null : vm.Id);
         var deviation = false;
@@ -390,16 +390,16 @@ public class PurchaseOrdersController : ProcControllerBase
             var name = g.First().Description;
             if (!g.Key.HasValue || !c.RemainingByItem.TryGetValue(g.Key.Value, out var remaining))
             {
-                ModelState.AddModelError(string.Empty, $"\"{name}\" không có trong PO tham chiếu {refPo.Number}, không được mua trực tiếp.");
+                ModelState.AddModelError(string.Empty, I18n.T("\"{0}\" không có trong PO tham chiếu {1}, không được mua trực tiếp.", name, refPo.Number));
                 continue;
             }
             var qty = g.Sum(l => l.Quantity);
             if (qty > remaining)
-                ModelState.AddModelError(string.Empty, $"\"{name}\": đặt {qty.ToQty()}, vượt khối lượng còn được mua trực tiếp ({remaining.ToQty()} = {Settings.DirectPurchaseMaxQuantityPercent:0}% PO tham chiếu trừ phần đã mua).");
+                ModelState.AddModelError(string.Empty, I18n.T("\"{0}\": đặt {1}, vượt khối lượng còn được mua trực tiếp ({2} = {3:0}% PO tham chiếu trừ phần đã mua).", name, qty.ToQty(), remaining.ToQty(), Settings.DirectPurchaseMaxQuantityPercent));
             if (g.Any(l => l.Price > c.PriceByItem[g.Key.Value])) deviation = true;
         }
         if (deviation && string.IsNullOrWhiteSpace(vm.PriceDeviationReason))
-            ModelState.AddModelError(nameof(vm.PriceDeviationReason), "Có dòng đơn giá cao hơn PO tham chiếu: nhập lý do (đơn sẽ phải trình Giám đốc duyệt).");
+            ModelState.AddModelError(nameof(vm.PriceDeviationReason), I18n.T("Có dòng đơn giá cao hơn PO tham chiếu: nhập lý do (đơn sẽ phải trình Giám đốc duyệt)."));
         return deviation;
     }
 

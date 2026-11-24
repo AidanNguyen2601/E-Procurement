@@ -88,7 +88,7 @@ public class PrequalificationsController : ProcControllerBase
     {
         var p = await Db.Prequalifications.Include(x => x.Criteria).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status != PrequalificationStatus.Draft) { TempData["Error"] = "Chỉ sửa đợt sơ tuyển ở trạng thái Nháp."; return RedirectToAction(nameof(Details), new { id }); }
+        if (p.Status != PrequalificationStatus.Draft) { TempData["Error"] = I18n.T("Chỉ sửa đợt sơ tuyển ở trạng thái Nháp."); return RedirectToAction(nameof(Details), new { id }); }
         await LoadFormAsync();
         return View("Form", new PrequalificationForm
         {
@@ -110,10 +110,10 @@ public class PrequalificationsController : ProcControllerBase
             if (p.Status != PrequalificationStatus.Draft) return BadRequest();
         }
         var criteria = vm.Criteria.Where(c => !string.IsNullOrWhiteSpace(c.Name)).ToList();
-        if (criteria.Count == 0) ModelState.AddModelError(string.Empty, "Cần ít nhất một tiêu chí sơ tuyển.");
-        if (criteria.Any(c => !c.IsMandatory && c.MaxScore <= 0)) ModelState.AddModelError(string.Empty, "Tiêu chí chấm điểm cần điểm tối đa > 0 (hoặc đánh dấu là tiêu chí bắt buộc đạt / không đạt).");
-        if (vm.Deadline <= DateTime.Now) ModelState.AddModelError(nameof(vm.Deadline), "Hạn nộp hồ sơ phải ở tương lai.");
-        if (!await Db.Categories.AnyAsync(c => c.Id == vm.CategoryId)) ModelState.AddModelError(nameof(vm.CategoryId), "Chọn nhóm hàng.");
+        if (criteria.Count == 0) ModelState.AddModelError(string.Empty, I18n.T("Cần ít nhất một tiêu chí sơ tuyển."));
+        if (criteria.Any(c => !c.IsMandatory && c.MaxScore <= 0)) ModelState.AddModelError(string.Empty, I18n.T("Tiêu chí chấm điểm cần điểm tối đa > 0 (hoặc đánh dấu là tiêu chí bắt buộc đạt / không đạt)."));
+        if (vm.Deadline <= DateTime.Now) ModelState.AddModelError(nameof(vm.Deadline), I18n.T("Hạn nộp hồ sơ phải ở tương lai."));
+        if (!await Db.Categories.AnyAsync(c => c.Id == vm.CategoryId)) ModelState.AddModelError(nameof(vm.CategoryId), I18n.T("Chọn nhóm hàng."));
         if (!ModelState.IsValid) { await LoadFormAsync(); if (vm.Criteria.Count == 0) vm.Criteria = DefaultCriteria(); return View("Form", vm); }
 
         if (p == null)
@@ -130,7 +130,7 @@ public class PrequalificationsController : ProcControllerBase
         }).ToList();
         await Db.SaveChangesAsync();
         if (vm.Id == 0) { Log(DocType.Prequalification, p.Id, "Lập đợt sơ tuyển nhà cung cấp"); await Db.SaveChangesAsync(); }
-        TempData["Success"] = $"Đã lưu {p.Number}. Đăng tải để NCC nộp hồ sơ trên cổng NCC.";
+        TempData["Success"] = I18n.T("Đã lưu {0}. Đăng tải để NCC nộp hồ sơ trên cổng NCC.", p.Number);
         return RedirectToAction(nameof(Details), new { id = p.Id });
     }
 
@@ -174,12 +174,12 @@ public class PrequalificationsController : ProcControllerBase
     {
         var p = await Db.Prequalifications.Include(x => x.Criteria).FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status != PrequalificationStatus.Draft) return Fail(id, "Đợt sơ tuyển đã đăng tải.");
-        if (p.Deadline <= DateTime.Now.AddDays(1)) return Fail(id, "Hạn nộp hồ sơ phải còn ít nhất 1 ngày kể từ khi đăng tải.");
+        if (p.Status != PrequalificationStatus.Draft) return Fail(id, I18n.T("Đợt sơ tuyển đã đăng tải."));
+        if (p.Deadline <= DateTime.Now.AddDays(1)) return Fail(id, I18n.T("Hạn nộp hồ sơ phải còn ít nhất 1 ngày kể từ khi đăng tải."));
         p.Status = PrequalificationStatus.Open; p.PublishedAt = DateTime.Now;
         Log(DocType.Prequalification, id, "Đăng tải thông báo mời sơ tuyển trên cổng NCC", $"Hạn nộp {p.Deadline.ToDateTime()}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã đăng tải – NCC xem và nộp hồ sơ trên cổng NCC.";
+        TempData["Success"] = I18n.T("Đã đăng tải – NCC xem và nộp hồ sơ trên cổng NCC.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -190,15 +190,15 @@ public class PrequalificationsController : ProcControllerBase
     {
         var p = await Db.Prequalifications.FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status is not (PrequalificationStatus.Open or PrequalificationStatus.Evaluating)) return Fail(id, "Đợt sơ tuyển không còn nhận hồ sơ.");
-        if (p.Status == PrequalificationStatus.Open && DateTime.Now > p.Deadline || p.Status == PrequalificationStatus.Evaluating) return Fail(id, "Đã quá hạn nộp hồ sơ.");
-        if (await Db.PrequalificationApplications.AnyAsync(a => a.PrequalificationId == id && a.VendorId == vendorId)) return Fail(id, "NCC đã có hồ sơ trong đợt này.");
+        if (p.Status is not (PrequalificationStatus.Open or PrequalificationStatus.Evaluating)) return Fail(id, I18n.T("Đợt sơ tuyển không còn nhận hồ sơ."));
+        if (p.Status == PrequalificationStatus.Open && DateTime.Now > p.Deadline || p.Status == PrequalificationStatus.Evaluating) return Fail(id, I18n.T("Đã quá hạn nộp hồ sơ."));
+        if (await Db.PrequalificationApplications.AnyAsync(a => a.PrequalificationId == id && a.VendorId == vendorId)) return Fail(id, I18n.T("NCC đã có hồ sơ trong đợt này."));
         var v = await Db.Vendors.FindAsync(vendorId);
-        if (v == null || v.Status == VendorStatus.Blacklisted) return Fail(id, "NCC không hợp lệ.");
+        if (v == null || v.Status == VendorStatus.Blacklisted) return Fail(id, I18n.T("NCC không hợp lệ."));
         Db.PrequalificationApplications.Add(new PrequalificationApplication { PrequalificationId = id, VendorId = vendorId, Note = note?.Trim(), SubmittedAt = DateTime.Now });
         Log(DocType.Prequalification, id, $"Tiếp nhận hồ sơ dự sơ tuyển (bản giấy) của {v.Name}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã tiếp nhận hồ sơ của {v.Name}.";
+        TempData["Success"] = I18n.T("Đã tiếp nhận hồ sơ của {0}.", v.Name);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -209,8 +209,8 @@ public class PrequalificationsController : ProcControllerBase
     {
         var p = await Db.Prequalifications.Include(x => x.Applications).FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status != PrequalificationStatus.Open) return Fail(id, "Đợt sơ tuyển không ở trạng thái nhận hồ sơ.");
-        if (DateTime.Now < p.Deadline) return Fail(id, $"Chưa đến hạn nộp hồ sơ ({p.Deadline.ToDateTime()}).");
+        if (p.Status != PrequalificationStatus.Open) return Fail(id, I18n.T("Đợt sơ tuyển không ở trạng thái nhận hồ sơ."));
+        if (DateTime.Now < p.Deadline) return Fail(id, I18n.T("Chưa đến hạn nộp hồ sơ ({0}).", p.Deadline.ToDateTime()));
         p.Status = PrequalificationStatus.Evaluating;
         Log(DocType.Prequalification, id, $"Đóng nhận hồ sơ – {p.Applications.Count(a => a.Status != PrequalificationResult.Withdrawn)} hồ sơ");
         await Db.SaveChangesAsync();
@@ -224,7 +224,7 @@ public class PrequalificationsController : ProcControllerBase
         if (p == null) return NotFound();
         var a = p.Applications.FirstOrDefault(x => x.Id == applicationId);
         if (a == null) return NotFound();
-        if (p.Status != PrequalificationStatus.Evaluating || a.Status == PrequalificationResult.Withdrawn) return Fail(id, "Chỉ chấm hồ sơ khi đợt sơ tuyển đang đánh giá.");
+        if (p.Status != PrequalificationStatus.Evaluating || a.Status == PrequalificationResult.Withdrawn) return Fail(id, I18n.T("Chỉ chấm hồ sơ khi đợt sơ tuyển đang đánh giá."));
         p.Criteria = p.Criteria.OrderBy(c => c.SortOrder).ToList();
         ViewBag.Application = a;
         ViewBag.VendorDocs = await Db.VendorDocuments.AsNoTracking().Where(d => d.VendorId == a.VendorId).OrderBy(d => d.Type).ToListAsync();
@@ -239,7 +239,7 @@ public class PrequalificationsController : ProcControllerBase
         if (p == null) return NotFound();
         var a = p.Applications.FirstOrDefault(x => x.Id == applicationId);
         if (a == null) return NotFound();
-        if (p.Status != PrequalificationStatus.Evaluating || a.Status == PrequalificationResult.Withdrawn) return Fail(id, "Chỉ chấm hồ sơ khi đợt sơ tuyển đang đánh giá.");
+        if (p.Status != PrequalificationStatus.Evaluating || a.Status == PrequalificationResult.Withdrawn) return Fail(id, I18n.T("Chỉ chấm hồ sơ khi đợt sơ tuyển đang đánh giá."));
         for (var i = 0; i < criterionIds.Count; i++)
         {
             var c = p.Criteria.FirstOrDefault(x => x.Id == criterionIds[i]);
@@ -249,17 +249,17 @@ public class PrequalificationsController : ProcControllerBase
             var pass = i < passes.Count ? passes[i] : null;
             s.Pass = c.IsMandatory ? pass switch { "true" => true, "false" => false, _ => null } : null;
             var sc = i < scores.Count ? scores[i] : null;
-            if (!c.IsMandatory && sc.HasValue && (sc < 0 || sc > c.MaxScore)) return Fail(id, $"\"{c.Name}\": điểm từ 0 đến {c.MaxScore}.");
+            if (!c.IsMandatory && sc.HasValue && (sc < 0 || sc > c.MaxScore)) return Fail(id, I18n.T("\"{0}\": điểm từ 0 đến {1}.", c.Name, c.MaxScore));
             s.Score = c.IsMandatory ? null : sc;
             s.Comment = i < comments.Count ? comments[i]?.Trim() : null;
         }
         var r = PrequalificationRules.Evaluate(p, a.Scores.ToList());
-        if (r == null) { await Db.SaveChangesAsync(); TempData["Error"] = "Đã lưu – còn tiêu chí chưa chấm."; return RedirectToAction(nameof(Evaluate), new { id, applicationId }); }
+        if (r == null) { await Db.SaveChangesAsync(); TempData["Error"] = I18n.T("Đã lưu – còn tiêu chí chưa chấm."); return RedirectToAction(nameof(Evaluate), new { id, applicationId }); }
         a.Status = r.Value.Passed ? PrequalificationResult.Passed : PrequalificationResult.Failed;
         a.TotalScore = r.Value.Total; a.EvaluatedById = Me; a.EvaluatedAt = DateTime.Now; a.ResultNote = string.IsNullOrWhiteSpace(resultNote) ? null : resultNote.Trim();
         Log(DocType.Prequalification, id, $"Chấm hồ sơ {a.Vendor?.Name}: {(r.Value.Passed ? "đạt" : "không đạt")} ({r.Value.Total:0.##} điểm)");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"{a.Vendor?.Name}: {(r.Value.Passed ? "ĐẠT" : "KHÔNG ĐẠT")} – {r.Value.Total:0.##}/100 điểm.";
+        TempData["Success"] = I18n.T("{0}: {1} – {2:0.##}/100 điểm.", a.Vendor?.Name, (r.Value.Passed ? "ĐẠT" : "KHÔNG ĐẠT"), r.Value.Total);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -270,14 +270,14 @@ public class PrequalificationsController : ProcControllerBase
     {
         var p = await Db.Prequalifications.Include(x => x.Applications).FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status != PrequalificationStatus.Evaluating) return Fail(id, "Đợt sơ tuyển không ở bước đánh giá.");
+        if (p.Status != PrequalificationStatus.Evaluating) return Fail(id, I18n.T("Đợt sơ tuyển không ở bước đánh giá."));
         var active = p.Applications.Where(a => a.Status != PrequalificationResult.Withdrawn).ToList();
-        if (active.Count == 0) return Fail(id, "Không có hồ sơ nào – hủy đợt sơ tuyển hoặc gia hạn.");
-        if (active.Any(a => a.Status == PrequalificationResult.Submitted)) return Fail(id, "Còn hồ sơ chưa chấm.");
+        if (active.Count == 0) return Fail(id, I18n.T("Không có hồ sơ nào – hủy đợt sơ tuyển hoặc gia hạn."));
+        if (active.Any(a => a.Status == PrequalificationResult.Submitted)) return Fail(id, I18n.T("Còn hồ sơ chưa chấm."));
         p.Status = PrequalificationStatus.PendingApproval;
         Log(DocType.Prequalification, id, $"Trình duyệt kết quả sơ tuyển: {active.Count(a => a.Status == PrequalificationResult.Passed)}/{active.Count} NCC đạt");
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã trình Giám đốc phê duyệt kết quả sơ tuyển.";
+        TempData["Success"] = I18n.T("Đã trình Giám đốc phê duyệt kết quả sơ tuyển.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -290,7 +290,7 @@ public class PrequalificationsController : ProcControllerBase
         var p = await Db.Prequalifications.Include(x => x.Applications).ThenInclude(a => a.Vendor).ThenInclude(v => v!.Categories).FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
         if (p.Status != PrequalificationStatus.PendingApproval) return BadRequest();
-        if (!approve && string.IsNullOrWhiteSpace(comment)) return Fail(id, "Nhập lý do trả lại.");
+        if (!approve && string.IsNullOrWhiteSpace(comment)) return Fail(id, I18n.T("Nhập lý do trả lại."));
         p.DecidedById = Me; p.DecidedAt = DateTime.Now; p.DecisionNote = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
         if (!approve)
         {
@@ -315,7 +315,7 @@ public class PrequalificationsController : ProcControllerBase
             Log(DocType.Prequalification, id, "Giám đốc phê duyệt kết quả sơ tuyển", $"{p.Applications.Count(a => a.Status == PrequalificationResult.Passed)} NCC đạt, hiệu lực đến {until:dd/MM/yyyy}");
         }
         await Db.SaveChangesAsync();
-        TempData["Success"] = approve ? "Đã phê duyệt kết quả sơ tuyển." : "Đã trả lại kết quả sơ tuyển.";
+        TempData["Success"] = approve ? I18n.T("Đã phê duyệt kết quả sơ tuyển.") : I18n.T("Đã trả lại kết quả sơ tuyển.");
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -325,8 +325,8 @@ public class PrequalificationsController : ProcControllerBase
     {
         var p = await Db.Prequalifications.FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
-        if (p.Status is PrequalificationStatus.Completed or PrequalificationStatus.Cancelled) return Fail(id, "Không hủy được.");
-        if (string.IsNullOrWhiteSpace(reason)) return Fail(id, "Nhập lý do hủy.");
+        if (p.Status is PrequalificationStatus.Completed or PrequalificationStatus.Cancelled) return Fail(id, I18n.T("Không hủy được."));
+        if (string.IsNullOrWhiteSpace(reason)) return Fail(id, I18n.T("Nhập lý do hủy."));
         p.Status = PrequalificationStatus.Cancelled;
         Log(DocType.Prequalification, id, "Hủy đợt sơ tuyển", reason.Trim());
         await Db.SaveChangesAsync();

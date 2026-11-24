@@ -101,6 +101,7 @@ app.Use(async (ctx, next) =>
         ? EProcurement.Web.Infrastructure.I18n.EnCulture : EProcurement.Web.Infrastructure.I18n.ViCulture;
     await next();
 });
+app.UseMiddleware<EProcurement.Web.Infrastructure.EnglishHtmlMiddleware>(); // dịch HTML khi chọn tiếng Anh
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();

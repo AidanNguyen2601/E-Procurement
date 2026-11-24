@@ -1,0 +1,65 @@
+@model EProcurement.Web.Controllers.PackageForm
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Lập gói mua sắm" : $"Sửa gói {Model.Number}";
+    var s = (ProcurementSettings)ViewBag.Settings;
+    var chosen = Model.Available.Where(p => Model.PrIds.Contains(p.Id)).ToList();
+}
+<form asp-action="Save" method="post">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="All" class="alert alert-danger small" style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+    <div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">@L["1. Đề nghị mua hàng đưa vào gói"]
+        <button name="refresh" value="true" class="btn btn-sm btn-outline-secondary" formnovalidate>@L["Tính lại dự toán & gợi ý hình thức"]</button></div>
+    <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+        <thead><tr><th></th><th>@L["Số PR"]</th><th>@L["Nội dung"]</th><th>@L["Phòng ban"]</th><th>@L["Cần hàng"]</th><th class="money">@L["Dự toán"]</th></tr></thead><tbody>
+        @foreach (var p in Model.Available)
+        {
+            <tr class="@(Model.PrIds.Contains(p.Id) ? "table-primary" : "")">
+                <td><input type="checkbox" name="PrIds" value="@p.Id" class="form-check-input" @(Model.PrIds.Contains(p.Id) ? "checked" : "") /></td>
+                <td><a asp-controller="PurchaseRequests" asp-action="Details" asp-route-id="@p.Id" target="_blank">@p.Number</a></td>
+                <td>@p.Title <span class="small text-muted">(@p.Lines.Count @L["dòng)"]</span>@if (p.Priority != PrPriority.Normal) { <partial name="_Badge" model="p.Priority" /> }</td>
+                <td class="small">@p.Department</td><td class="small">@p.NeededDate.ToDate()</td><td class="money">@p.EstimatedTotal.ToMoney()</td></tr>
+        }
+        @if (!Model.Available.Any()) { <tr><td colspan="6" class="text-muted p-3">@L["Không có đề nghị đã duyệt nào chờ gom gói."]</td></tr> }
+    </tbody>
+    <tfoot><tr class="fw-semibold"><td colspan="5" class="text-end">@L["Tổng dự toán các PR đã chọn"]</td><td class="money">@Model.Estimate.ToMoney()</td></tr></tfoot></table></div>
+    @if (Model.Suggested.HasValue)
+    {
+        <div class="card-body border-top small">@L["Gợi ý hình thức:"] <b>@Model.Suggested.Value.GetDisplayName()</b>
+            @(Model.HasReference ? L[" – có PO tham chiếu hợp lệ cho mua sắm trực tiếp."] : Model.Estimate <= s.CompetitiveQuotationMax ? L[" – dự toán ≤ hạn mức chào hàng cạnh tranh {0}.", s.CompetitiveQuotationMax.ToShortMoney()] : L[" – dự toán vượt hạn mức chào hàng cạnh tranh {0}.", s.CompetitiveQuotationMax.ToShortMoney()])
+            @if (Model.Estimate <= s.DirectAwardMax) { <span class="text-muted">@L["Dưới hạn mức chỉ định thầu ("]@s.DirectAwardMax.ToShortMoney()).</span> }</div>
+    }
+    </div>
+
+    <div class="card mb-3"><div class="card-header">@L["2. Thông tin gói (theo mẫu kế hoạch lựa chọn nhà cung cấp)"]</div><div class="card-body"><div class="row g-3">
+        <div class="col-md-8"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="Budget" class="form-label"></label><input asp-for="Budget" type="number" step="1000" class="form-control" /><div class="form-text">@L["Để 0 = bằng tổng dự toán các PR."]</div></div>
+        <div class="col-md-4"><label asp-for="Method" class="form-label"></label><select asp-for="Method" asp-items="Html.GetEnumSelectList<ProcurementMethod>()" class="form-select" id="pkg-method"></select></div>
+        <div class="col-md-4 tender-only"><label asp-for="EnvelopeMethod" class="form-label"></label><select asp-for="EnvelopeMethod" asp-items="Html.GetEnumSelectList<EnvelopeMethod>()" class="form-select"></select></div>
+        <div class="col-md-4"><label asp-for="FundingSource" class="form-label"></label><input asp-for="FundingSource" class="form-control" list="dl-fundingsource" />@await Catalog.DatalistAsync(CatalogType.FundingSource)</div>
+        <div class="col-12"><label asp-for="MethodReason" class="form-label"></label><textarea asp-for="MethodReason" rows="2" class="form-control" placeholder="@L["Bắt buộc khi chọn chỉ định thầu hoặc hình thức kém cạnh tranh hơn gợi ý"]"></textarea></div>
+        <div class="col-md-4"><label asp-for="ContractType" class="form-label"></label><input asp-for="ContractType" list="ct-list" class="form-control" />
+            <datalist id="ct-list"><option value="Trọn gói" /><option value="Theo đơn giá cố định" /><option value="Theo đơn giá điều chỉnh" /><option value="Hợp đồng khung" /></datalist></div>
+        <div class="col-md-4"><label asp-for="ContractDurationDays" class="form-label"></label><input asp-for="ContractDurationDays" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="PlannedStart" class="form-label"></label><input asp-for="PlannedStart" type="date" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="Team" class="form-label"></label><input asp-for="Team" class="form-control" list="dl-implementationteam" placeholder="@L["Chọn hoặc nhập"]" />@await Catalog.DatalistAsync(CatalogType.ImplementationTeam)</div>
+        <div class="col-md-8"><label asp-for="Note" class="form-label"></label><input asp-for="Note" class="form-control" /></div>
+    </div></div></div>
+
+    @if (chosen.Any())
+    {
+        <div class="card mb-3"><div class="card-header">@L["Phạm vi cung cấp của gói"] (@chosen.Sum(p => p.Lines.Count) @L["dòng"])</div><div class="table-responsive"><table class="table table-sm mb-0">
+            <thead><tr><th>PR</th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">SL</th><th class="money">@L["Đơn giá dự toán"]</th><th class="money">@L["Thành tiền"]</th></tr></thead><tbody>
+            @foreach (var p in chosen) { foreach (var l in p.Lines.OrderBy(l => l.SortOrder)) { <tr><td class="small">@p.Number</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.EstimatedPrice.ToMoney()</td><td class="money">@l.Amount.ToMoney()</td></tr> } }
+        </tbody></table></div></div>
+    }
+    <div class="d-flex gap-2"><button class="btn btn-primary">@L["Lưu gói"]</button><a asp-action="@(Model.Id == 0 ? "Index" : "Details")" asp-route-id="@(Model.Id == 0 ? null : Model.Id)" class="btn btn-outline-secondary">@L["Quay lại"]</a></div>
+</form>
+@section Scripts {
+<script>
+(function () {
+    const m = document.getElementById('pkg-method');
+    const sync = () => document.querySelectorAll('.tender-only').forEach(e => e.style.display = m.value === '@((int)ProcurementMethod.OpenTender)' ? '' : 'none');
+    m.addEventListener('change', sync); sync();
+})();
+</script>
+}

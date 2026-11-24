@@ -1,8 +1,8 @@
 @model List<GoodsReceipt>
 @{ ViewData["Title"] = "Phiếu nhận hàng (GRN)"; }
-<div class="small text-muted mb-2">Lập phiếu nhận hàng từ trang chi tiết đơn mua hàng đã gửi NCC (nút "Nhận hàng").</div>
+<div class="small text-muted mb-2">@L["Lập phiếu nhận hàng từ trang chi tiết đơn mua hàng đã gửi NCC (nút \"Nhận hàng\")."]</div>
 <div class="card"><div class="card-body p-0"><table class="table table-hover mb-0">
-    <thead><tr><th>Số phiếu</th><th>Ngày nhận</th><th>Đơn hàng</th><th>Nhà cung cấp</th><th>Phiếu giao NCC</th><th class="money">SL đạt</th><th class="money">SL không đạt</th><th>Người nhận</th></tr></thead>
+    <thead><tr><th>@L["Số phiếu"]</th><th>@L["Ngày nhận"]</th><th>@L["Đơn hàng"]</th><th>@L["Nhà cung cấp"]</th><th>@L["Phiếu giao NCC"]</th><th class="money">@L["SL đạt"]</th><th class="money">@L["SL không đạt"]</th><th>@L["Người nhận"]</th></tr></thead>
     <tbody>
     @foreach (var g in Model)
     {
@@ -15,6 +15,6 @@
             <td>@g.ReceivedBy?.FullName</td>
         </tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted p-4">Chưa có phiếu nhận hàng.</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted p-4">@L["Chưa có phiếu nhận hàng."]</td></tr> }
     </tbody>
 </table></div></div>

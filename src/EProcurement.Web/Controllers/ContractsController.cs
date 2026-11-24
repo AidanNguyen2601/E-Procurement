@@ -71,9 +71,9 @@ public class ContractsController : ProcControllerBase
         var value = t.AwardPrice ?? 0;
         var minSecurity = Math.Round(value * t.PerformanceSecurityPercent / 100m, 0);
         if (vm.PerformanceSecurityAmount < minSecurity)
-            ModelState.AddModelError(nameof(vm.PerformanceSecurityAmount), $"Bảo đảm thực hiện tối thiểu {t.PerformanceSecurityPercent:0.##}% = {minSecurity.ToMoney()} đ.");
-        if (vm.EndDate < vm.StartDate) ModelState.AddModelError(nameof(vm.EndDate), "Ngày hết hiệu lực phải sau ngày bắt đầu.");
-        if (vm.PerformanceSecurityExpiry < vm.EndDate) ModelState.AddModelError(nameof(vm.PerformanceSecurityExpiry), "Bảo lãnh thực hiện phải còn hiệu lực đến hết hợp đồng.");
+            ModelState.AddModelError(nameof(vm.PerformanceSecurityAmount), I18n.T("Bảo đảm thực hiện tối thiểu {0:0.##}% = {1} đ.", t.PerformanceSecurityPercent, minSecurity.ToMoney()));
+        if (vm.EndDate < vm.StartDate) ModelState.AddModelError(nameof(vm.EndDate), I18n.T("Ngày hết hiệu lực phải sau ngày bắt đầu."));
+        if (vm.PerformanceSecurityExpiry < vm.EndDate) ModelState.AddModelError(nameof(vm.PerformanceSecurityExpiry), I18n.T("Bảo lãnh thực hiện phải còn hiệu lực đến hết hợp đồng."));
         if (!ModelState.IsValid) { vm.Tender = t; return View(vm); }
 
         var bid = t.Bidders.First(b => b.VendorId == t.AwardedVendorId);
@@ -117,7 +117,7 @@ public class ContractsController : ProcControllerBase
             Log(DocType.Package, pkg.Id, $"Ký hợp đồng khung {c.Number} – hoàn tất gói");
         }
         await Db.SaveChangesAsync();
-        TempData["Success"] = po != null ? $"Đã ký {c.Number} và tạo đơn mua hàng nháp {po.Number}." : $"Đã ký hợp đồng khung {c.Number}. Đặt hàng từng đợt từ trang hợp đồng.";
+        TempData["Success"] = po != null ? I18n.T("Đã ký {0} và tạo đơn mua hàng nháp {1}.", c.Number, po.Number) : I18n.T("Đã ký hợp đồng khung {0}. Đặt hàng từng đợt từ trang hợp đồng.", c.Number);
         return RedirectToAction(nameof(Details), new { id = c.Id });
     }
 
@@ -127,7 +127,7 @@ public class ContractsController : ProcControllerBase
     {
         var c = await LoadAsync(id);
         if (c == null) return NotFound();
-        if (c.Status != ContractStatus.Active || !c.IsFramework) { TempData["Error"] = "Chỉ đặt hàng từng đợt với hợp đồng khung đang thực hiện."; return RedirectToAction(nameof(Details), new { id }); }
+        if (c.Status != ContractStatus.Active || !c.IsFramework) { TempData["Error"] = I18n.T("Chỉ đặt hàng từng đợt với hợp đồng khung đang thực hiện."); return RedirectToAction(nameof(Details), new { id }); }
         ViewBag.Remaining = await RemainingAsync(c);
         return View(new ContractPoViewModel { ContractId = id, Contract = c, Lines = c.Lines.Select(l => new ContractPoLine { ContractLineId = l.Id }).ToList() });
     }
@@ -140,13 +140,13 @@ public class ContractsController : ProcControllerBase
         if (c == null) return NotFound();
         if (c.Status != ContractStatus.Active || !c.IsFramework) return BadRequest();
         var remaining = await RemainingAsync(c);
-        if (vm.Lines.All(l => l.Quantity <= 0)) ModelState.AddModelError(string.Empty, "Nhập số lượng đặt cho ít nhất một hạng mục.");
-        if (DateTime.Today > c.EndDate) ModelState.AddModelError(string.Empty, $"Hợp đồng đã hết hiệu lực ngày {c.EndDate.ToDate()}.");
+        if (vm.Lines.All(l => l.Quantity <= 0)) ModelState.AddModelError(string.Empty, I18n.T("Nhập số lượng đặt cho ít nhất một hạng mục."));
+        if (DateTime.Today > c.EndDate) ModelState.AddModelError(string.Empty, I18n.T("Hợp đồng đã hết hiệu lực ngày {0}.", c.EndDate.ToDate()));
         foreach (var l in vm.Lines.Where(l => l.Quantity > 0))
         {
             var cl = c.Lines.FirstOrDefault(x => x.Id == l.ContractLineId);
-            if (cl == null) { ModelState.AddModelError(string.Empty, "Hạng mục không thuộc hợp đồng."); continue; }
-            if (l.Quantity > remaining[cl.Id]) ModelState.AddModelError(string.Empty, $"\"{cl.Description}\": đặt {l.Quantity.ToQty()} vượt khối lượng còn lại {remaining[cl.Id].ToQty()}.");
+            if (cl == null) { ModelState.AddModelError(string.Empty, I18n.T("Hạng mục không thuộc hợp đồng.")); continue; }
+            if (l.Quantity > remaining[cl.Id]) ModelState.AddModelError(string.Empty, I18n.T("\"{0}\": đặt {1} vượt khối lượng còn lại {2}.", cl.Description, l.Quantity.ToQty(), remaining[cl.Id].ToQty()));
         }
         if (!ModelState.IsValid) { vm.Contract = c; ViewBag.Remaining = remaining; return View(vm); }
 
@@ -164,7 +164,7 @@ public class ContractsController : ProcControllerBase
         Log(DocType.PO, po.Id, $"Đặt hàng theo hợp đồng khung {c.Number}");
         Log(DocType.Contract, c.Id, $"Đặt hàng đợt {po.Number}", $"{po.SubTotal.ToMoney()} đ");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã tạo đơn mua hàng nháp {po.Number} theo hợp đồng {c.Number}.";
+        TempData["Success"] = I18n.T("Đã tạo đơn mua hàng nháp {0} theo hợp đồng {1}.", po.Number, c.Number);
         return RedirectToAction("Details", "PurchaseOrders", new { id = po.Id });
     }
 
@@ -175,7 +175,7 @@ public class ContractsController : ProcControllerBase
         var c = await Db.Contracts.FindAsync(id);
         if (c == null) return NotFound();
         if (c.Status != ContractStatus.Active) return BadRequest();
-        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = "Nhập lý do / nội dung thanh lý."; return RedirectToAction(nameof(Details), new { id }); }
+        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = I18n.T("Nhập lý do / nội dung thanh lý."); return RedirectToAction(nameof(Details), new { id }); }
         c.Status = terminate ? ContractStatus.Terminated : ContractStatus.Completed;
         Log(DocType.Contract, id, terminate ? "Chấm dứt hợp đồng" : "Thanh lý – hoàn thành hợp đồng", reason);
         await Db.SaveChangesAsync();
@@ -221,17 +221,17 @@ public class ContractsController : ProcControllerBase
         var pr = await Db.PurchaseRequests.Include(p => p.Lines).FirstOrDefaultAsync(p => p.Id == prId);
         if (pr?.ContractId == null) return NotFound();
         IActionResult Back(string e) { TempData["Error"] = e; return RedirectToAction("Details", "PurchaseRequests", new { id = prId }); }
-        if (pr.Status != PrStatus.Approved) return Back("Đề nghị chưa được duyệt hoặc đã lập đơn hàng.");
+        if (pr.Status != PrStatus.Approved) return Back(I18n.T("Đề nghị chưa được duyệt hoặc đã lập đơn hàng."));
         var c = await LoadAsync(pr.ContractId.Value);
-        if (c == null || c.Status != ContractStatus.Active || !c.IsFramework || c.EndDate < DateTime.Today) return Back("Hợp đồng khung không còn hiệu lực – chọn hình thức mua khác.");
+        if (c == null || c.Status != ContractStatus.Active || !c.IsFramework || c.EndDate < DateTime.Today) return Back(I18n.T("Hợp đồng khung không còn hiệu lực – chọn hình thức mua khác."));
         var avail = await OrderingController.AvailabilityAsync(Db, c, excludePrId: prId);
         var po = await NewPoAsync(c, prId, pr.NeededDate);
         var s = 1;
         foreach (var l in pr.Lines.OrderBy(x => x.SortOrder))
         {
             var cl = c.Lines.FirstOrDefault(x => x.ItemId == l.ItemId && x.Description == l.Description);
-            if (cl == null) return Back($"\"{l.Description}\" không có trong hợp đồng.");
-            if (l.Quantity > avail[cl.Id].Available) return Back($"\"{l.Description}\": vượt khối lượng còn lại của hợp đồng ({avail[cl.Id].Available.ToQty()}).");
+            if (cl == null) return Back(I18n.T("\"{0}\" không có trong hợp đồng.", l.Description));
+            if (l.Quantity > avail[cl.Id].Available) return Back(I18n.T("\"{0}\": vượt khối lượng còn lại của hợp đồng ({1}).", l.Description, avail[cl.Id].Available.ToQty()));
             po.Lines.Add(new PurchaseOrderLine { ItemId = cl.ItemId, Description = cl.Description, Unit = cl.Unit, Quantity = l.Quantity, UnitPrice = cl.UnitPrice, SortOrder = s++ });
         }
         po.Recalculate();
@@ -242,7 +242,7 @@ public class ContractsController : ProcControllerBase
         Log(DocType.Contract, c.Id, $"Đặt hàng đợt {po.Number}", $"{po.SubTotal.ToMoney()} đ – đề nghị {pr.Number} ({pr.Department})");
         Log(DocType.PR, pr.Id, $"Mua hàng lập {po.Number} theo hợp đồng khung {c.Number}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã tạo đơn mua hàng nháp {po.Number} theo hợp đồng {c.Number} – trình duyệt / gửi NCC.";
+        TempData["Success"] = I18n.T("Đã tạo đơn mua hàng nháp {0} theo hợp đồng {1} – trình duyệt / gửi NCC.", po.Number, c.Number);
         return RedirectToAction("Details", "PurchaseOrders", new { id = po.Id });
     }
 
@@ -254,19 +254,19 @@ public class ContractsController : ProcControllerBase
         var c = await Db.Contracts.FindAsync(id);
         if (c == null) return NotFound();
         IActionResult Back(string? e = null) { if (e != null) TempData["Error"] = e; return RedirectToAction(nameof(Details), new { id }); }
-        if (c.Status != ContractStatus.Active) return Back("Chỉ lập phụ lục cho hợp đồng đang thực hiện.");
-        if (string.IsNullOrWhiteSpace(description)) return Back("Nhập nội dung phụ lục.");
-        if (valueChange == 0 && newEndDate == null) return Back("Phụ lục cần điều chỉnh giá trị hoặc gia hạn.");
-        if (c.Value + valueChange <= 0) return Back("Giá trị hợp đồng sau điều chỉnh phải lớn hơn 0.");
-        if (newEndDate.HasValue && newEndDate.Value.Date <= c.StartDate) return Back("Ngày gia hạn không hợp lệ.");
-        if (await Db.ContractAmendments.AnyAsync(a => a.ContractId == id && a.Status == AmendmentStatus.Pending)) return Back("Đang có phụ lục chờ duyệt.");
+        if (c.Status != ContractStatus.Active) return Back(I18n.T("Chỉ lập phụ lục cho hợp đồng đang thực hiện."));
+        if (string.IsNullOrWhiteSpace(description)) return Back(I18n.T("Nhập nội dung phụ lục."));
+        if (valueChange == 0 && newEndDate == null) return Back(I18n.T("Phụ lục cần điều chỉnh giá trị hoặc gia hạn."));
+        if (c.Value + valueChange <= 0) return Back(I18n.T("Giá trị hợp đồng sau điều chỉnh phải lớn hơn 0."));
+        if (newEndDate.HasValue && newEndDate.Value.Date <= c.StartDate) return Back(I18n.T("Ngày gia hạn không hợp lệ."));
+        if (await Db.ContractAmendments.AnyAsync(a => a.ContractId == id && a.Status == AmendmentStatus.Pending)) return Back(I18n.T("Đang có phụ lục chờ duyệt."));
         var n = await Db.ContractAmendments.CountAsync(a => a.ContractId == id) + 1;
         var a = new ContractAmendment { ContractId = id, Number = $"PL{n:00}", Description = description.Trim()[..Math.Min(2000, description.Trim().Length)], ValueChange = Math.Round(valueChange, 0), NewEndDate = newEndDate?.Date, CreatedById = Me };
         Db.ContractAmendments.Add(a);
         Log(DocType.Contract, id, $"Trình duyệt phụ lục {a.Number}",
             $"{a.Description}" + (a.ValueChange != 0 ? $" · giá trị {(a.ValueChange > 0 ? "+" : "")}{a.ValueChange.ToMoney()} đ" : "") + (a.NewEndDate.HasValue ? $" · gia hạn đến {a.NewEndDate:dd/MM/yyyy}" : ""));
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã trình phụ lục {a.Number} – chờ Giám đốc duyệt.";
+        TempData["Success"] = I18n.T("Đã trình phụ lục {0} – chờ Giám đốc duyệt.", a.Number);
         return Back();
     }
 
@@ -278,7 +278,7 @@ public class ContractsController : ProcControllerBase
         var c = await Db.Contracts.FindAsync(id);
         var a = await Db.ContractAmendments.FirstOrDefaultAsync(x => x.Id == amendmentId && x.ContractId == id && x.Status == AmendmentStatus.Pending);
         if (c == null || a == null) return NotFound();
-        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do không duyệt."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = I18n.T("Nhập lý do không duyệt."); return RedirectToAction(nameof(Details), new { id }); }
         a.Status = approve ? AmendmentStatus.Approved : AmendmentStatus.Rejected; a.DecidedById = Me; a.DecidedAt = DateTime.Now; a.DecisionNote = comment?.Trim();
         if (approve)
         {
@@ -287,7 +287,7 @@ public class ContractsController : ProcControllerBase
         }
         Log(DocType.Contract, id, approve ? $"Giám đốc duyệt phụ lục {a.Number} – giá trị HĐ {c.Value.ToMoney()} đ, hiệu lực đến {c.EndDate:dd/MM/yyyy}" : $"Giám đốc không duyệt phụ lục {a.Number}", comment);
         await Db.SaveChangesAsync();
-        TempData["Success"] = approve ? $"Phụ lục {a.Number} có hiệu lực." : $"Đã trả lại phụ lục {a.Number}.";
+        TempData["Success"] = approve ? I18n.T("Phụ lục {0} có hiệu lực.", a.Number) : I18n.T("Đã trả lại phụ lục {0}.", a.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -299,12 +299,12 @@ public class ContractsController : ProcControllerBase
         var c = await Db.Contracts.Include(x => x.Milestones).FirstOrDefaultAsync(x => x.Id == id);
         if (c == null) return NotFound();
         IActionResult Back(string? e = null) { if (e != null) TempData["Error"] = e; return RedirectToAction(nameof(Details), new { id }); }
-        if (string.IsNullOrWhiteSpace(name) || percent is <= 0 or > 100 || type == PaymentType.Invoice) return Back("Nhập tên đợt và tỷ lệ (0–100%).");
-        if (c.Milestones.Sum(m => m.Percent) + percent > 100) return Back($"Tổng tỷ lệ các đợt vượt 100% (đã có {c.Milestones.Sum(m => m.Percent):0.#}%).");
+        if (string.IsNullOrWhiteSpace(name) || percent is <= 0 or > 100 || type == PaymentType.Invoice) return Back(I18n.T("Nhập tên đợt và tỷ lệ (0–100%)."));
+        if (c.Milestones.Sum(m => m.Percent) + percent > 100) return Back(I18n.T("Tổng tỷ lệ các đợt vượt 100% (đã có {0:0.#}%).", c.Milestones.Sum(m => m.Percent)));
         var gross = Math.Round(c.Value * (1 + c.VatPercent / 100m), 0);
         c.Milestones.Add(new ContractMilestone { Name = name.Trim(), Type = type, Percent = percent, Amount = Math.Round(gross * percent / 100m, 0), DueDate = dueDate?.Date, Condition = condition?.Trim(), SortOrder = c.Milestones.Count + 1 });
         await Db.SaveChangesAsync();
-        TempData["Success"] = "Đã thêm đợt thanh toán.";
+        TempData["Success"] = I18n.T("Đã thêm đợt thanh toán.");
         return Back();
     }
 
@@ -312,7 +312,7 @@ public class ContractsController : ProcControllerBase
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteMilestone(int id, int milestoneId)
     {
-        if (await Db.Payments.AnyAsync(p => p.MilestoneId == milestoneId && p.Status != PaymentStatus.Rejected)) { TempData["Error"] = "Đợt đã có đề nghị thanh toán."; return RedirectToAction(nameof(Details), new { id }); }
+        if (await Db.Payments.AnyAsync(p => p.MilestoneId == milestoneId && p.Status != PaymentStatus.Rejected)) { TempData["Error"] = I18n.T("Đợt đã có đề nghị thanh toán."); return RedirectToAction(nameof(Details), new { id }); }
         await Db.ContractMilestones.Where(m => m.Id == milestoneId && m.ContractId == id).ExecuteDeleteAsync();
         return RedirectToAction(nameof(Details), new { id });
     }
@@ -326,12 +326,12 @@ public class ContractsController : ProcControllerBase
         var m = await Db.ContractMilestones.FirstOrDefaultAsync(x => x.Id == milestoneId && x.ContractId == id);
         if (c == null || m == null) return NotFound();
         IActionResult Back(string? e = null) { if (e != null) TempData["Error"] = e; return RedirectToAction(nameof(Details), new { id }); }
-        if (c.Status != ContractStatus.Active) return Back("Hợp đồng không còn hiệu lực.");
-        if (await Db.Payments.AnyAsync(p => p.MilestoneId == m.Id && p.Status != PaymentStatus.Rejected)) return Back("Đợt này đã có đề nghị thanh toán.");
+        if (c.Status != ContractStatus.Active) return Back(I18n.T("Hợp đồng không còn hiệu lực."));
+        if (await Db.Payments.AnyAsync(p => p.MilestoneId == m.Id && p.Status != PaymentStatus.Rejected)) return Back(I18n.T("Đợt này đã có đề nghị thanh toán."));
         if (m.Type == PaymentType.Advance)
         {
             var cover = await Db.ContractGuarantees.Where(g => g.ContractId == id && g.Type == GuaranteeType.Advance && g.ReleasedAt == null && g.ExpiryDate >= DateTime.Today).SumAsync(g => (decimal?)g.Amount) ?? 0;
-            if (cover < m.Amount) return Back($"Tạm ứng {m.Amount.ToMoney()} đ cần bảo lãnh tạm ứng còn hiệu lực tương ứng (hiện có {cover.ToMoney()} đ).");
+            if (cover < m.Amount) return Back(I18n.T("Tạm ứng {0} đ cần bảo lãnh tạm ứng còn hiệu lực tương ứng (hiện có {1} đ).", m.Amount.ToMoney(), cover.ToMoney()));
         }
         var pay = new Payment
         {
@@ -344,7 +344,7 @@ public class ContractsController : ProcControllerBase
         Log(DocType.Payment, pay.Id, $"Đề nghị {m.Type.GetDisplayName().ToLower()} {pay.NetAmount.ToMoney()} đ", pay.Note);
         Log(DocType.Contract, id, $"Lập đề nghị thanh toán {pay.Number} – {m.Name}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã lập {pay.Number} – chờ Giám đốc duyệt.";
+        TempData["Success"] = I18n.T("Đã lập {0} – chờ Giám đốc duyệt.", pay.Number);
         return RedirectToAction("Details", "Payments", new { id = pay.Id });
     }
 
@@ -353,7 +353,7 @@ public class ContractsController : ProcControllerBase
     public async Task<IActionResult> AddGuarantee(int id, GuaranteeType type, decimal amount, string? reference, string? bank, DateTime expiryDate, string? note)
     {
         if (!await Db.Contracts.AnyAsync(c => c.Id == id)) return NotFound();
-        if (amount <= 0 || expiryDate.Date < DateTime.Today) { TempData["Error"] = "Giá trị và ngày hiệu lực bảo lãnh không hợp lệ."; return RedirectToAction(nameof(Details), new { id }); }
+        if (amount <= 0 || expiryDate.Date < DateTime.Today) { TempData["Error"] = I18n.T("Giá trị và ngày hiệu lực bảo lãnh không hợp lệ."); return RedirectToAction(nameof(Details), new { id }); }
         Db.ContractGuarantees.Add(new ContractGuarantee { ContractId = id, Type = type, Amount = Math.Round(amount, 0), Reference = reference?.Trim(), Bank = bank?.Trim(), ExpiryDate = expiryDate.Date, Note = note?.Trim() });
         Log(DocType.Contract, id, $"Tiếp nhận {type.GetDisplayName().ToLower()} {amount.ToMoney()} đ", $"{reference} – {bank}, hiệu lực đến {expiryDate:dd/MM/yyyy}");
         await Db.SaveChangesAsync();
@@ -378,7 +378,7 @@ public class ContractsController : ProcControllerBase
     {
         var c = await Db.Contracts.FindAsync(id);
         if (c == null) return NotFound();
-        if (perDay is < 0 or > 5 || cap is < 0 or > 100) { TempData["Error"] = "Mức phạt không hợp lệ."; return RedirectToAction(nameof(Details), new { id }); }
+        if (perDay is < 0 or > 5 || cap is < 0 or > 100) { TempData["Error"] = I18n.T("Mức phạt không hợp lệ."); return RedirectToAction(nameof(Details), new { id }); }
         c.LatePenaltyPercentPerDay = perDay; c.LatePenaltyCapPercent = cap;
         Log(DocType.Contract, id, $"Cập nhật điều khoản phạt chậm giao: {perDay:0.###}%/ngày, tối đa {cap:0.#}%");
         await Db.SaveChangesAsync();

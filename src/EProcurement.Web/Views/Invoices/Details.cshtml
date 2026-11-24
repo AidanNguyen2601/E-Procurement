@@ -8,69 +8,69 @@
 <div class="col-lg-8">
     <div class="card mb-3"><div class="card-body">
         <div class="d-flex justify-content-between flex-wrap gap-2">
-            <div><h5 class="mb-1">Hóa đơn @Model.Series @Model.InvoiceNo</h5>
-                <div class="small text-muted">@Model.Vendor?.Name · ngày @Model.InvoiceDate.ToDate() · hạn thanh toán <b class="@(Model.DueDate < DateTime.Today && Model.Status != InvoiceStatus.Paid ? "text-danger" : "")">@Model.DueDate.ToDate()</b>
-                    · PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id">@po.Number</a>@(Model.FromPortal ? " · NCC gửi qua cổng" : "")</div></div>
+            <div><h5 class="mb-1">@L["Hóa đơn"] @Model.Series @Model.InvoiceNo</h5>
+                <div class="small text-muted">@Model.Vendor?.Name @L["· ngày"] @Model.InvoiceDate.ToDate() @L["· hạn thanh toán"] <b class="@(Model.DueDate < DateTime.Today && Model.Status != InvoiceStatus.Paid ? "text-danger" : "")">@Model.DueDate.ToDate()</b>
+                    · PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id">@po.Number</a>@(Model.FromPortal ? L[" · NCC gửi qua cổng"] : "")</div></div>
             <div class="text-end"><span class="badge fs-6 @(Model.Status switch { InvoiceStatus.Exception => "bg-danger", InvoiceStatus.Matched => "bg-primary", InvoiceStatus.Paid => "bg-success", InvoiceStatus.Rejected => "bg-secondary", _ => "bg-warning text-dark" })">@Model.Status.GetDisplayName()</span>
                 @if (Model.FileData != null || Model.FileName != null) { <div><a asp-action="File" asp-route-id="@Model.Id" class="small">@Icon.Svg("file-text", 14) @Model.FileName</a></div> }</div>
         </div>
     </div></div>
     <div class="card mb-3 @(m.Ok ? "border-success" : "border-danger")"><div class="card-header d-flex align-items-center gap-2">
-        <span class="@(m.Ok ? "text-success" : "text-danger") d-inline-flex">@Icon.Svg(m.Ok ? "shield-check" : "alert", 16)</span> Đối chiếu 3 bên: PO – phiếu nhận – hóa đơn</div>
+        <span class="@(m.Ok ? "text-success" : "text-danger") d-inline-flex">@Icon.Svg(m.Ok ? "shield-check" : "alert", 16)</span> @L["Đối chiếu 3 bên: PO – phiếu nhận – hóa đơn"]</div>
         <div class="card-body p-0"><table class="table table-sm mb-0 small align-middle">
-            <thead><tr><th>Hàng hóa</th><th class="money">SL đặt</th><th class="money">Đã nhận đạt</th><th class="money">HĐ trước</th><th class="money">HĐ này</th><th class="money">Giá PO</th><th class="money">Giá HĐ</th><th class="money">Thành tiền</th><th></th></tr></thead><tbody>
+            <thead><tr><th>@L["Hàng hóa"]</th><th class="money">@L["SL đặt"]</th><th class="money">@L["Đã nhận đạt"]</th><th class="money">@L["HĐ trước"]</th><th class="money">@L["HĐ này"]</th><th class="money">@L["Giá PO"]</th><th class="money">@L["Giá HĐ"]</th><th class="money">@L["Thành tiền"]</th><th></th></tr></thead><tbody>
             @foreach (var l in m.Lines)
             {
                 <tr class="@(l.Issues.Any() ? "table-danger" : "")"><td>@l.PoLine.Description</td><td class="money">@l.Ordered.ToQty()</td><td class="money">@l.Received.ToQty()</td><td class="money">@l.InvoicedBefore.ToQty()</td>
                     <td class="money fw-semibold">@l.Invoiced.ToQty()</td><td class="money">@l.PoPrice.ToMoney()</td><td class="money">@l.InvoicePrice.ToMoney()</td><td class="money">@Math.Round(l.Invoiced * l.InvoicePrice, 0).ToMoney()</td>
                     <td>@if (l.Issues.Any()) { <span class="text-danger">@string.Join("; ", l.Issues)</span> } else { <span class="text-success">✓</span> }</td></tr>
             }
-            <tr><td colspan="7" class="text-end">Tiền hàng</td><td class="money">@Model.SubTotal.ToMoney()</td><td></td></tr>
-            <tr><td colspan="7" class="text-end">Thuế GTGT</td><td class="money">@Model.VatAmount.ToMoney()</td><td></td></tr>
-            <tr class="fw-semibold"><td colspan="7" class="text-end">Tổng thanh toán</td><td class="money">@Model.Total.ToMoney()</td><td></td></tr>
+            <tr><td colspan="7" class="text-end">@L["Tiền hàng"]</td><td class="money">@Model.SubTotal.ToMoney()</td><td></td></tr>
+            <tr><td colspan="7" class="text-end">@L["Thuế GTGT"]</td><td class="money">@Model.VatAmount.ToMoney()</td><td></td></tr>
+            <tr class="fw-semibold"><td colspan="7" class="text-end">@L["Tổng thanh toán"]</td><td class="money">@Model.Total.ToMoney()</td><td></td></tr>
         </tbody></table></div>
         @if (!m.Ok) { <div class="card-footer small text-danger">@m.Summary</div> }
-        @if (!string.IsNullOrEmpty(Model.DecisionNote)) { <div class="card-footer small">Ghi chú quyết định: @Model.DecisionNote</div> }
+        @if (!string.IsNullOrEmpty(Model.DecisionNote)) { <div class="card-footer small">@L["Ghi chú quyết định:"] @Model.DecisionNote</div> }
     </div>
 
-    @if (Model.Status is InvoiceStatus.Exception or InvoiceStatus.Received && finance) { <form asp-action="Rematch" asp-route-id="@Model.Id" method="post" class="mb-3"><button class="btn btn-sm btn-outline-primary">Đối chiếu lại (sau khi nhận thêm hàng)</button></form> }
+    @if (Model.Status is InvoiceStatus.Exception or InvoiceStatus.Received && finance) { <form asp-action="Rematch" asp-route-id="@Model.Id" method="post" class="mb-3"><button class="btn btn-sm btn-outline-primary">@L["Đối chiếu lại (sau khi nhận thêm hàng)"]</button></form> }
     @if (Model.Status == InvoiceStatus.Exception && director)
     {
         <div class="card mb-3 border-warning"><div class="card-body">
             <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-                <input name="reason" class="form-control form-control-sm" placeholder="Lý do chấp nhận sai lệch / từ chối hóa đơn" required />
-                <button name="accept" value="true" class="btn btn-sm btn-warning text-nowrap">Chấp nhận sai lệch</button>
-                <button name="accept" value="false" class="btn btn-sm btn-outline-danger text-nowrap">Từ chối</button>
+                <input name="reason" class="form-control form-control-sm" placeholder="@L["Lý do chấp nhận sai lệch / từ chối hóa đơn"]" required />
+                <button name="accept" value="true" class="btn btn-sm btn-warning text-nowrap">@L["Chấp nhận sai lệch"]</button>
+                <button name="accept" value="false" class="btn btn-sm btn-outline-danger text-nowrap">@L["Từ chối"]</button>
             </form></div></div>
     }
     else if (Model.Status is InvoiceStatus.Exception or InvoiceStatus.Matched or InvoiceStatus.Received && finance)
     {
         <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="d-flex gap-2 mb-3">
-            <input name="reason" class="form-control form-control-sm" placeholder="Lý do từ chối hóa đơn (trả lại NCC)" />
-            <button name="accept" value="false" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="Từ chối hóa đơn này?">Từ chối hóa đơn</button>
+            <input name="reason" class="form-control form-control-sm" placeholder="@L["Lý do từ chối hóa đơn (trả lại NCC)"]" />
+            <button name="accept" value="false" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="@L["Từ chối hóa đơn này?"]">@L["Từ chối hóa đơn"]</button>
         </form>
     }
 
     @if (prop != null && finance)
     {
-        <div class="card mb-3 border-primary"><div class="card-header">Đề nghị thanh toán</div><div class="card-body">
+        <div class="card mb-3 border-primary"><div class="card-header">@L["Đề nghị thanh toán"]</div><div class="card-body">
             <table class="table table-sm small mb-2">
-                <tr><td>Số tiền theo hóa đơn</td><td class="money">@prop.Amount.ToMoney()</td></tr>
-                @if (prop.Penalty > 0) { <tr><td>Phạt chậm giao (@prop.LateDays ngày)</td><td class="money text-danger">−@prop.Penalty.ToMoney()</td></tr> }
-                @if (prop.AdvanceDeduction > 0) { <tr><td>Khấu trừ tạm ứng</td><td class="money">−@prop.AdvanceDeduction.ToMoney()</td></tr> }
-                <tr class="fw-semibold"><td>Thực chi</td><td class="money">@prop.Net.ToMoney()</td></tr>
+                <tr><td>@L["Số tiền theo hóa đơn"]</td><td class="money">@prop.Amount.ToMoney()</td></tr>
+                @if (prop.Penalty > 0) { <tr><td>@L["Phạt chậm giao ("]@prop.LateDays @L["ngày)"]</td><td class="money text-danger">−@prop.Penalty.ToMoney()</td></tr> }
+                @if (prop.AdvanceDeduction > 0) { <tr><td>@L["Khấu trừ tạm ứng"]</td><td class="money">−@prop.AdvanceDeduction.ToMoney()</td></tr> }
+                <tr class="fw-semibold"><td>@L["Thực chi"]</td><td class="money">@prop.Net.ToMoney()</td></tr>
             </table>
             @if (!string.IsNullOrEmpty(prop.Note)) { <div class="small text-muted mb-2">@prop.Note</div> }
             <form asp-action="RequestPayment" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
-                <input name="note" class="form-control form-control-sm" placeholder="Ghi chú" /><button class="btn btn-sm btn-primary text-nowrap">Lập đề nghị thanh toán</button></form>
+                <input name="note" class="form-control form-control-sm" placeholder="@L["Ghi chú"]" /><button class="btn btn-sm btn-primary text-nowrap">@L["Lập đề nghị thanh toán"]</button></form>
         </div></div>
     }
     @if (pays.Any())
     {
-        <div class="card"><div class="card-header">Thanh toán</div><ul class="list-group list-group-flush small">
-            @foreach (var p in pays) { <li class="list-group-item d-flex justify-content-between"><span><a asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">@p.Number</a> · thực chi @p.NetAmount.ToMoney() đ</span><span>@p.Status.GetDisplayName()</span></li> }
+        <div class="card"><div class="card-header">@L["Thanh toán"]</div><ul class="list-group list-group-flush small">
+            @foreach (var p in pays) { <li class="list-group-item d-flex justify-content-between"><span><a asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">@p.Number</a> @L["· thực chi"] @p.NetAmount.ToMoney() đ</span><span>@p.Status.GetDisplayName()</span></li> }
         </ul></div>
     }
 </div>
-<div class="col-lg-4"><div class="card"><div class="card-header">Nhật ký</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.Invoice, id = Model.Id })</div></div></div>
+<div class="col-lg-4"><div class="card"><div class="card-header">@L["Nhật ký"]</div><div class="card-body"><partial name="_History" model="history" />@await Component.InvokeAsync("Signatures", new { type = DocType.Invoice, id = Model.Id })</div></div></div>
 </div>

@@ -4,38 +4,38 @@
     var sel = ViewBag.Selected as ProcurementPackage;
 }
 <div class="alert alert-info small">
-    Gói <b>chưa phân thành viên</b>: mọi nhân viên mua hàng được chỉnh sửa như trước. Khi đã phân thành viên: chỉ người lập gói,
-    <b>Phụ trách</b> và <b>Thành viên</b> (cùng Ban Giám đốc, Quản trị) được sửa / hủy gói; <b>Chỉ xem</b> và nhân viên mua hàng khác chỉ xem.
+    @L["Gói"] <b>@L["chưa phân thành viên"]</b>@L[": mọi nhân viên mua hàng được chỉnh sửa như trước. Khi đã phân thành viên: chỉ người lập gói,"]
+    <b>@L["Phụ trách"]</b> @L["và"] <b>@L["Thành viên"]</b> @L["(cùng Ban Giám đốc, Quản trị) được sửa / hủy gói;"] <b>@L["Chỉ xem"]</b> @L["và nhân viên mua hàng khác chỉ xem."]
 </div>
 <div class="row g-3">
     <div class="col-lg-5">
-        <form method="get" class="mb-2 d-flex gap-2"><input name="q" value="@ViewBag.Q" class="form-control form-control-sm" placeholder="Tìm số / tên gói" /><button class="btn btn-sm btn-outline-primary">Tìm</button></form>
+        <form method="get" class="mb-2 d-flex gap-2"><input name="q" value="@ViewBag.Q" class="form-control form-control-sm" placeholder="@L["Tìm số / tên gói"]" /><button class="btn btn-sm btn-outline-primary">@L["Tìm"]</button></form>
         <div class="card"><div class="list-group list-group-flush" style="max-height:70vh;overflow:auto">
             @foreach (var p in packages)
             {
                 <a asp-action="PackageAccess" asp-route-id="@p.Id" asp-route-q="@ViewBag.Q" class="list-group-item list-group-item-action @(sel?.Id == p.Id ? "active" : "")">
-                    <div class="d-flex justify-content-between"><b>@p.Number</b><span class="badge @(counts.ContainsKey(p.Id) ? "bg-primary" : "bg-secondary-subtle text-secondary")">@(counts.TryGetValue(p.Id, out var n) ? n + " thành viên" : "Chưa phân")</span></div>
-                    <div class="small">@p.Title</div><div class="small @(sel?.Id == p.Id ? "" : "text-muted")">@p.Status.GetDisplayName() · lập: @p.Buyer?.FullName</div>
+                    <div class="d-flex justify-content-between"><b>@p.Number</b><span class="badge @(counts.ContainsKey(p.Id) ? "bg-primary" : "bg-secondary-subtle text-secondary")">@(counts.TryGetValue(p.Id, out var n) ? n + L[" thành viên"] : L["Chưa phân"])</span></div>
+                    <div class="small">@p.Title</div><div class="small @(sel?.Id == p.Id ? "" : "text-muted")">@p.Status.GetDisplayName() @L["· lập:"] @p.Buyer?.FullName</div>
                 </a>
             }
-            @if (packages.Count == 0) { <div class="list-group-item text-muted small">Không có gói.</div> }
+            @if (packages.Count == 0) { <div class="list-group-item text-muted small">@L["Không có gói."]</div> }
         </div></div>
     </div>
     <div class="col-lg-7">
         @if (sel == null)
         {
-            <div class="card"><div class="card-body text-muted">Chọn một gói bên trái để phân quyền.</div></div>
+            <div class="card"><div class="card-body text-muted">@L["Chọn một gói bên trái để phân quyền."]</div></div>
         }
         else
         {
             var members = (List<PackageMember>)ViewBag.Members;
             bool canEdit = ViewBag.CanEdit;
             <div class="card">
-                <div class="card-header d-flex"><span>@sel.Number – @sel.Title</span><a asp-controller="Packages" asp-action="Details" asp-route-id="@sel.Id" class="ms-auto small">Mở gói →</a></div>
+                <div class="card-header d-flex"><span>@sel.Number – @sel.Title</span><a asp-controller="Packages" asp-action="Details" asp-route-id="@sel.Id" class="ms-auto small">@L["Mở gói →"]</a></div>
                 <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>Người dùng</th><th>Quyền</th><th></th></tr></thead>
+                    <thead><tr><th>@L["Người dùng"]</th><th>@L["Quyền"]</th><th></th></tr></thead>
                     <tbody>
-                        <tr><td>@sel.Buyer?.FullName</td><td><span class="badge bg-primary">Người lập gói (luôn được sửa)</span></td><td></td></tr>
+                        <tr><td>@sel.Buyer?.FullName</td><td><span class="badge bg-primary">@L["Người lập gói (luôn được sửa)"]</span></td><td></td></tr>
                         @foreach (var m in members)
                         {
                             <tr><td>@m.User?.FullName <span class="small text-muted">· @m.User?.Department</span></td>
@@ -48,7 +48,7 @@
                                     else { @m.Role.GetDisplayName() }
                                 </td>
                                 <td class="text-end">@if (canEdit) {
-                                    <form asp-action="UpdatePackageMember" method="post" data-confirm="Gỡ @m.User?.FullName khỏi gói?"><input type="hidden" name="memberId" value="@m.Id" /><input type="hidden" name="remove" value="true" /><button class="btn btn-sm btn-outline-danger">Gỡ</button></form> }</td></tr>
+                                    <form asp-action="UpdatePackageMember" method="post" data-confirm="@L["Gỡ {0} khỏi gói?", m.User?.FullName]"><input type="hidden" name="memberId" value="@m.Id" /><input type="hidden" name="remove" value="true" /><button class="btn btn-sm btn-outline-danger">@L["Gỡ"]</button></form> }</td></tr>
                         }
                     </tbody>
                 </table>
@@ -56,9 +56,9 @@
                 {
                     <div class="card-footer">
                         <form asp-action="AddPackageMember" asp-route-id="@sel.Id" method="post" class="row g-2">
-                            <div class="col-md-6"><select name="userId" asp-items="(SelectList)ViewBag.Users" class="form-select form-select-sm" required><option value="">-- Chọn người dùng --</option></select></div>
+                            <div class="col-md-6"><select name="userId" asp-items="(SelectList)ViewBag.Users" class="form-select form-select-sm" required><option value="">@L["-- Chọn người dùng --"]</option></select></div>
                             <div class="col-md-3"><select name="role" asp-items="Html.GetEnumSelectList<PackageRole>()" class="form-select form-select-sm"></select></div>
-                            <div class="col-md-3"><button class="btn btn-sm btn-primary w-100">Thêm</button></div>
+                            <div class="col-md-3"><button class="btn btn-sm btn-primary w-100">@L["Thêm"]</button></div>
                         </form>
                     </div>
                 }

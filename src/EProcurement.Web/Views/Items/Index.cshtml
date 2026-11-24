@@ -7,28 +7,28 @@
 <div class="row g-3">
     <div class="col-lg-9">
         <form method="get" class="toolbar">
-            <div><label class="form-label small mb-1">Tìm kiếm</label><input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Mã, tên hàng" /></div>
-            <div><label class="form-label small mb-1">Nhóm hàng</label><select name="categoryId" class="form-select" asp-items="ViewBag.Categories"><option value="">-- Tất cả --</option></select></div>
-            <button class="btn btn-outline-primary">Lọc</button>
-            @if (canEdit) { <a class="btn btn-primary ms-auto" asp-action="Create">+ Thêm hàng hóa</a> }
+            <div><label class="form-label small mb-1">@L["Tìm kiếm"]</label><input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="@L["Mã, tên hàng"]" /></div>
+            <div><label class="form-label small mb-1">@L["Nhóm hàng"]</label><select name="categoryId" class="form-select" asp-items="ViewBag.Categories"><option value="">@L["-- Tất cả --"]</option></select></div>
+            <button class="btn btn-outline-primary">@L["Lọc"]</button>
+            @if (canEdit) { <a class="btn btn-primary ms-auto" asp-action="Create">@L["+ Thêm hàng hóa"]</a> }
         </form>
         <div class="card"><div class="card-body p-0"><table class="table table-hover mb-0">
-            <thead><tr><th>Mã</th><th>Tên hàng hóa / dịch vụ</th><th>Nhóm</th><th>ĐVT</th><th class="money">Giá tham khảo</th><th>Trạng thái</th>@if (canEdit) { <th></th> }</tr></thead>
+            <thead><tr><th>@L["Mã"]</th><th>@L["Tên hàng hóa / dịch vụ"]</th><th>@L["Nhóm"]</th><th>@L["ĐVT"]</th><th class="money">@L["Giá tham khảo"]</th><th>@L["Trạng thái"]</th>@if (canEdit) { <th></th> }</tr></thead>
             <tbody>
             @foreach (var i in Model)
             {
                 <tr class="@(i.IsActive ? "" : "text-muted")">
                     <td><b>@i.Code</b></td><td>@i.Name<div class="small text-muted">@(string.Join(" · ", new[] { i.Brand, i.Origin, i.Specification }.Where(x => !string.IsNullOrWhiteSpace(x))))</div></td><td>@i.Category?.Name</td><td>@i.Unit</td>
                     <td class="money">@i.ReferencePrice.ToMoney()</td>
-                    <td>@(i.IsActive ? "Đang dùng" : "Ngừng")</td>
-                    @if (canEdit) { <td class="text-end"><a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@i.Id">Sửa</a></td> }
+                    <td>@(i.IsActive ? L["Đang dùng"] : L["Ngừng"])</td>
+                    @if (canEdit) { <td class="text-end"><a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@i.Id">@L["Sửa"]</a></td> }
                 </tr>
             }
             </tbody>
         </table></div></div>
     </div>
     <div class="col-lg-3">
-        <div class="card"><div class="card-header">Nhóm hàng</div>
+        <div class="card"><div class="card-header">@L["Nhóm hàng"]</div>
             <ul class="list-group list-group-flush">
                 @foreach (var c in cats) { <li class="list-group-item small d-flex justify-content-between"><span><b>@c.Code</b> – @c.Name</span><span class="text-muted">@Model.Count(i => i.CategoryId == c.Id)</span></li> }
             </ul>
@@ -36,8 +36,8 @@
             {
                 <div class="card-body border-top">
                     <form asp-action="SaveCategory" method="post" class="d-flex gap-1">
-                        <input name="Code" class="form-control form-control-sm" placeholder="Mã" style="width:70px" />
-                        <input name="Name" class="form-control form-control-sm" placeholder="Tên nhóm mới" />
+                        <input name="Code" class="form-control form-control-sm" placeholder="@L["Mã"]" style="width:70px" />
+                        <input name="Name" class="form-control form-control-sm" placeholder="@L["Tên nhóm mới"]" />
                         <button class="btn btn-sm btn-primary">+</button>
                     </form>
                 </div>

@@ -49,7 +49,7 @@ public class NotificationsController : Controller
     public async Task<IActionResult> EmailPreference(bool enabled)
     {
         await _db.Users.Where(u => u.Id == Me).ExecuteUpdateAsync(s => s.SetProperty(u => u.EmailNotifications, enabled));
-        TempData["Success"] = enabled ? "Đã bật nhận thông báo qua email." : "Đã tắt nhận thông báo qua email.";
+        TempData["Success"] = enabled ? I18n.T("Đã bật nhận thông báo qua email.") : I18n.T("Đã tắt nhận thông báo qua email.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -59,7 +59,7 @@ public class NotificationsController : Controller
     {
         var n = await svc.RunRemindersAsync();
         var m = await svc.SendEmailsAsync();
-        TempData["Success"] = $"Đã quét nhắc hạn: {n} thông báo mới, {m} email đã gửi.";
+        TempData["Success"] = I18n.T("Đã quét nhắc hạn: {0} thông báo mới, {1} email đã gửi.", n, m);
         return RedirectToAction(nameof(Index));
     }
 }

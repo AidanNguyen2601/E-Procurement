@@ -1,7 +1,7 @@
 @model ProcurementPackage?
 @if (Model != null)
 {
-    <div class="alert alert-info py-2 small">Lập theo gói mua sắm <a asp-controller="Packages" asp-action="Details" asp-route-id="@Model.Id" class="fw-semibold">@Model.Number</a> – @Model.Title
+    <div class="alert alert-info py-2 small">@L["Lập theo gói mua sắm"] <a asp-controller="Packages" asp-action="Details" asp-route-id="@Model.Id" class="fw-semibold">@Model.Number</a> – @Model.Title
         · @Model.Method.GetDisplayName() · giá gói @Model.Budget.ToMoney() đ · @Model.PurchaseRequests.Count đề nghị (@string.Join(", ", Model.PurchaseRequests.OrderBy(r => r.Id).Select(r => r.Number)))
         @if (Model.SelectionPlan != null) { <span>· KHLCNT @Model.SelectionPlan.Number</span> }</div>
 }

@@ -6,15 +6,15 @@
     var purchasing = User.IsPurchasing(); var finance = User.IsAdmin() || User.IsInRole(AppRoles.Accountant); var director = User.IsAdmin() || User.IsInRole(AppRoles.Director);
     var active = Model.Status == ContractStatus.Active;
 }
-<div class="card mb-3"><div class="card-header">Thanh toán hợp đồng</div><div class="card-body">
+<div class="card mb-3"><div class="card-header">@L["Thanh toán hợp đồng"]</div><div class="card-body">
     <div class="row g-2 small mb-2">
-        <div class="col-6 col-md-3">Giá trị HĐ (gồm VAT)<div class="fw-semibold">@gross.ToMoney()</div></div>
-        <div class="col-6 col-md-3">Đã chi<div class="fw-semibold">@sum.Paid.ToMoney() <span class="text-muted fw-normal">(@(gross == 0 ? 0 : Math.Round(sum.Paid * 100 / gross, 1))%)</span></div></div>
-        <div class="col-6 col-md-3">Đang đề nghị / chờ chi<div class="fw-semibold">@sum.Requested.ToMoney()</div></div>
-        <div class="col-6 col-md-3">Tạm ứng còn phải thu hồi<div class="fw-semibold">@Math.Max(0, sum.AdvancePaid - sum.AdvanceRecovered).ToMoney()</div></div>
+        <div class="col-6 col-md-3">@L["Giá trị HĐ (gồm VAT)"]<div class="fw-semibold">@gross.ToMoney()</div></div>
+        <div class="col-6 col-md-3">@L["Đã chi"]<div class="fw-semibold">@sum.Paid.ToMoney() <span class="text-muted fw-normal">(@(gross == 0 ? 0 : Math.Round(sum.Paid * 100 / gross, 1))%)</span></div></div>
+        <div class="col-6 col-md-3">@L["Đang đề nghị / chờ chi"]<div class="fw-semibold">@sum.Requested.ToMoney()</div></div>
+        <div class="col-6 col-md-3">@L["Tạm ứng còn phải thu hồi"]<div class="fw-semibold">@Math.Max(0, sum.AdvancePaid - sum.AdvanceRecovered).ToMoney()</div></div>
     </div>
     <table class="table table-sm small mb-2">
-        <thead><tr><th>Đợt</th><th>Loại</th><th class="money">%</th><th class="money">Số tiền</th><th>Dự kiến</th><th>Điều kiện</th><th></th></tr></thead><tbody>
+        <thead><tr><th>@L["Đợt"]</th><th>@L["Loại"]</th><th class="money">%</th><th class="money">@L["Số tiền"]</th><th>@L["Dự kiến"]</th><th>@L["Điều kiện"]</th><th></th></tr></thead><tbody>
         @foreach (var m in Model.Milestones.OrderBy(x => x.SortOrder))
         {
             var p = pays.FirstOrDefault(x => x.MilestoneId == m.Id && x.Status != PaymentStatus.Rejected);
@@ -22,84 +22,84 @@
                 <td class="text-end text-nowrap">@if (p != null) { <a asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">@p.Number</a> <span class="text-muted">@p.Status.GetDisplayName()</span> }
                     else
                     {
-                        @if (finance && active) { <form asp-action="RequestMilestonePayment" asp-route-id="@Model.Id" method="post" class="d-inline"><input type="hidden" name="milestoneId" value="@m.Id" /><button class="btn btn-sm btn-outline-primary">Đề nghị TT</button></form> }
-                        @if (purchasing || finance) { <form asp-action="DeleteMilestone" asp-route-id="@Model.Id" method="post" class="d-inline"><input type="hidden" name="milestoneId" value="@m.Id" /><button class="btn btn-sm btn-link text-danger">Xóa</button></form> }
+                        @if (finance && active) { <form asp-action="RequestMilestonePayment" asp-route-id="@Model.Id" method="post" class="d-inline"><input type="hidden" name="milestoneId" value="@m.Id" /><button class="btn btn-sm btn-outline-primary">@L["Đề nghị TT"]</button></form> }
+                        @if (purchasing || finance) { <form asp-action="DeleteMilestone" asp-route-id="@Model.Id" method="post" class="d-inline"><input type="hidden" name="milestoneId" value="@m.Id" /><button class="btn btn-sm btn-link text-danger">@L["Xóa"]</button></form> }
                     }</td></tr>
         }
-        @if (!Model.Milestones.Any()) { <tr><td colspan="7" class="text-muted">Chưa lập lịch thanh toán. Thanh toán theo hóa đơn từng đợt giao hàng vẫn thực hiện được.</td></tr> }
+        @if (!Model.Milestones.Any()) { <tr><td colspan="7" class="text-muted">@L["Chưa lập lịch thanh toán. Thanh toán theo hóa đơn từng đợt giao hàng vẫn thực hiện được."]</td></tr> }
     </tbody></table>
     @if ((purchasing || finance) && active)
     {
         <form asp-action="AddMilestone" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
-            <div class="col-md-3"><input name="name" maxlength="200" class="form-control form-control-sm" placeholder="Tên đợt (Tạm ứng 30%…)" required /></div>
-            <div class="col-md-2"><select name="type" class="form-select form-select-sm"><option value="Advance">Tạm ứng</option><option value="Milestone">Thanh toán đợt</option></select></div>
+            <div class="col-md-3"><input name="name" maxlength="200" class="form-control form-control-sm" placeholder="@L["Tên đợt (Tạm ứng 30%…)"]" required /></div>
+            <div class="col-md-2"><select name="type" class="form-select form-select-sm"><option value="Advance">@L["Tạm ứng"]</option><option value="Milestone">@L["Thanh toán đợt"]</option></select></div>
             <div class="col-md-1"><input name="percent" type="number" min="0.1" max="100" step="0.1" class="form-control form-control-sm" placeholder="%" required /></div>
             <div class="col-md-2"><input name="dueDate" type="date" class="form-control form-control-sm" /></div>
-            <div class="col-md-3"><input name="condition" maxlength="500" class="form-control form-control-sm" placeholder="Điều kiện (nộp bảo lãnh, nghiệm thu…)" /></div>
-            <div class="col-md-1"><button class="btn btn-sm btn-outline-primary w-100">Thêm</button></div>
+            <div class="col-md-3"><input name="condition" maxlength="500" class="form-control form-control-sm" placeholder="@L["Điều kiện (nộp bảo lãnh, nghiệm thu…)"]" /></div>
+            <div class="col-md-1"><button class="btn btn-sm btn-outline-primary w-100">@L["Thêm"]</button></div>
         </form>
     }
     @if (pays.Any(p => p.MilestoneId == null))
     {
-        <div class="small mt-3"><b>Thanh toán theo hóa đơn:</b>
+        <div class="small mt-3"><b>@L["Thanh toán theo hóa đơn:"]</b>
             @foreach (var p in pays.Where(p => p.MilestoneId == null)) { <span class="me-2"><a asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">@p.Number</a> @p.NetAmount.ToShortMoney() (@p.Status.GetDisplayName().ToLower())</span> }</div>
     }
 </div></div>
 
-<div class="card mb-3"><div class="card-header">Bảo lãnh & điều khoản phạt</div><div class="card-body">
+<div class="card mb-3"><div class="card-header">@L["Bảo lãnh & điều khoản phạt"]</div><div class="card-body">
     <table class="table table-sm small mb-2">
-        <thead><tr><th>Loại</th><th class="money">Giá trị</th><th>Số / ngân hàng</th><th>Hiệu lực đến</th><th></th></tr></thead><tbody>
+        <thead><tr><th>@L["Loại"]</th><th class="money">@L["Giá trị"]</th><th>@L["Số / ngân hàng"]</th><th>@L["Hiệu lực đến"]</th><th></th></tr></thead><tbody>
         @if (Model.PerformanceSecurityAmount > 0)
         {
-            <tr><td>Bảo lãnh thực hiện</td><td class="money">@Model.PerformanceSecurityAmount.ToMoney()</td><td>@Model.PerformanceSecurityRef</td>
+            <tr><td>@L["Bảo lãnh thực hiện"]</td><td class="money">@Model.PerformanceSecurityAmount.ToMoney()</td><td>@Model.PerformanceSecurityRef</td>
                 <td class="@(Model.PerformanceSecurityExpiry < Model.EndDate ? "text-danger" : "")">@Model.PerformanceSecurityExpiry.ToDate()</td><td></td></tr>
         }
         @foreach (var g in Model.Guarantees.OrderBy(x => x.ExpiryDate))
         {
             <tr class="@(g.ReleasedAt != null ? "text-muted" : g.ExpiryDate < DateTime.Today.AddDays(30) ? "table-warning" : "")"><td>@g.Type.GetDisplayName()</td><td class="money">@g.Amount.ToMoney()</td><td>@g.Reference @g.Bank</td><td>@g.ExpiryDate.ToDate()</td>
-                <td class="text-end">@if (g.ReleasedAt != null) { <span>đã giải tỏa @g.ReleasedAt.ToDate()</span> } else if (purchasing) { <form asp-action="ReleaseGuarantee" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="Giải tỏa bảo lãnh này?"><input type="hidden" name="guaranteeId" value="@g.Id" /><button class="btn btn-sm btn-link p-0">Giải tỏa</button></form> }</td></tr>
+                <td class="text-end">@if (g.ReleasedAt != null) { <span>@L["đã giải tỏa"] @g.ReleasedAt.ToDate()</span> } else if (purchasing) { <form asp-action="ReleaseGuarantee" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="@L["Giải tỏa bảo lãnh này?"]"><input type="hidden" name="guaranteeId" value="@g.Id" /><button class="btn btn-sm btn-link p-0">@L["Giải tỏa"]</button></form> }</td></tr>
         }
     </tbody></table>
     @if (purchasing)
     {
         <form asp-action="AddGuarantee" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end mb-3">
             <div class="col-md-3"><select name="type" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<GuaranteeType>()"></select></div>
-            <div class="col-md-2"><input name="amount" type="number" min="1" class="form-control form-control-sm" placeholder="Giá trị" required /></div>
-            <div class="col-md-2"><input name="reference" maxlength="100" class="form-control form-control-sm" placeholder="Số bảo lãnh" /></div>
-            <div class="col-md-2"><input name="bank" maxlength="100" class="form-control form-control-sm" placeholder="Ngân hàng" list="dl-bank" />@await Catalog.DatalistAsync(CatalogType.Bank)</div>
+            <div class="col-md-2"><input name="amount" type="number" min="1" class="form-control form-control-sm" placeholder="@L["Giá trị"]" required /></div>
+            <div class="col-md-2"><input name="reference" maxlength="100" class="form-control form-control-sm" placeholder="@L["Số bảo lãnh"]" /></div>
+            <div class="col-md-2"><input name="bank" maxlength="100" class="form-control form-control-sm" placeholder="@L["Ngân hàng"]" list="dl-bank" />@await Catalog.DatalistAsync(CatalogType.Bank)</div>
             <div class="col-md-2"><input name="expiryDate" type="date" class="form-control form-control-sm" required /></div>
-            <div class="col-md-1"><button class="btn btn-sm btn-outline-primary w-100">Thêm</button></div>
+            <div class="col-md-1"><button class="btn btn-sm btn-outline-primary w-100">@L["Thêm"]</button></div>
         </form>
     }
     <form asp-action="PenaltyTerms" asp-route-id="@Model.Id" method="post" class="d-flex flex-wrap gap-2 align-items-center small">
-        Phạt chậm giao <input name="perDay" type="number" min="0" max="5" step="0.01" value="@Model.LatePenaltyPercentPerDay.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)" class="form-control form-control-sm" style="width:90px" @(purchasing ? "" : "disabled") /> %/ngày, tối đa
-        <input name="cap" type="number" min="0" max="100" step="0.5" value="@Model.LatePenaltyCapPercent.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)" class="form-control form-control-sm" style="width:80px" @(purchasing ? "" : "disabled") /> % giá trị hàng giao trễ
-        @if (purchasing) { <button class="btn btn-sm btn-outline-secondary">Lưu</button> }
-        <span class="text-muted">– tự trừ khi đề nghị thanh toán hóa đơn của PO giao trễ.</span>
+        @L["Phạt chậm giao"] <input name="perDay" type="number" min="0" max="5" step="0.01" value="@Model.LatePenaltyPercentPerDay.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)" class="form-control form-control-sm" style="width:90px" @(purchasing ? "" : "disabled") /> @L["%/ngày, tối đa"]
+        <input name="cap" type="number" min="0" max="100" step="0.5" value="@Model.LatePenaltyCapPercent.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)" class="form-control form-control-sm" style="width:80px" @(purchasing ? "" : "disabled") /> @L["% giá trị hàng giao trễ"]
+        @if (purchasing) { <button class="btn btn-sm btn-outline-secondary">@L["Lưu"]</button> }
+        <span class="text-muted">@L["– tự trừ khi đề nghị thanh toán hóa đơn của PO giao trễ."]</span>
     </form>
 </div></div>
 
-<div class="card mb-3"><div class="card-header">Phụ lục hợp đồng</div><div class="card-body">
+<div class="card mb-3"><div class="card-header">@L["Phụ lục hợp đồng"]</div><div class="card-body">
     @foreach (var a in Model.Amendments.OrderBy(x => x.CreatedAt))
     {
         <div class="border-bottom pb-2 mb-2 small"><b>@a.Number</b> · <span class="badge @(a.Status == AmendmentStatus.Approved ? "bg-success" : a.Status == AmendmentStatus.Pending ? "bg-warning text-dark" : "bg-secondary")">@a.Status.GetDisplayName()</span>
-            @(a.ValueChange != 0 ? $" · giá trị {(a.ValueChange > 0 ? "+" : "")}{a.ValueChange.ToMoney()} đ" : "") @(a.NewEndDate.HasValue ? $" · gia hạn đến {a.NewEndDate:dd/MM/yyyy}" : "")
+            @(a.ValueChange != 0 ? L[" · giá trị {0}{1} đ", (a.ValueChange > 0 ? "+" : ""), a.ValueChange.ToMoney()] : "") @(a.NewEndDate.HasValue ? L[" · gia hạn đến {0:dd/MM/yyyy}", a.NewEndDate] : "")
             <div>@a.Description</div>@if (!string.IsNullOrEmpty(a.DecisionNote)) { <div class="text-muted">@a.DecisionNote</div> }
             @if (a.Status == AmendmentStatus.Pending && director)
             {
                 <form asp-action="DecideAmendment" asp-route-id="@Model.Id" method="post" class="d-flex gap-2 mt-1"><input type="hidden" name="amendmentId" value="@a.Id" />
-                    <input name="comment" class="form-control form-control-sm" placeholder="Ý kiến" /><button name="approve" value="true" class="btn btn-sm btn-success">Duyệt</button><button name="approve" value="false" class="btn btn-sm btn-outline-danger">Không duyệt</button></form>
+                    <input name="comment" class="form-control form-control-sm" placeholder="@L["Ý kiến"]" /><button name="approve" value="true" class="btn btn-sm btn-success">@L["Duyệt"]</button><button name="approve" value="false" class="btn btn-sm btn-outline-danger">@L["Không duyệt"]</button></form>
             }
         </div>
     }
     @if (purchasing && active)
     {
         <form asp-action="AddAmendment" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
-            <div class="col-md-6"><input name="description" maxlength="2000" class="form-control form-control-sm" placeholder="Nội dung điều chỉnh" required /></div>
-            <div class="col-md-2"><input name="valueChange" type="number" step="1000" value="0" class="form-control form-control-sm" title="Tăng (+) / giảm (−) giá trị trước VAT" /></div>
-            <div class="col-md-2"><input name="newEndDate" type="date" class="form-control form-control-sm" title="Gia hạn đến" /></div>
-            <div class="col-md-2"><button class="btn btn-sm btn-outline-primary w-100">Trình phụ lục</button></div>
+            <div class="col-md-6"><input name="description" maxlength="2000" class="form-control form-control-sm" placeholder="@L["Nội dung điều chỉnh"]" required /></div>
+            <div class="col-md-2"><input name="valueChange" type="number" step="1000" value="0" class="form-control form-control-sm" title="@L["Tăng (+) / giảm (−) giá trị trước VAT"]" /></div>
+            <div class="col-md-2"><input name="newEndDate" type="date" class="form-control form-control-sm" title="@L["Gia hạn đến"]" /></div>
+            <div class="col-md-2"><button class="btn btn-sm btn-outline-primary w-100">@L["Trình phụ lục"]</button></div>
         </form>
     }
-    else if (!Model.Amendments.Any()) { <div class="small text-muted">Chưa có phụ lục.</div> }
+    else if (!Model.Amendments.Any()) { <div class="small text-muted">@L["Chưa có phụ lục."]</div> }
 </div></div>

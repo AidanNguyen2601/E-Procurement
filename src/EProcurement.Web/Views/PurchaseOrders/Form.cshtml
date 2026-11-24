@@ -1,7 +1,7 @@
 @model PoFormViewModel
 @{
     ViewData["Title"] = Model.Id == 0 ? "Tạo đơn mua hàng" : $"Sửa đơn mua hàng {Model.Number}";
-    ViewData["PriceLabel"] = "Đơn giá (trước VAT)";
+    ViewData["PriceLabel"] = L["Đơn giá (trước VAT)"];
     ViewData["ItemsJson"] = ViewBag.ItemsJson;
     var pr = ViewBag.PurchaseRequest as PurchaseRequest;
     var reference = ViewBag.Reference as ReferencePoCandidate;
@@ -10,15 +10,15 @@
     <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="PurchaseRequestId" /><input type="hidden" asp-for="PackageId" />
     <partial name="_PackageBanner" model="ViewBag.Package as ProcurementPackage" /><input type="hidden" asp-for="RfqId" /><input type="hidden" asp-for="ReferencePoId" />
     <div asp-validation-summary="All" class="text-danger"></div>
-    @if (pr != null) { <div class="alert alert-info py-2">Lập từ đề nghị <b>@pr.Number</b> – @pr.Title (dự toán @pr.EstimatedTotal.ToMoney() đ)</div> }
+    @if (pr != null) { <div class="alert alert-info py-2">@L["Lập từ đề nghị"] <b>@pr.Number</b> – @pr.Title @L["(dự toán"] @pr.EstimatedTotal.ToMoney() @L["đ)"]</div> }
     @if (reference != null)
     {
         decimal maxPercent = ViewBag.MaxPercent;
         <div class="card mb-3 border-success">
-            <div class="card-header">Mua sắm trực tiếp – căn cứ PO <b>@reference.Po.Number</b> (@reference.Po.Vendor?.Name, đặt ngày @reference.Po.OrderDate.ToDate())</div>
+            <div class="card-header">@L["Mua sắm trực tiếp – căn cứ PO"] <b>@reference.Po.Number</b> (@reference.Po.Vendor?.Name@L[", đặt ngày"] @reference.Po.OrderDate.ToDate())</div>
             <div class="card-body p-0">
                 <table class="table table-sm small mb-0">
-                    <thead><tr><th>Mặt hàng trong PO tham chiếu</th><th class="money">Đơn giá tối đa</th><th class="money">Còn được mua (≤ @maxPercent.ToString("0")%)</th></tr></thead>
+                    <thead><tr><th>@L["Mặt hàng trong PO tham chiếu"]</th><th class="money">@L["Đơn giá tối đa"]</th><th class="money">@L["Còn được mua (≤"] @maxPercent.ToString("0")%)</th></tr></thead>
                     <tbody>
                     @foreach (var l in reference.Po.Lines.Where(l => l.ItemId.HasValue).GroupBy(l => l.ItemId!.Value))
                     {
@@ -29,7 +29,7 @@
             </div>
             <div class="card-body pt-2">
                 <label asp-for="PriceDeviationReason" class="form-label small"></label>
-                <input asp-for="PriceDeviationReason" class="form-control form-control-sm" placeholder="Chỉ nhập khi có dòng đơn giá cao hơn PO tham chiếu – đơn sẽ phải trình Giám đốc duyệt" />
+                <input asp-for="PriceDeviationReason" class="form-control form-control-sm" placeholder="@L["Chỉ nhập khi có dòng đơn giá cao hơn PO tham chiếu – đơn sẽ phải trình Giám đốc duyệt"]" />
                 <span asp-validation-for="PriceDeviationReason" class="text-danger small"></span>
             </div>
         </div>
@@ -39,28 +39,28 @@
         @if (reference != null)
         {
             <div class="col-md-6"><label asp-for="VendorId" class="form-label"></label><input type="hidden" asp-for="VendorId" />
-                <input class="form-control" value="@reference.Po.Vendor?.Name" readonly title="Mua sắm trực tiếp: cùng NCC với PO tham chiếu" /><span asp-validation-for="VendorId" class="text-danger small"></span></div>
+                <input class="form-control" value="@reference.Po.Vendor?.Name" readonly title="@L["Mua sắm trực tiếp: cùng NCC với PO tham chiếu"]" /><span asp-validation-for="VendorId" class="text-danger small"></span></div>
         }
         else
         {
-            <div class="col-md-6"><label asp-for="VendorId" class="form-label"></label><select asp-for="VendorId" class="form-select" asp-items="ViewBag.Vendors"><option value="">-- Chọn NCC đã phê duyệt --</option></select><span asp-validation-for="VendorId" class="text-danger small"></span></div>
+            <div class="col-md-6"><label asp-for="VendorId" class="form-label"></label><select asp-for="VendorId" class="form-select" asp-items="ViewBag.Vendors"><option value="">@L["-- Chọn NCC đã phê duyệt --"]</option></select><span asp-validation-for="VendorId" class="text-danger small"></span></div>
         }
-        <div class="col-md-4"><label asp-for="OrderType" class="form-label"></label><input asp-for="OrderType" class="form-control" list="dl-ordertype" placeholder="Chọn hoặc nhập" />@await Catalog.DatalistAsync(CatalogType.OrderType)</div>
+        <div class="col-md-4"><label asp-for="OrderType" class="form-label"></label><input asp-for="OrderType" class="form-control" list="dl-ordertype" placeholder="@L["Chọn hoặc nhập"]" />@await Catalog.DatalistAsync(CatalogType.OrderType)</div>
         <div class="col-md-2"><label asp-for="OrderDate" class="form-label"></label><input asp-for="OrderDate" class="form-control" /></div>
         <div class="col-md-2"><label asp-for="DeliveryDate" class="form-label"></label><input asp-for="DeliveryDate" class="form-control" /><span asp-validation-for="DeliveryDate" class="text-danger small"></span></div>
         <div class="col-md-5"><label asp-for="DeliveryAddress" class="form-label"></label><input asp-for="DeliveryAddress" class="form-control" list="dl-deliverylocation" />@await Catalog.DatalistAsync(CatalogType.DeliveryLocation)</div>
-        <div class="col-md-5"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" placeholder="Để trống = theo điều khoản của NCC" list="dl-paymentterm" />@await Catalog.DatalistAsync(CatalogType.PaymentTerm)</div>
+        <div class="col-md-5"><label asp-for="PaymentTerms" class="form-label"></label><input asp-for="PaymentTerms" class="form-control" placeholder="@L["Để trống = theo điều khoản của NCC"]" list="dl-paymentterm" />@await Catalog.DatalistAsync(CatalogType.PaymentTerm)</div>
         <div class="col-md-2"><label asp-for="VatPercent" class="form-label"></label><select asp-for="VatPercent" class="form-select" id="vat"><option value="0">0%</option><option value="5">5%</option><option value="8">8%</option><option value="10">10%</option></select></div>
         <div class="col-12"><label asp-for="Notes" class="form-label"></label><textarea asp-for="Notes" class="form-control" rows="2"></textarea></div>
     </div></div>
     <partial name="_LineEditor" model="Model.Lines" />
-    <div class="text-end mb-3">VAT: <b id="vatAmt">0</b> · Tổng thanh toán: <b class="fs-5" id="grand">0</b> đ</div>
+    <div class="text-end mb-3">VAT: <b id="vatAmt">0</b> @L["· Tổng thanh toán:"] <b class="fs-5" id="grand">0</b> @L["đ"]</div>
     <div class="mb-3"><label asp-for="StandardPriceReason" class="form-label small"></label>
-        <input asp-for="StandardPriceReason" class="form-control form-control-sm" placeholder="Chỉ nhập khi có dòng đơn giá vượt giá trần bảng giá tiêu chuẩn – đơn sẽ phải trình Giám đốc duyệt" />
+        <input asp-for="StandardPriceReason" class="form-control form-control-sm" placeholder="@L["Chỉ nhập khi có dòng đơn giá vượt giá trần bảng giá tiêu chuẩn – đơn sẽ phải trình Giám đốc duyệt"]" />
         <span asp-validation-for="StandardPriceReason" class="text-danger small"></span></div>
-    <button class="btn btn-outline-primary" name="submit" value="false">Lưu nháp</button>
-    <button class="btn btn-primary" name="submit" value="true">Lưu & trình duyệt</button>
-    <a asp-action="Index" class="btn btn-light">Hủy</a>
+    <button class="btn btn-outline-primary" name="submit" value="false">@L["Lưu nháp"]</button>
+    <button class="btn btn-primary" name="submit" value="true">@L["Lưu & trình duyệt"]</button>
+    <a asp-action="Index" class="btn btn-light">@L["Hủy"]</a>
 </form>
 @section Scripts {
 <script>

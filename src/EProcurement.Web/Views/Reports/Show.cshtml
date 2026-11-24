@@ -10,22 +10,22 @@
     var today = DateTime.Today;
     (string, DateTime, DateTime)[] presets =
     {
-        ("Tháng này", new DateTime(today.Year, today.Month, 1), today),
-        ("Quý này", new DateTime(today.Year, (today.Month - 1) / 3 * 3 + 1, 1), today),
-        ("Năm nay", new DateTime(today.Year, 1, 1), today),
-        ("12 tháng", today.AddMonths(-12).AddDays(1), today),
-        ("Năm trước", new DateTime(today.Year - 1, 1, 1), new DateTime(today.Year - 1, 12, 31))
+        (L["Tháng này"], new DateTime(today.Year, today.Month, 1), today),
+        (L["Quý này"], new DateTime(today.Year, (today.Month - 1) / 3 * 3 + 1, 1), today),
+        (L["Năm nay"], new DateTime(today.Year, 1, 1), today),
+        (L["12 tháng"], today.AddMonths(-12).AddDays(1), today),
+        (L["Năm trước"], new DateTime(today.Year - 1, 1, 1), new DateTime(today.Year - 1, 12, 31))
     };
 }
 <form method="get" class="toolbar no-print">
-    <div><label class="form-label small mb-0">Từ ngày</label><input type="date" name="From" value="@f.From.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
-    <div><label class="form-label small mb-0">Đến ngày</label><input type="date" name="To" value="@f.To.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
-    <div><label class="form-label small mb-0">Phòng ban</label><select name="Department" class="form-select form-select-sm" asp-items="ViewBag.Departments"><option value="">Tất cả</option></select></div>
-    <div><label class="form-label small mb-0">Nhóm hàng</label><select name="CategoryId" class="form-select form-select-sm" asp-items="ViewBag.Categories"><option value="">Tất cả</option></select></div>
-    <div><label class="form-label small mb-0">Nhà cung cấp</label><select name="VendorId" class="form-select form-select-sm" style="max-width:220px" asp-items="ViewBag.Vendors"><option value="">Tất cả</option></select></div>
+    <div><label class="form-label small mb-0">@L["Từ ngày"]</label><input type="date" name="From" value="@f.From.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <div><label class="form-label small mb-0">@L["Đến ngày"]</label><input type="date" name="To" value="@f.To.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <div><label class="form-label small mb-0">@L["Phòng ban"]</label><select name="Department" class="form-select form-select-sm" asp-items="ViewBag.Departments"><option value="">@L["Tất cả"]</option></select></div>
+    <div><label class="form-label small mb-0">@L["Nhóm hàng"]</label><select name="CategoryId" class="form-select form-select-sm" asp-items="ViewBag.Categories"><option value="">@L["Tất cả"]</option></select></div>
+    <div><label class="form-label small mb-0">@L["Nhà cung cấp"]</label><select name="VendorId" class="form-select form-select-sm" style="max-width:220px" asp-items="ViewBag.Vendors"><option value="">@L["Tất cả"]</option></select></div>
     <button class="btn btn-sm btn-primary">Xem</button>
     <div class="ms-auto d-flex gap-1">
-        <a class="btn btn-sm btn-outline-success" asp-action="Export" asp-route-id="@Model.Key" asp-all-route-data="q">Xuất Excel</a>
+        <a class="btn btn-sm btn-outline-success" asp-action="Export" asp-route-id="@Model.Key" asp-all-route-data="q">@L["Xuất Excel"]</a>
         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">In</button>
     </div>
 </form>
@@ -53,4 +53,4 @@
         <div class="col-lg-@t.Width"><partial name="_ReportTable" model="t" /></div>
     }
 </div>
-<a asp-action="Index" class="btn btn-light mt-3 no-print">← Danh sách báo cáo</a>
+<a asp-action="Index" class="btn btn-light mt-3 no-print">@L["← Danh sách báo cáo"]</a>

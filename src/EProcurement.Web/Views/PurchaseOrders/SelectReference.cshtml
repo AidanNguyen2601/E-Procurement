@@ -8,16 +8,14 @@
     var pkg = ViewBag.Package as ProcurementPackage;
 }
 <div class="alert alert-info py-2">
-    Chọn PO làm căn cứ mua sắm trực tiếp cho @(pkg != null ? "gói" : "đề nghị") <b>@pr.Number</b> – @pr.Title.
-    Điều kiện: đã nhận đủ hàng, đặt trong <b>@months tháng</b>, NCC còn được phê duyệt, chứa toàn bộ mặt hàng của đề nghị
-    và tổng khối lượng mua trực tiếp không vượt <b>@maxPercent.ToString("0")%</b> khối lượng của PO đó.
+    @L["Chọn PO làm căn cứ mua sắm trực tiếp cho"] @(pkg != null ? L["gói"] : L["đề nghị"]) <b>@pr.Number</b> – @pr.Title@L[". Điều kiện: đã nhận đủ hàng, đặt trong"] <b>@months @L["tháng"]</b>@L[", NCC còn được phê duyệt, chứa toàn bộ mặt hàng của đề nghị và tổng khối lượng mua trực tiếp không vượt"] <b>@maxPercent.ToString("0")%</b> @L["khối lượng của PO đó."]
 </div>
 
 @if (valid.Count == 0)
 {
     <div class="alert alert-warning">
-        Không có PO nào đủ điều kiện. Hủy gói và lập lại theo hình thức <b>Chào hàng cạnh tranh</b>.
-        <a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg?.Id" class="alert-link">Về gói @pr.Number</a>
+        @L["Không có PO nào đủ điều kiện. Hủy gói và lập lại theo hình thức"] <b>@L["Chào hàng cạnh tranh"]</b>.
+        <a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg?.Id" class="alert-link">@L["Về gói"] @pr.Number</a>
     </div>
 }
 
@@ -25,16 +23,16 @@
 {
     <div class="card mb-3 @(c.CoversRequest ? "border-success" : "opacity-75")">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><b>@c.Po.Number</b> · @c.Po.Vendor?.Name <span class="stars">@c.Po.Vendor?.Rating.Stars()</span> · đặt ngày @c.Po.OrderDate.ToDate()</span>
+            <span><b>@c.Po.Number</b> · @c.Po.Vendor?.Name <span class="stars">@c.Po.Vendor?.Rating.Stars()</span> @L["· đặt ngày"] @c.Po.OrderDate.ToDate()</span>
             @if (c.CoversRequest)
             {
-                <a class="btn btn-sm btn-success" asp-action="Create" asp-route-packageId="@pkg?.Id" asp-route-refPoId="@c.Po.Id">Chọn làm căn cứ</a>
+                <a class="btn btn-sm btn-success" asp-action="Create" asp-route-packageId="@pkg?.Id" asp-route-refPoId="@c.Po.Id">@L["Chọn làm căn cứ"]</a>
             }
-            else { <span class="badge bg-secondary">Không đủ điều kiện</span> }
+            else { <span class="badge bg-secondary">@L["Không đủ điều kiện"]</span> }
         </div>
         <div class="card-body p-0">
             <table class="table table-sm mb-0">
-                <thead><tr><th>Hàng hóa đề nghị</th><th class="money">SL cần</th><th class="money">Còn được mua</th><th class="money">Đơn giá tham chiếu</th><th class="money">Đơn giá dự toán</th></tr></thead>
+                <thead><tr><th>@L["Hàng hóa đề nghị"]</th><th class="money">@L["SL cần"]</th><th class="money">@L["Còn được mua"]</th><th class="money">@L["Đơn giá tham chiếu"]</th><th class="money">@L["Đơn giá dự toán"]</th></tr></thead>
                 <tbody>
                 @foreach (var l in pr.Lines.OrderBy(x => x.SortOrder))
                 {
@@ -48,7 +46,7 @@
                             <td class="money @(rem < l.Quantity ? "text-danger" : "")">@rem.ToQty()</td>
                             <td class="money">@c.PriceByItem[l.ItemId.Value].ToMoney()</td>
                         }
-                        else { <td colspan="2" class="text-danger text-end">Không có trong PO này</td> }
+                        else { <td colspan="2" class="text-danger text-end">@L["Không có trong PO này"]</td> }
                         <td class="money">@l.EstimatedPrice.ToMoney()</td>
                     </tr>
                 }
@@ -57,4 +55,4 @@
         </div>
     </div>
 }
-<a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg?.Id" class="btn btn-light">Quay lại</a>
+<a asp-controller="Packages" asp-action="Details" asp-route-id="@pkg?.Id" class="btn btn-light">@L["Quay lại"]</a>

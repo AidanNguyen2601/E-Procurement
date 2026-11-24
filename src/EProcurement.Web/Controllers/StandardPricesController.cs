@@ -112,7 +112,7 @@ public class StandardPricesController : ProcControllerBase
     {
         var l = await Db.StandardPriceLists.Include(x => x.Lines).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (l == null) return NotFound();
-        if (l.Status is not (StandardPriceStatus.Draft or StandardPriceStatus.Returned)) { TempData["Error"] = "Chỉ sửa bảng giá nháp hoặc bị trả lại."; return RedirectToAction(nameof(Details), new { id }); }
+        if (l.Status is not (StandardPriceStatus.Draft or StandardPriceStatus.Returned)) { TempData["Error"] = I18n.T("Chỉ sửa bảng giá nháp hoặc bị trả lại."); return RedirectToAction(nameof(Details), new { id }); }
         var vm = new StandardPriceForm
         {
             Id = l.Id, Number = l.Number, Title = l.Title, EffectiveFrom = l.EffectiveFrom, EffectiveTo = l.EffectiveTo, Basis = l.Basis,
@@ -134,13 +134,13 @@ public class StandardPricesController : ProcControllerBase
             if (list.Status is not (StandardPriceStatus.Draft or StandardPriceStatus.Returned)) return BadRequest();
         }
         var chosen = vm.Lines.Where(l => l.Include).ToList();
-        if (chosen.Count == 0) ModelState.AddModelError(string.Empty, "Chọn ít nhất một mặt hàng.");
+        if (chosen.Count == 0) ModelState.AddModelError(string.Empty, I18n.T("Chọn ít nhất một mặt hàng."));
         foreach (var l in chosen)
         {
-            if (l.StandardPrice <= 0) ModelState.AddModelError(string.Empty, $"Mặt hàng #{l.ItemId}: giá tiêu chuẩn phải > 0.");
-            if (l.CeilingPrice < l.StandardPrice) ModelState.AddModelError(string.Empty, $"Mặt hàng #{l.ItemId}: giá trần không được thấp hơn giá tiêu chuẩn.");
+            if (l.StandardPrice <= 0) ModelState.AddModelError(string.Empty, I18n.T("Mặt hàng #{0}: giá tiêu chuẩn phải > 0.", l.ItemId));
+            if (l.CeilingPrice < l.StandardPrice) ModelState.AddModelError(string.Empty, I18n.T("Mặt hàng #{0}: giá trần không được thấp hơn giá tiêu chuẩn.", l.ItemId));
         }
-        if (vm.EffectiveTo.HasValue && vm.EffectiveTo < vm.EffectiveFrom) ModelState.AddModelError(nameof(vm.EffectiveTo), "Ngày hết hiệu lực phải sau ngày bắt đầu.");
+        if (vm.EffectiveTo.HasValue && vm.EffectiveTo < vm.EffectiveFrom) ModelState.AddModelError(nameof(vm.EffectiveTo), I18n.T("Ngày hết hiệu lực phải sau ngày bắt đầu."));
         var validIds = await Db.Items.Where(i => chosen.Select(c => c.ItemId).Contains(i.Id)).Select(i => i.Id).ToListAsync();
         if (!ModelState.IsValid) { await FillAsync(vm, generate: false); return View("Form", vm); }
 
@@ -156,7 +156,7 @@ public class StandardPricesController : ProcControllerBase
         await Db.SaveChangesAsync();
         if (vm.Id == 0) { Log(DocType.StandardPriceList, list.Id, "Lập bảng giá tiêu chuẩn", $"{list.Lines.Count} mặt hàng"); await Db.SaveChangesAsync(); }
         if (submit) return await Submit(list.Id);
-        TempData["Success"] = $"Đã lưu {list.Number}.";
+        TempData["Success"] = I18n.T("Đã lưu {0}.", list.Number);
         return RedirectToAction(nameof(Details), new { id = list.Id });
     }
 
@@ -184,11 +184,11 @@ public class StandardPricesController : ProcControllerBase
     {
         var l = await Db.StandardPriceLists.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id);
         if (l == null) return NotFound();
-        if (l.Status is not (StandardPriceStatus.Draft or StandardPriceStatus.Returned) || l.Lines.Count == 0) { TempData["Error"] = "Không trình được bảng giá."; return RedirectToAction(nameof(Details), new { id }); }
+        if (l.Status is not (StandardPriceStatus.Draft or StandardPriceStatus.Returned) || l.Lines.Count == 0) { TempData["Error"] = I18n.T("Không trình được bảng giá."); return RedirectToAction(nameof(Details), new { id }); }
         l.Status = StandardPriceStatus.Submitted; l.SubmittedAt = DateTime.Now;
         Log(DocType.StandardPriceList, id, "Trình Giám đốc phê duyệt bảng giá tiêu chuẩn", $"{l.Lines.Count} mặt hàng, hiệu lực từ {l.EffectiveFrom:dd/MM/yyyy}");
         await Db.SaveChangesAsync();
-        TempData["Success"] = $"Đã trình {l.Number}.";
+        TempData["Success"] = I18n.T("Đã trình {0}.", l.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -200,13 +200,13 @@ public class StandardPricesController : ProcControllerBase
         var l = await Db.StandardPriceLists.Include(x => x.Lines).ThenInclude(x => x.Item).FirstOrDefaultAsync(x => x.Id == id);
         if (l == null) return NotFound();
         if (l.Status != StandardPriceStatus.Submitted) return BadRequest();
-        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = "Nhập lý do trả lại."; return RedirectToAction(nameof(Details), new { id }); }
+        if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = I18n.T("Nhập lý do trả lại."); return RedirectToAction(nameof(Details), new { id }); }
         l.Status = approve ? StandardPriceStatus.Approved : StandardPriceStatus.Returned;
         l.DecidedById = Me; l.DecidedAt = DateTime.Now; l.DecisionNote = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
         Log(DocType.StandardPriceList, id, approve ? "Giám đốc phê duyệt bảng giá tiêu chuẩn" : "Giám đốc trả lại bảng giá", l.DecisionNote);
         await Db.SaveChangesAsync();
         if (approve) await StandardPrices.SyncReferenceAsync(Db); // giá tiêu chuẩn đang hiệu lực thay giá tham khảo (dự toán PR, phân tích giá)
-        TempData["Success"] = approve ? $"Đã phê duyệt {l.Number}." : $"Đã trả lại {l.Number}.";
+        TempData["Success"] = approve ? I18n.T("Đã phê duyệt {0}.", l.Number) : I18n.T("Đã trả lại {0}.", l.Number);
         return RedirectToAction(nameof(Details), new { id });
     }
 }
