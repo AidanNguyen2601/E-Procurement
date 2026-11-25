@@ -1,0 +1,41 @@
+@model EProcurement.Web.Controllers.BoqCompareModel
+@using EProcurement.Web.Infrastructure
+@{
+    var v = Model.Version;
+    ViewData["Title"] = $"{L["So sánh phiên bản BOQ"]} v{v.Number}";
+    var delta = Model.NewTotal - Model.OldTotal;
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-action="Index" asp-route-packageId="@Model.Package.Id" class="btn btn-outline-secondary btn-sm">← BOQ @Model.Package.Number</a>
+    <h5 class="mb-0">@L["So sánh phiên bản"] v@(v.Number) (@v.Label) @L["với BOQ hiện tại"]</h5>
+</div>
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Phiên bản"] v@(v.Number) · @v.CreatedAt.ToDateTime()</div><div class="fs-5 fw-semibold">@Model.OldTotal.ToMoney() đ</div></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["BOQ hiện tại"]</div><div class="fs-5 fw-semibold">@Model.NewTotal.ToMoney() đ</div></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Chênh lệch"]</div><div class="fs-5 fw-semibold @(delta > 0 ? "text-danger" : delta < 0 ? "text-success" : "")">@(delta > 0 ? "+" : "")@delta.ToMoney() đ</div></div></div></div>
+</div>
+@if (!Model.Rows.Any())
+{
+    <div class="alert alert-secondary">@L["BOQ hiện tại giống hệt phiên bản này."]</div>
+}
+else
+{
+<div class="card"><div class="table-responsive">
+<table class="table table-sm table-bordered mb-0 small align-middle" data-grid="off">
+    <thead><tr><th>@L["Mã"]</th><th>@L["Hạng mục / công việc"]</th><th>@L["Thay đổi"]</th><th class="text-end">@L["KL cũ"]</th><th class="text-end">@L["KL mới"]</th><th class="text-end">@L["Đơn giá cũ"]</th><th class="text-end">@L["Đơn giá mới"]</th><th class="text-end">@L["Thành tiền cũ"]</th><th class="text-end">@L["Thành tiền mới"]</th><th class="text-end">@L["Chênh lệch"]</th></tr></thead>
+    <tbody>
+    @foreach (var r in Model.Rows)
+    {
+        var d = r.NewAmount - r.OldAmount;
+        <tr class="@(r.Kind == BoqDiffKind.Added ? "table-success" : r.Kind == BoqDiffKind.Removed ? "table-danger" : "table-warning")">
+            <td>@r.Code</td><td>@r.Name@if (r.OldName != null) { <div class="text-muted" style="font-size:.8em">@L["trước đây"]: @r.OldName</div> }</td>
+            <td>@(r.Kind == BoqDiffKind.Added ? L["Thêm mới"] : r.Kind == BoqDiffKind.Removed ? L["Đã xóa"] : L["Sửa đổi"])</td>
+            <td class="text-end">@(r.Kind == BoqDiffKind.Added ? "" : r.OldQuantity.ToQty())</td><td class="text-end">@(r.Kind == BoqDiffKind.Removed ? "" : r.NewQuantity.ToQty())</td>
+            <td class="text-end">@(r.Kind == BoqDiffKind.Added ? "" : r.OldUnitPrice.ToMoney())</td><td class="text-end">@(r.Kind == BoqDiffKind.Removed ? "" : r.NewUnitPrice.ToMoney())</td>
+            <td class="text-end">@(r.Kind == BoqDiffKind.Added ? "" : r.OldAmount.ToMoney())</td><td class="text-end">@(r.Kind == BoqDiffKind.Removed ? "" : r.NewAmount.ToMoney())</td>
+            <td class="text-end fw-semibold">@(d > 0 ? "+" : "")@d.ToMoney()</td>
+        </tr>
+    }
+    </tbody>
+</table></div></div>
+}

@@ -331,6 +331,14 @@ public static class DbSeeder
             "IF COL_LENGTH('ContractLines','BoqPath') IS NULL ALTER TABLE ContractLines ADD BoqPath nvarchar(500) NULL",
             "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ContractLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE ContractLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
             "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseOrderLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE PurchaseOrderLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
+            // BOQ: cơ cấu đơn giá (vật liệu / nhân công / máy) và cơ cấu chi phí của gói
+            "IF COL_LENGTH('BoqItems','MaterialPrice') IS NULL ALTER TABLE BoqItems ADD MaterialPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Mat DEFAULT 0",
+            "IF COL_LENGTH('BoqItems','LaborPrice') IS NULL ALTER TABLE BoqItems ADD LaborPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Lab DEFAULT 0",
+            "IF COL_LENGTH('BoqItems','MachinePrice') IS NULL ALTER TABLE BoqItems ADD MachinePrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Mac DEFAULT 0",
+            "IF COL_LENGTH('ProcurementPackages','BoqOverheadPercent') IS NULL ALTER TABLE ProcurementPackages ADD BoqOverheadPercent decimal(5,2) NOT NULL CONSTRAINT DF_Pkg_Ovh DEFAULT 0",
+            "IF COL_LENGTH('ProcurementPackages','BoqProfitPercent') IS NULL ALTER TABLE ProcurementPackages ADD BoqProfitPercent decimal(5,2) NOT NULL CONSTRAINT DF_Pkg_Prf DEFAULT 0",
+            "IF COL_LENGTH('ProcurementPackages','BoqContingencyPercent') IS NULL ALTER TABLE ProcurementPackages ADD BoqContingencyPercent decimal(5,2) NOT NULL CONSTRAINT DF_Pkg_Cnt DEFAULT 0",
+            "IF COL_LENGTH('ProcurementPackages','BoqVatPercent') IS NULL ALTER TABLE ProcurementPackages ADD BoqVatPercent decimal(5,2) NOT NULL CONSTRAINT DF_Pkg_Vat DEFAULT 10",
             // Thanh toán theo khối lượng nghiệm thu BOQ (khóa ngoại tới BoqAcceptances do script bảng mới tạo)
             "IF COL_LENGTH('Payments','AcceptanceId') IS NULL ALTER TABLE Payments ADD AcceptanceId int NULL",
             // Giao diện riêng của người dùng

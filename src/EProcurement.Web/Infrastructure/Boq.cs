@@ -142,7 +142,7 @@ public static class Boq
     }
 
     // ---------- Nhập / xuất văn bản ----------
-    public record ImportRow(string Code, string Name, string? Unit, decimal Quantity, decimal UnitPrice);
+    public record ImportRow(string Code, string Name, string? Unit, decimal Quantity, decimal UnitPrice, decimal Material = 0, decimal Labor = 0, decimal Machine = 0, string? Note = null);
 
     /// <summary>Đọc số kiểu Việt (1.234,5) hoặc quốc tế (1,234.5 / 1234.5)</summary>
     public static bool TryNumber(string? s, out decimal v)
@@ -163,27 +163,50 @@ public static class Boq
     /// </summary>
     public static (List<ImportRow> Rows, List<string> Errors) Parse(string text)
     {
-        var rows = new List<ImportRow>(); var errors = new List<string>();
-        var seen = new HashSet<string>(); var n = 0;
+        var lines = new List<(int, string[])>(); var n = 0;
         foreach (var raw in (text ?? "").Replace("\r", "").Split('\n'))
         {
             n++;
             if (string.IsNullOrWhiteSpace(raw)) continue;
-            var sep = raw.Contains('\t') ? '\t' : ';';
-            var p = SplitLine(raw, sep);
+            lines.Add((n, SplitLine(raw, raw.Contains('\t') ? '\t' : ';')));
+        }
+        return ParseColumns(lines, invariantNumbers: false);
+    }
+
+    /// <summary>
+    /// Cột: Mã | Tên | ĐVT | Khối lượng | Đơn giá | (Thành tiền – bỏ qua) | Vật liệu | Nhân công | Máy thi công. Có cơ cấu giá thì đơn giá = tổng ba thành phần.
+    /// invariantNumbers: số đã ở dạng quốc tế (đọc từ Excel) – không đoán dấu phân cách hàng nghìn.
+    /// </summary>
+    public static (List<ImportRow> Rows, List<string> Errors) ParseColumns(IEnumerable<(int Line, string[] Cols)> lines, bool invariantNumbers)
+    {
+        var rows = new List<ImportRow>(); var errors = new List<string>(); var seen = new HashSet<string>();
+        bool Num(string? s, out decimal v)
+        {
+            if (!invariantNumbers) return TryNumber(s, out v);
+            v = 0;
+            if (string.IsNullOrWhiteSpace(s)) return true;
+            return decimal.TryParse(s.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out v) && v >= 0;
+        }
+        var first = true;
+        foreach (var (n, p) in lines)
+        {
+            var isFirst = first; first = false;
             if (p.Length < 2) { errors.Add($"{n}|Thiếu cột (cần tối thiểu Mã và Tên)"); continue; }
-            var code = p[0].TrimEnd('.');
+            var code = p[0].Trim().TrimEnd('.');
             if (!System.Text.RegularExpressions.Regex.IsMatch(code, @"^\d+(\.\d+)*$"))
             {
-                if (rows.Count == 0 && n == 1) continue; // dòng tiêu đề
+                if (isFirst) continue; // dòng tiêu đề
                 errors.Add($"{n}|Mã không hợp lệ|{p[0]}"); continue;
             }
             if (string.IsNullOrWhiteSpace(p[1])) { errors.Add($"{n}|Thiếu tên hạng mục"); continue; }
             if (p[1].Length > 250) { errors.Add($"{n}|Tên quá dài (tối đa 250 ký tự)"); continue; }
-            if (!TryNumber(p.ElementAtOrDefault(3), out var q) || !TryNumber(p.ElementAtOrDefault(4), out var price)) { errors.Add($"{n}|Khối lượng / đơn giá không hợp lệ"); continue; }
+            if (!Num(p.ElementAtOrDefault(3), out var q) || !Num(p.ElementAtOrDefault(4), out var price)
+                || !Num(p.ElementAtOrDefault(6), out var mat) || !Num(p.ElementAtOrDefault(7), out var lab) || !Num(p.ElementAtOrDefault(8), out var mac))
+            { errors.Add($"{n}|Khối lượng / đơn giá không hợp lệ"); continue; }
             if (!seen.Add(code)) { errors.Add($"{n}|Trùng mã|{code}"); continue; }
+            if (mat + lab + mac > 0) price = mat + lab + mac;
             var unit = p.ElementAtOrDefault(2);
-            rows.Add(new ImportRow(code, p[1], string.IsNullOrWhiteSpace(unit) ? null : unit[..Math.Min(unit.Length, 30)], q, price));
+            rows.Add(new ImportRow(code, p[1].Trim(), string.IsNullOrWhiteSpace(unit) ? null : unit.Trim()[..Math.Min(unit.Trim().Length, 30)], q, price, mat, lab, mac));
         }
         return (rows, errors);
     }
@@ -220,7 +243,7 @@ public static class Boq
             }
             var key = parent ?? "";
             order[key] = order.GetValueOrDefault(key) + 1;
-            var it = new BoqItem { PackageId = packageId, Code = r.Code, Name = r.Name, Unit = r.Unit, Quantity = r.Quantity, UnitPrice = r.UnitPrice, SortOrder = order[key] };
+            var it = new BoqItem { PackageId = packageId, Code = r.Code, Name = r.Name, Unit = r.Unit, Quantity = r.Quantity, UnitPrice = r.UnitPrice, MaterialPrice = r.Material, LaborPrice = r.Labor, MachinePrice = r.Machine, Note = r.Note, SortOrder = order[key] };
             byCode[r.Code] = it; built.Add((it, parent));
         }
         return (built, null);
@@ -229,7 +252,7 @@ public static class Boq
     /// <summary>Xuất văn bản (dùng được để nhập lại): Mã ; Tên ; ĐVT ; Khối lượng ; Đơn giá ; Thành tiền</summary>
     public static string ToCsv(IEnumerable<BoqNode> nodes)
     {
-        var sb = new StringBuilder("Mã;Hạng mục / công việc;ĐVT;Khối lượng;Đơn giá;Thành tiền\r\n");
+        var sb = new StringBuilder("Mã;Hạng mục / công việc;ĐVT;Khối lượng;Đơn giá;Thành tiền;Vật liệu;Nhân công;Máy thi công\r\n");
         string Q(string? s) => s != null && (s.Contains(';') || s.Contains('"') || s.Contains('\n')) ? "\"" + s.Replace("\"", "\"\"") + "\"" : s ?? "";
         foreach (var n in nodes)
         {
@@ -237,7 +260,10 @@ public static class Boq
             sb.Append(n.Code).Append(';').Append(Q(i.Name)).Append(';').Append(n.IsGroup ? "" : Q(i.Unit)).Append(';')
               .Append(n.IsGroup ? "" : i.Quantity.ToString("0.###", CultureInfo.InvariantCulture)).Append(';')
               .Append(n.IsGroup ? "" : i.UnitPrice.ToString("0", CultureInfo.InvariantCulture)).Append(';')
-              .Append(n.Amount.ToString("0", CultureInfo.InvariantCulture)).Append("\r\n");
+              .Append(n.Amount.ToString("0", CultureInfo.InvariantCulture)).Append(';')
+              .Append(n.IsGroup || i.MaterialPrice == 0 ? "" : i.MaterialPrice.ToString("0", CultureInfo.InvariantCulture)).Append(';')
+              .Append(n.IsGroup || i.LaborPrice == 0 ? "" : i.LaborPrice.ToString("0", CultureInfo.InvariantCulture)).Append(';')
+              .Append(n.IsGroup || i.MachinePrice == 0 ? "" : i.MachinePrice.ToString("0", CultureInfo.InvariantCulture)).Append("\r\n");
         }
         return sb.ToString();
     }

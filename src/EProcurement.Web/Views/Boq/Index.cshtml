@@ -8,7 +8,7 @@
     var parentNode = f.ParentId != null && byId.TryGetValue(f.ParentId.Value, out var pn) ? pn : null;
     var editNode = editing && byId.TryGetValue(f.Id, out var en) ? en : null;
     var isGroup = editNode?.IsGroup == true;
-    var diff = Model.Package.Budget - Model.Total;
+    var diff = Model.Package.Budget - Model.Cost.TotalExVat;
     var leaves = nodes.Count(n => !n.IsGroup);
     var inv = System.Globalization.CultureInfo.InvariantCulture;
 }
@@ -45,9 +45,9 @@ else if (!Model.CanEdit)
 }
 
 <div class="row g-3 mb-3">
-    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Tổng BOQ (trước VAT)"]</div><div class="fs-5 fw-semibold">@Model.Total.ToMoney() đ</div><div class="small text-muted">@nodes.Count(n => n.Depth == 0) @L["hạng mục"] · @leaves @L["dòng chi tiết"]</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Chi phí trực tiếp (trước VAT)"]</div><div class="fs-5 fw-semibold">@Model.Total.ToMoney() đ</div><div class="small text-muted">@nodes.Count(n => n.Depth == 0) @L["hạng mục"] · @leaves @L["dòng chi tiết"]</div></div></div></div>
     <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Giá gói (trước VAT)"]</div><div class="fs-5 fw-semibold">@Model.Package.Budget.ToMoney() đ</div></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Chênh lệch giá gói − BOQ"]</div><div class="fs-5 fw-semibold @(diff == 0 ? "text-success" : "text-warning")">@(diff == 0 ? L["Khớp"] : diff.ToMoney() + " đ")</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Chênh lệch giá gói − giá trị BOQ"]</div><div class="fs-5 fw-semibold @(diff == 0 ? "text-success" : "text-warning")">@(diff == 0 ? L["Khớp"] : diff.ToMoney() + " đ")</div></div></div></div>
     <div class="col-md-3"><div class="card"><div class="card-body py-2 small text-muted">@L["Dòng có dòng con là hạng mục (nhóm): thành tiền = tổng các dòng con. Dòng lá: thành tiền = khối lượng × đơn giá."]</div></div></div>
 </div>
 
@@ -63,8 +63,20 @@ else if (!Model.CanEdit)
                 <div class="form-check"><input class="form-check-input" type="radio" name="replace" value="false" id="r2" /><label class="form-check-label small" for="r2">@L["Nối thêm vào cuối"]</label></div>
                 <button class="btn btn-primary btn-sm ms-auto">@L["Nhập"]</button>
                 <button class="btn btn-outline-secondary btn-sm" name="sample" value="true" formnovalidate data-confirm="@L["Nạp BOQ mẫu (thay thế BOQ hiện có)?"]">@L["Nạp BOQ mẫu"]</button>
+                <button class="btn btn-outline-secondary btn-sm" name="sample" value="construction" formnovalidate data-confirm="@L["Nạp BOQ mẫu (thay thế BOQ hiện có)?"]">@L["Nạp BOQ xây dựng mẫu"]</button>
             </div>
+            <div class="small text-muted mt-2">@L["Cột tùy chọn thứ 6–9: Thành tiền (bỏ qua), Vật liệu, Nhân công, Máy thi công – có cơ cấu giá thì đơn giá = tổng ba thành phần."]</div>
         </form>
+        <hr />
+        <form asp-action="ImportFile" method="post" enctype="multipart/form-data" class="d-flex flex-wrap align-items-center gap-2">
+            <input type="hidden" name="packageId" value="@Model.Package.Id" />
+            <label class="small mb-0">@L["Hoặc nhập từ file Excel (.xlsx – sheet đầu tiên) / CSV:"]</label>
+            <input type="file" name="file" accept=".xlsx,.csv,.txt" class="form-control form-control-sm" style="max-width:320px" required />
+            <div class="form-check"><input class="form-check-input" type="radio" name="replace" value="true" id="f1" checked /><label class="form-check-label small" for="f1">@L["Thay thế"]</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="replace" value="false" id="f2" /><label class="form-check-label small" for="f2">@L["Nối thêm"]</label></div>
+            <button class="btn btn-primary btn-sm">@L["Nhập file"]</button>
+        </form>
+        <div class="small text-muted mt-1">@L["BOQ hiện có luôn được lưu thành một phiên bản trước khi bị thay thế."]</div>
     </div></div></div>
 }
 
@@ -81,7 +93,7 @@ else if (!Model.CanEdit)
             var i = n.Item;
             <tr class="@(n.IsGroup ? "grp" : "") d@(Math.Min(n.Depth, 1)) @(editing && f.Id == i.Id ? "sel" : "")" data-code="@n.Code">
                 <td class="text-nowrap">@n.Code</td>
-                <td class="name" style="padding-left:@(8 + n.Depth * 20)px">@if (n.IsGroup) { <span class="tg" title="@L["Thu gọn / mở"]">▾</span> } else { <span class="tg"></span> }@i.Name@if (!string.IsNullOrEmpty(i.Note)) { <span class="text-muted fw-normal"> · @i.Note</span> }</td>
+                <td class="name" style="padding-left:@(8 + n.Depth * 20)px">@if (n.IsGroup) { <span class="tg" title="@L["Thu gọn / mở"]">▾</span> } else { <span class="tg"></span> }@i.Name@if (!string.IsNullOrEmpty(i.Note)) { <span class="text-muted fw-normal"> · @i.Note</span> }@if (!n.IsGroup && (i.MaterialPrice > 0 || i.LaborPrice > 0 || i.MachinePrice > 0)) { <div class="text-muted fw-normal" style="font-size:.78em; padding-left:18px">@L["VL"] @i.MaterialPrice.ToShortMoney() · @L["NC"] @i.LaborPrice.ToShortMoney() · @L["Máy"] @i.MachinePrice.ToShortMoney()</div> }</td>
                 <td>@(n.IsGroup ? "" : i.Unit)</td>
                 <td class="text-end">@(n.IsGroup ? "" : i.Quantity.ToString("#,##0.###", I18n.ViCulture))</td>
                 <td class="text-end">@(n.IsGroup ? "" : i.UnitPrice.ToMoney())</td>
@@ -107,6 +119,50 @@ else if (!Model.CanEdit)
             <tfoot><tr class="fw-semibold"><td></td><td>@L["Tổng cộng"]</td><td></td><td></td><td></td><td class="text-end">@Model.Total.ToMoney()</td>@if (Model.CanEdit) { <td></td> }</tr></tfoot>
         }
     </table></div></div>
+
+    @{ var cs = Model.Cost; var pk = Model.Package; }
+    <div class="card mt-3"><div class="card-header">@L["Cơ cấu chi phí"]</div><div class="card-body">
+        <form asp-action="SaveCostSettings" method="post">
+            <input type="hidden" name="packageId" value="@pk.Id" />
+            <table class="table table-sm small mb-2">
+                <tbody>
+                    <tr><td>@L["Chi phí trực tiếp"] <span class="text-muted">(@L["vật liệu"] @cs.Material.ToShortMoney() · @L["nhân công"] @cs.Labor.ToShortMoney() · @L["máy"] @cs.Machine.ToShortMoney()@(cs.Other > 0 ? " · " + L["khác"] + " " + cs.Other.ToShortMoney() : ""))</span></td><td></td><td class="text-end fw-semibold">@cs.Direct.ToMoney()</td></tr>
+                    <tr><td>@L["Chi phí chung"]</td><td style="width:110px">@if (Model.CanEdit) { <div class="input-group input-group-sm"><input name="overhead" type="number" step="0.01" min="0" max="100" value="@pk.BoqOverheadPercent.ToString("0.##", inv)" class="form-control text-end" /><span class="input-group-text">%</span></div> } else { <span>@pk.BoqOverheadPercent.ToString("0.##")%</span> }</td><td class="text-end">@cs.Overhead.ToMoney()</td></tr>
+                    <tr><td>@L["Lợi nhuận / thu nhập chịu thuế tính trước"]</td><td>@if (Model.CanEdit) { <div class="input-group input-group-sm"><input name="profit" type="number" step="0.01" min="0" max="100" value="@pk.BoqProfitPercent.ToString("0.##", inv)" class="form-control text-end" /><span class="input-group-text">%</span></div> } else { <span>@pk.BoqProfitPercent.ToString("0.##")%</span> }</td><td class="text-end">@cs.Profit.ToMoney()</td></tr>
+                    <tr><td>@L["Dự phòng"]</td><td>@if (Model.CanEdit) { <div class="input-group input-group-sm"><input name="contingency" type="number" step="0.01" min="0" max="100" value="@pk.BoqContingencyPercent.ToString("0.##", inv)" class="form-control text-end" /><span class="input-group-text">%</span></div> } else { <span>@pk.BoqContingencyPercent.ToString("0.##")%</span> }</td><td class="text-end">@cs.Contingency.ToMoney()</td></tr>
+                    <tr class="fw-semibold"><td>@L["Giá trị trước VAT (áp vào giá gói)"]</td><td></td><td class="text-end">@cs.TotalExVat.ToMoney()</td></tr>
+                    <tr><td>VAT</td><td>@if (Model.CanEdit) { <div class="input-group input-group-sm"><input name="vat" type="number" step="0.01" min="0" max="100" value="@pk.BoqVatPercent.ToString("0.##", inv)" class="form-control text-end" /><span class="input-group-text">%</span></div> } else { <span>@pk.BoqVatPercent.ToString("0.##")%</span> }</td><td class="text-end">@cs.Vat.ToMoney()</td></tr>
+                    <tr class="fw-bold"><td>@L["Tổng cộng (gồm VAT)"]</td><td></td><td class="text-end">@cs.Grand.ToMoney()</td></tr>
+                </tbody>
+            </table>
+            @if (Model.CanEdit) { <button class="btn btn-outline-primary btn-sm">@L["Lưu cơ cấu chi phí"]</button> }
+            <span class="small text-muted ms-2">@L["Chi phí chung, lợi nhuận, dự phòng tính cộng dồn trên chi phí trực tiếp. Nhà thầu chào đơn giá trọn gói từng dòng."]</span>
+        </form>
+    </div></div>
+
+    <div class="card mt-3"><div class="card-header d-flex align-items-center">@L["Phiên bản BOQ"]
+        @if (Model.CanEdit)
+        {
+            <form asp-action="SnapshotVersion" method="post" class="ms-auto d-flex gap-1"><input type="hidden" name="packageId" value="@pk.Id" /><input name="label" maxlength="200" class="form-control form-control-sm" placeholder="@L["Tên phiên bản (tùy chọn)"]" /><button class="btn btn-outline-primary btn-sm text-nowrap">@L["Lưu phiên bản"]</button></form>
+        }
+    </div>
+    @if (Model.Versions.Any())
+    {
+        <ul class="list-group list-group-flush small">
+            @foreach (var v in Model.Versions)
+            {
+                <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                    <span><b>v@(v.Number)</b> · @v.Label <span class="text-muted">· @v.CreatedAt.ToDateTime() · @v.CreatedBy?.FullName · @v.ItemCount @L["dòng"] · @v.Total.ToMoney() đ</span></span>
+                    <span class="ms-auto d-flex gap-1">
+                        <a asp-action="Compare" asp-route-versionId="@v.Id" class="btn btn-outline-secondary btn-sm">@L["So sánh với hiện tại"]</a>
+                        @if (Model.CanEdit) { <form asp-action="Restore" method="post" data-confirm="@L["Khôi phục phiên bản {0}? BOQ hiện tại được lưu thành phiên bản mới trước khi thay thế.", v.Number]"><input type="hidden" name="versionId" value="@v.Id" /><button class="btn btn-outline-warning btn-sm">@L["Khôi phục"]</button></form> }
+                    </span>
+                </li>
+            }
+        </ul>
+    }
+    else { <div class="card-body small text-muted">@L["Chưa có phiên bản nào. Phiên bản được lưu tự động trước khi thay thế BOQ, khôi phục hoặc lập gói thầu."]</div> }
+    </div>
 </div>
 
 @if (Model.CanEdit)
@@ -126,7 +182,19 @@ else if (!Model.CanEdit)
                     <div class="col-4"><label class="form-label small mb-1">@L["Khối lượng"]</label><input name="Quantity" type="number" step="0.001" min="0" value="@f.Quantity.ToString("0.###", inv)" class="form-control form-control-sm" /></div>
                     <div class="col-4"><label class="form-label small mb-1">@L["Đơn giá (trước VAT)"]</label><input name="UnitPrice" type="number" step="1" min="0" value="@f.UnitPrice.ToString("0", inv)" class="form-control form-control-sm" /></div>
                 </div>
-                <div class="small text-muted mb-2">@L["Để trống khối lượng / đơn giá nếu dòng này sẽ có dòng con."]</div>
+                <div class="row g-2 mb-1">
+                    <div class="col-4"><label class="form-label small mb-1">@L["Vật liệu"]</label><input name="MaterialPrice" id="mp" type="number" step="1" min="0" value="@(f.MaterialPrice == 0 ? "" : f.MaterialPrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Nhân công"]</label><input name="LaborPrice" id="lp" type="number" step="1" min="0" value="@(f.LaborPrice == 0 ? "" : f.LaborPrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Máy thi công"]</label><input name="MachinePrice" id="cp" type="number" step="1" min="0" value="@(f.MachinePrice == 0 ? "" : f.MachinePrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
+                </div>
+                <div class="small text-muted mb-2">@L["Có nhập cơ cấu giá (vật liệu / nhân công / máy) thì đơn giá = tổng ba thành phần. Để trống khối lượng / đơn giá nếu dòng này sẽ có dòng con."]</div>
+                <script>
+                (function () {
+                    var m = document.getElementById('mp'), l = document.getElementById('lp'), c = document.getElementById('cp'), u = document.querySelector('input[name=UnitPrice]');
+                    function sync() { var s = (parseFloat(m.value) || 0) + (parseFloat(l.value) || 0) + (parseFloat(c.value) || 0); if (s > 0) { u.value = s; u.readOnly = true; } else u.readOnly = false; }
+                    [m, l, c].forEach(function (i) { i.addEventListener('input', sync); }); sync();
+                })();
+                </script>
             }
             <div class="mb-3"><label class="form-label small mb-1">@L["Ghi chú"]</label><input name="Note" value="@f.Note" maxlength="500" class="form-control form-control-sm" /></div>
             <button class="btn btn-primary btn-sm">@L["Lưu"]</button>

@@ -27,6 +27,12 @@ public class ProcurementPackage
     [Range(1, 3650)][Display(Name = "Thời gian thực hiện HĐ (ngày)")] public int ContractDurationDays { get; set; } = 30;
     [DataType(DataType.Date)][Display(Name = "Thời gian bắt đầu tổ chức LCNT")] public DateTime PlannedStart { get; set; } = DateTime.Today.AddDays(7);
     [StringLength(200)][Display(Name = "Tổ triển khai")] public string? Team { get; set; }
+    /// <summary>Cơ cấu chi phí BOQ: chi phí chung, thu nhập chịu thuế tính trước (lợi nhuận), dự phòng, VAT – tính trên chi phí trực tiếp</summary>
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Chi phí chung (%)")] public decimal BoqOverheadPercent { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Lợi nhuận / thu nhập chịu thuế tính trước (%)")] public decimal BoqProfitPercent { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Dự phòng (%)")] public decimal BoqContingencyPercent { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "VAT (%)")] public decimal BoqVatPercent { get; set; } = 10;
+
     [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
 
     [Display(Name = "KHLCNT")] public int? SelectionPlanId { get; set; }
@@ -122,6 +128,27 @@ public class BoqItem
     [StringLength(30)][Display(Name = "ĐVT")] public string? Unit { get; set; }
     [Column(TypeName = "decimal(18,3)")][Range(0, 1_000_000_000)][Display(Name = "Khối lượng")] public decimal Quantity { get; set; }
     [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Đơn giá (trước VAT)")] public decimal UnitPrice { get; set; }
+    /// <summary>Cơ cấu đơn giá (nếu nhập): đơn giá = vật liệu + nhân công + máy thi công</summary>
+    [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Vật liệu")] public decimal MaterialPrice { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Nhân công")] public decimal LaborPrice { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Máy thi công")] public decimal MachinePrice { get; set; }
     [Display(Name = "Thứ tự")] public int SortOrder { get; set; }
     [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+}
+
+/// <summary>Phiên bản (ảnh chụp) của BOQ gói mua sắm: lưu trước khi thay thế / khôi phục / mời thầu để so sánh và quay lại</summary>
+public class BoqVersion
+{
+    public int Id { get; set; }
+    public int PackageId { get; set; }
+    public ProcurementPackage? Package { get; set; }
+    [Display(Name = "Phiên bản")] public int Number { get; set; }
+    [Required, StringLength(200)][Display(Name = "Tên phiên bản")] public string Label { get; set; } = string.Empty;
+    [Display(Name = "Số dòng")] public int ItemCount { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Tổng chi phí trực tiếp")] public decimal Total { get; set; }
+    /// <summary>JSON danh sách dòng BOQ tại thời điểm chụp</summary>
+    public string Snapshot { get; set; } = "[]";
+    public int CreatedById { get; set; }
+    public AppUser? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }

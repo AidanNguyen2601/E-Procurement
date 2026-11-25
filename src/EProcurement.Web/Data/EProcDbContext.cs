@@ -45,6 +45,7 @@ public class EProcDbContext : DbContext
     public DbSet<TenderAppraisal> TenderAppraisals => Set<TenderAppraisal>();
     public DbSet<ProcurementPackage> ProcurementPackages => Set<ProcurementPackage>();
     public DbSet<BoqItem> BoqItems => Set<BoqItem>();
+    public DbSet<BoqVersion> BoqVersions => Set<BoqVersion>();
     public DbSet<BoqAcceptance> BoqAcceptances => Set<BoqAcceptance>();
     public DbSet<BoqAcceptanceLine> BoqAcceptanceLines => Set<BoqAcceptanceLine>();
     public DbSet<SelectionPlan> SelectionPlans => Set<SelectionPlan>();
@@ -127,6 +128,7 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<CriteriaItem>().HasOne(x => x.CriteriaSet).WithMany(x => x.Items).HasForeignKey(x => x.CriteriaSetId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<BoqItem>().HasOne(x => x.Package).WithMany().HasForeignKey(x => x.PackageId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<BoqItem>().HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BoqVersion>().HasIndex(x => new { x.PackageId, x.Number }).IsUnique();
         modelBuilder.Entity<BoqAcceptance>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<BoqAcceptance>().HasMany(x => x.Lines).WithOne(l => l.Acceptance).HasForeignKey(l => l.AcceptanceId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<BoqAcceptanceLine>().HasIndex(x => new { x.AcceptanceId, x.ContractLineId }).IsUnique();

@@ -207,6 +207,8 @@ public class TendersController : ProcControllerBase
             // Gói có BOQ → dòng gói thầu sinh từ các dòng lá của BOQ (nhà thầu chào giá từng dòng); không thì lấy dòng đề nghị mua hàng
             var leaves = Boq.Leaves(await Db.BoqItems.AsNoTracking().Where(b => b.PackageId == pkg.Id).ToListAsync());
             if (leaves.Count > 0)
+                await BoqVersions.SnapshotAsync(Db, pkg.Id, I18n.T("Lập gói thầu {0}", vm.Title), Me); // lưu BOQ đã dùng để mời thầu
+            if (leaves.Count > 0)
                 foreach (var lf in leaves)
                     t.Lines.Add(new TenderLine { Description = lf.Node.Item.Name, Unit = lf.Node.Item.Unit, Quantity = lf.Node.Item.Quantity, EstimatedPrice = lf.Node.Item.UnitPrice, BoqCode = lf.Node.Code, BoqPath = lf.Path, SortOrder = s++ });
             else

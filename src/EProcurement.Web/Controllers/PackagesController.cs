@@ -172,7 +172,7 @@ public class PackagesController : ProcControllerBase
         ViewBag.Members = await Db.PackageMembers.AsNoTracking().Include(m => m.User).Where(m => m.PackageId == id).OrderBy(m => m.Role).ToListAsync();
         ViewBag.CanEdit = await PackageAccess.CanEditAsync(Db, User, id);
         var boq = await Db.BoqItems.AsNoTracking().Where(b => b.PackageId == id).ToListAsync();
-        ViewBag.BoqCount = boq.Count; ViewBag.BoqTotal = Boq.Total(boq);
+        ViewBag.BoqCount = boq.Count; ViewBag.BoqTotal = BoqCost.Summary(boq, p.BoqOverheadPercent, p.BoqProfitPercent, p.BoqContingencyPercent, p.BoqVatPercent).TotalExVat;
         ViewBag.OpenPlans = User.IsPurchasing() && p.Status == PackageStatus.Draft
             ? await Db.SelectionPlans.Where(x => x.Status == SelectionPlanStatus.Draft || x.Status == SelectionPlanStatus.Returned).OrderByDescending(x => x.CreatedAt).ToListAsync()
             : new List<SelectionPlan>();
