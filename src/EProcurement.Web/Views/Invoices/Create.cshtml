@@ -3,7 +3,7 @@
 <form asp-action="Create" method="post" enctype="multipart/form-data">
     <input type="hidden" name="PurchaseOrderId" value="@po.Id" />
     <div class="card mb-3"><div class="card-body">
-        <div class="small mb-2"><b>@po.Vendor?.Name</b> · PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id">@po.Number</a> @L["ngày"] @po.OrderDate.ToDate() · VAT @po.VatPercent.ToString("0.#")% · @po.PaymentTerms</div>
+        <div class="small mb-2"><b>@po.Vendor?.Name</b> · PO <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id">@po.Number</a> @L["ngày [date]"] @po.OrderDate.ToDate() · VAT @po.VatPercent.ToString("0.#")% · @po.PaymentTerms</div>
         <div class="row g-2">
             <div class="col-md-2"><label class="form-label small mb-0">@L["Ký hiệu"]</label><input name="Series" maxlength="20" class="form-control form-control-sm" placeholder="1C26TAA" /></div>
             <div class="col-md-3"><label class="form-label small mb-0">@L["Số hóa đơn"]</label><input name="InvoiceNo" maxlength="30" class="form-control form-control-sm" required /></div>

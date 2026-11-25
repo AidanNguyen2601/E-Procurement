@@ -47,6 +47,8 @@ public static class Catalogs
             new[] { "Việt Nam", "Trung Quốc", "Nhật Bản", "Hàn Quốc", "Đài Loan", "Thái Lan", "Malaysia", "Singapore", "Mỹ", "Đức", "EU / G7" }),
         new(CatalogType.Brand, "Thương hiệu", "tag", "Thương hiệu / hãng sản xuất của hàng hóa.", 100, false, false,
             new[] { "Dell", "HP", "Lenovo", "Asus", "Apple", "Cisco", "Samsung", "LG", "Canon", "Epson", "Thiên Long", "Double A", "Hòa Phát" }),
+        new(CatalogType.ProcurementField, "Lĩnh vực gói (loại mua sắm)", "package", "Lĩnh vực của gói mua sắm: dùng để phân loại, lọc báo cáo và áp dụng hạn mức & thời gian thực hiện riêng (Thiết lập → Hạn mức & thời gian gói).", 100, true, false,
+            new[] { "Hàng hóa", "Dịch vụ phi tư vấn", "Dịch vụ tư vấn", "Xây lắp", "Thiết bị & phần mềm CNTT", "Bảo trì, sửa chữa", "Hỗn hợp" }),
         new(CatalogType.Decision, "Quyết định", "file-check", "Quyết định, văn bản làm căn cứ (số hiệu ở cột Mã, ngày ban hành / người ký ở Ghi chú) – chèn nhanh vào căn cứ của KHLCNT, bảng giá tiêu chuẩn.", 300, false, false,
             Array.Empty<string>()),
     };
@@ -100,6 +102,7 @@ public static class Catalogs
         CatalogType.BusinessSector => await db.Vendors.Where(v => v.BusinessSector != null).Select(v => v.BusinessSector!).Distinct().ToListAsync(),
         CatalogType.Origin => await db.Items.Where(i => i.Origin != null).Select(i => i.Origin!).Distinct().ToListAsync(),
         CatalogType.Brand => await db.Items.Where(i => i.Brand != null).Select(i => i.Brand!).Distinct().ToListAsync(),
+        CatalogType.ProcurementField => await db.ProcurementPackages.Where(p => p.Field != null).Select(p => p.Field!).Distinct().ToListAsync(),
         _ => new()
     };
 }

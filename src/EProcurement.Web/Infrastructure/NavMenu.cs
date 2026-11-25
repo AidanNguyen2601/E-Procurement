@@ -37,6 +37,8 @@ public static class NavMenu
         var req = vc.HttpContext.Request;
         return (ctrl, act) switch
         {
+            ("Packages", "Progress") => "pkg-progress",
+            ("Tenders", "Actuals" or "ActualsSummary") => "td-actual",
             ("Tenders", "Evaluations" or "Screen" or "Score") => "td-eval",
             ("Tenders", "Negotiations" or "NegotiationMinutes") => "td-neg",
             ("Tenders", "EvaluationReports" or "Report") => "td-report",
@@ -84,6 +86,7 @@ public static class NavMenu
                 purchasing || approver ? L("Budgets", "Ngân sách", "wallet", "Budgets") : null,
                 L("PurchaseRequests", "Yêu cầu mua sắm", "file-text", "PurchaseRequests"),
                 pd ? L("Packages", "Gói mua sắm", "package", "Packages") : null,
+                pd ? L("pkg-progress", "Tiến độ gói", "clock", "Packages", "Progress") : null,
                 pd ? L("SelectionPlans", "Kế hoạch lựa chọn NCC", "clipboard", "SelectionPlans") : null),
 
             G("select", "Lựa chọn nhà cung cấp", "trophy",
@@ -99,7 +102,8 @@ public static class NavMenu
                     L("td-eval", "Đánh giá HSDT/HSCG", "scale", "Tenders", "Evaluations"),
                     L("td-neg", "Đàm phán hợp đồng", "users", "Tenders", "Negotiations"),
                     L("td-report", "Báo cáo đánh giá LCNT", "bar-chart", "Tenders", "EvaluationReports"),
-                    L("td-appraisal", "Thẩm định kết quả LCNT", "shield-check", "Tenders", "Appraisals")),
+                    L("td-appraisal", "Thẩm định kết quả LCNT", "shield-check", "Tenders", "Appraisals"),
+                    pd ? L("td-actual", "Dự toán – thực tế", "bar-chart", "Tenders", "ActualsSummary") : null),
                 L("public-notices", "Thông báo mời thầu", "megaphone", "Tenders", "Public", external: true)),
 
             G("exec", "Hợp đồng & thanh toán", "file-check",
@@ -135,6 +139,7 @@ public static class NavMenu
                 admin ? L("set-Permissions", "Thiết lập phân quyền", "shield-check", "Settings", "Permissions") : null,
                 admin ? L("ApprovalSettings", "Ma trận phê duyệt", "scale", "ApprovalSettings") : null,
                 L("set-PackageAccess", "Quyền theo gói thầu", "package", "Settings", "PackageAccess"),
+                admin ? L("set-PackageTiers", "Hạn mức & thời gian gói", "clock", "Settings", "PackageTiers") : null,
                 L("CriteriaSets", "Bộ tiêu chí đánh giá", "clipboard", "CriteriaSets"),
                 L("crit-tender", "Tiêu chí đánh giá HSDT", "gavel", "CriteriaSets", route: new { group = "tender" }),
                 admin ? L("set-SupplierCriteria", "Tiêu chí đánh giá NCC", "users", "Settings", "SupplierCriteria") : null,

@@ -1,0 +1,75 @@
+@model List<(ProcurementPackage Package, PackageProgressResult Progress)>
+@using EProcurement.Web.Infrastructure
+@{
+    ViewData["Title"] = L["Tiến độ gói mua sắm"];
+    var all = (List<(ProcurementPackage Package, PackageProgressResult Progress)>)ViewBag.All;
+    var tiers = (List<PackageTier>)ViewBag.Tiers;
+    int? stage = ViewBag.Stage; string? state = ViewBag.State; string? tier = ViewBag.Tier; string? q = ViewBag.Q;
+    string Badge(ProgressState s) => s switch { ProgressState.Overdue => "bg-danger", ProgressState.DueSoon => "bg-warning text-dark", ProgressState.Completed => "bg-success", ProgressState.Cancelled => "bg-dark", _ => "bg-primary" };
+    string StateText(ProgressState s) => s switch { ProgressState.Overdue => L["Quá hạn"], ProgressState.DueSoon => L["Sắp đến hạn"], ProgressState.Completed => L["Hoàn thành"], ProgressState.Cancelled => L["Đã hủy"], _ => L["Đúng tiến độ"] };
+    var active = all.Where(x => x.Progress.State != ProgressState.Cancelled && x.Progress.State != ProgressState.Completed).ToList();
+    var stageNames = PackageProgress.StageNames;
+}
+<style>
+    .stg { display: inline-flex; gap: 3px; align-items: center; }
+    .stg i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; background: #e2e8f0; border: 1px solid #cbd5e1; }
+    .stg i.done { background: #22c55e; border-color: #16a34a; }
+    .stg i.cur { background: #3b82f6; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(59,130,246,.25); }
+    .stg i.late { background: #ef4444; border-color: #dc2626; box-shadow: 0 0 0 3px rgba(239,68,68,.25); }
+    .stg i.dlate { background: #f59e0b; border-color: #d97706; }
+    .stg u { width: 8px; height: 2px; background: #cbd5e1; display: inline-block; }
+    .chip { display: inline-block; padding: 3px 10px; border-radius: 14px; border: 1px solid #cbd5e1; background: #fff; color: #334155; text-decoration: none; font-size: .82rem; margin: 0 4px 4px 0; }
+    .chip.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+    .chip b { font-weight: 600; }
+</style>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h5 class="mb-0">@L["Tiến độ gói mua sắm"]</h5>
+    <span class="small text-muted">@active.Count @L["gói đang thực hiện"] · <span class="text-danger">@active.Count(x => x.Progress.State == ProgressState.Overdue) @L["quá hạn"]</span></span>
+    @if (User.IsAdmin()) { <a asp-controller="Settings" asp-action="PackageTiers" class="btn btn-outline-secondary btn-sm ms-auto">@L["Thiết lập hạn mức & thời gian"]</a> }
+</div>
+
+<div class="mb-2">
+    <a class="chip @(stage == null && state == null ? "on" : "")" asp-action="Progress" asp-route-tier="@tier" asp-route-q="@q" asp-route-field="@((string?)ViewBag.Field)">@L["Tất cả"] <b>@all.Count</b></a>
+    @for (var i = 0; i < stageNames.Length; i++)
+    {
+        var n = all.Count(x => x.Progress.CurrentIndex == i && x.Progress.State != ProgressState.Cancelled); var late = all.Count(x => x.Progress.CurrentIndex == i && x.Progress.State == ProgressState.Overdue);
+        <a class="chip @(stage == i ? "on" : "")" asp-action="Progress" asp-route-stage="@i" asp-route-tier="@tier" asp-route-q="@q">@(i + 1). @L[stageNames[i]] <b>@n</b>@if (late > 0) { <span class="text-danger"> (@late @L["quá hạn"])</span> }</a>
+    }
+    <a class="chip @(state == "Completed" ? "on" : "")" asp-action="Progress" asp-route-state="Completed" asp-route-tier="@tier">@L["Hoàn thành"] <b>@all.Count(x => x.Progress.State == ProgressState.Completed)</b></a>
+    <a class="chip @(state == "Cancelled" ? "on" : "")" asp-action="Progress" asp-route-state="Cancelled" asp-route-tier="@tier">@L["Đã hủy"] <b>@all.Count(x => x.Progress.State == ProgressState.Cancelled)</b></a>
+</div>
+<div class="mb-3">
+    <a class="chip @(state == "Overdue" ? "on" : "")" asp-action="Progress" asp-route-state="Overdue" asp-route-tier="@tier">@L["Quá hạn"] <b>@all.Count(x => x.Progress.State == ProgressState.Overdue)</b></a>
+    <a class="chip @(state == "DueSoon" ? "on" : "")" asp-action="Progress" asp-route-state="DueSoon" asp-route-tier="@tier">@L["Sắp đến hạn"] <b>@all.Count(x => x.Progress.State == ProgressState.DueSoon)</b></a>
+    <a class="chip @(state == "OnTrack" ? "on" : "")" asp-action="Progress" asp-route-state="OnTrack" asp-route-tier="@tier">@L["Đúng tiến độ"] <b>@all.Count(x => x.Progress.State == ProgressState.OnTrack)</b></a>
+</div>
+<form method="get" class="row g-2 mb-3">
+    <input type="hidden" name="stage" value="@stage" /><input type="hidden" name="state" value="@state" />
+    <div class="col-md-3"><select name="field" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">@L["-- Mọi lĩnh vực --"]</option>@foreach (var fl in await Catalog.NamesAsync(CatalogType.ProcurementField)) { <option value="@fl" selected="@((string?)ViewBag.Field == fl)">@fl</option> }</select></div>
+    <div class="col-md-3"><select name="tier" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">@L["Mọi hạn mức"]</option>@foreach (var t in tiers) { <option value="@t.Name" selected="@(tier == t.Name)">@t.Name@(t.MaxValue > 0 ? " (≤ " + t.MaxValue.ToShortMoney() + ")" : " (" + L["không giới hạn"] + ")")</option> }</select></div>
+    <div class="col-md-4"><input name="q" value="@q" class="form-control form-control-sm" placeholder="@L["Số gói / tên gói"]" /></div>
+    <div class="col-md-2"><button class="btn btn-outline-secondary btn-sm">@L["Lọc"]</button></div>
+</form>
+
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0 align-middle small">
+    <thead><tr><th>@L["Gói mua sắm"]</th><th>@L["Lĩnh vực"]</th><th class="text-end">@L["Giá gói"]</th><th>@L["Hạn mức"]</th><th>@L["Các giai đoạn"]</th><th>@L["Giai đoạn hiện tại"]</th><th>@L["Hạn giai đoạn"]</th><th>@L["Trạng thái"]</th><th class="text-end">@L["Đã / mục tiêu (ngày)"]</th></tr></thead>
+    <tbody>
+    @foreach (var (p, r) in Model)
+    {
+        var cur = r.Current;
+        <tr>
+            <td><a asp-action="Details" asp-route-id="@p.Id">@p.Number</a><div class="text-muted">@p.Title</div></td>
+            <td class="small">@p.Field</td>
+            <td class="text-end">@p.Budget.ToMoney()</td>
+            <td>@r.Tier.Name</td>
+            <td><span class="stg">@foreach (var s in r.Stages) { var c = s.Status == StageStatus.Done ? (s.Late ? "dlate" : "done") : s.Status == StageStatus.Current ? (s.Late ? "late" : "cur") : ""; <i class="@c" title="@(s.Index + 1). @L[s.Name]"></i>@if (s.Index < 5) { <u></u> } }</span></td>
+            <td>@if (cur != null) { <span>@(cur.Index + 1). @L[cur.Name]</span><div class="text-muted">@L["đã"] @cur.DaysUsed / @cur.PlannedDays @L["ngày"]</div> } else if (r.State == ProgressState.Completed) { <span class="text-success">@L["Đã hoàn thành"]</span> } else { <span class="text-muted">@L["Đã hủy"]</span> }</td>
+            <td class="@(r.State == ProgressState.Overdue ? "text-danger fw-semibold" : "")">@(cur?.Due.ToDate())</td>
+            <td><span class="badge @Badge(r.State)">@StateText(r.State)@(cur != null && cur.Late ? " " + cur.DaysLate + " " + L["ngày"] : "")</span></td>
+            <td class="text-end">@r.ElapsedDays / @r.Tier.TotalDays</td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="9" class="text-muted p-3">@L["Không có gói nào phù hợp."]</td></tr> }
+    </tbody>
+</table></div></div>
+<div class="small text-muted mt-2">@L["Chấm xanh = giai đoạn đã xong đúng hạn, vàng = xong nhưng trễ, xanh dương = đang thực hiện, đỏ = đang quá hạn, xám = chưa đến."]</div>

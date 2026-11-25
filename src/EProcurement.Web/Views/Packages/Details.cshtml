@@ -65,6 +65,7 @@
         <h5>@Model.Title</h5>
         <dl class="row small mb-0 info">
             <dt class="col-sm-4">@L["Giá gói (trước VAT)"]</dt><dd class="col-sm-8 fw-semibold">@Model.Budget.ToMoney() đ <span class="text-muted fw-normal">· @L["tổng dự toán PR"] @Model.PurchaseRequests.Sum(r => r.EstimatedTotal).ToMoney() đ</span></dd>
+            <dt class="col-sm-4">@L["Lĩnh vực"]</dt><dd class="col-sm-8">@(string.IsNullOrEmpty(Model.Field) ? "—" : Model.Field)</dd>
             <dt class="col-sm-4">@L["Nguồn vốn"]</dt><dd class="col-sm-8">@Model.FundingSource</dd>
             <dt class="col-sm-4">@L["Hình thức lựa chọn NCC"]</dt><dd class="col-sm-8"><b>@Model.Method.GetDisplayName()</b>@if (Model.Method == ProcurementMethod.OpenTender) { <span> – @Model.EnvelopeMethod.GetDisplayName()</span> }
                 @if (!string.IsNullOrEmpty(Model.MethodReason)) { <div class="text-muted">@L["Lý do:"] @Model.MethodReason</div> }</dd>
@@ -77,6 +78,7 @@
         </dl>
     </div></div>
 
+    @if (ViewBag.Progress is PackageProgressResult progressInfo) { <partial name="_PackageProgress" model="progressInfo" /> }
     <div class="card mb-3"><div class="card-header d-flex align-items-center">@L["BOQ phân cấp"]<a asp-controller="Boq" asp-action="Index" asp-route-packageId="@Model.Id" class="btn btn-outline-primary btn-sm ms-auto">@(buyer && Model.Status == PackageStatus.Draft ? L["Lập / sửa BOQ"] : L["Xem BOQ"])</a></div>
         <div class="card-body small">
             @if ((int)ViewBag.BoqCount == 0) { <span class="text-muted">@L["Chưa có BOQ."]</span> }

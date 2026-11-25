@@ -143,4 +143,30 @@ public static class Packages
             await db.PurchaseOrders.Where(r => r.PurchaseRequestId == pr.Id && r.PackageId == null).ExecuteUpdateAsync(x => x.SetProperty(r => r.PackageId, pkg.Id));
         }
     }
+
+    /// <summary>Gợi ý lĩnh vực của gói từ tên gói, nội dung dòng hàng và nhóm hàng (tìm từ khóa, không phân biệt hoa thường)</summary>
+    public static string SuggestField(string text)
+    {
+        var t = (text ?? "").ToLowerInvariant();
+        bool Has(params string[] k) => k.Any(x => t.Contains(x));
+        if (Has("xây dựng", "xây lắp", "thi công", "nhà xưởng", "nhà kho", "công trình")) return "Xây lắp";
+        if (Has("tư vấn", "thiết kế", "giám sát")) return "Dịch vụ tư vấn";
+        if (Has("bảo trì", "sửa chữa", "bảo dưỡng", "khắc phục")) return "Bảo trì, sửa chữa";
+        if (Has("cntt", "phần mềm", "máy tính", "laptop", "máy chủ", "màn hình", "wifi", "mạng", "bản quyền", "ups", "camera", "máy in")) return "Thiết bị & phần mềm CNTT";
+        if (Has("dịch vụ", "vệ sinh", "bảo vệ", "thuê")) return "Dịch vụ phi tư vấn";
+        return "Hàng hóa";
+    }
+
+    /// <summary>Gói chưa có lĩnh vực (dữ liệu cũ): gán theo gợi ý từ tên gói và nội dung / nhóm hàng của các đề nghị trong gói. Gọi lại an toàn.</summary>
+    public static async Task BackfillFieldsAsync(EProcDbContext db)
+    {
+        var pkgs = await db.ProcurementPackages.Where(p => p.Field == null).Include(p => p.PurchaseRequests).ThenInclude(r => r.Lines).ThenInclude(l => l.Item).ThenInclude(i => i!.Category).ToListAsync();
+        if (pkgs.Count == 0) return;
+        foreach (var p in pkgs)
+        {
+            var text = p.Title + " " + string.Join(" ", p.PurchaseRequests.SelectMany(r => r.Lines).Select(l => l.Description + " " + l.Item?.Category?.Name));
+            p.Field = SuggestField(text);
+        }
+        await db.SaveChangesAsync();
+    }
 }

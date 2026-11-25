@@ -284,3 +284,28 @@ document.addEventListener('change', function (e) {
     }
     sel.value = '';
 });
+
+// ===== Ô nhập tiền: <input data-money> hiện 1.000.000 khi gõ; dấu chấm được bỏ trước khi gửi form (máy chủ nhận số thuần) =====
+(function () {
+    function fmt(v) { var d = String(v == null ? '' : v).replace(/[^\d]/g, '').replace(/^0+(?=\d)/, ''); return d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''; }
+    function parse(v) { return parseFloat(String(v == null ? '' : v).replace(/\./g, '')) || 0; }
+    function bind(el) {
+        if (el.dataset.moneyBound === '1') return;
+        el.dataset.moneyBound = '1'; el.type = 'text'; el.inputMode = 'numeric'; el.autocomplete = 'off'; el.removeAttribute('step'); el.removeAttribute('min'); el.removeAttribute('max');
+        el.value = fmt(el.value);
+        el.addEventListener('input', function () {
+            var pos = el.selectionStart, before = el.value.length;
+            el.value = fmt(el.value);
+            var p = Math.max(0, pos + el.value.length - before);
+            try { el.setSelectionRange(p, p); } catch (e) { }
+        });
+        var form = el.form;
+        if (form && form.dataset.moneyForm !== '1') {
+            form.dataset.moneyForm = '1';
+            form.addEventListener('submit', function () { form.querySelectorAll('[data-money]').forEach(function (i) { i.value = String(i.value).replace(/\./g, ''); }); });
+        }
+    }
+    function bindAll(root) { (root || document).querySelectorAll('input[data-money]').forEach(bind); }
+    window.eprocMoney = { format: fmt, parse: parse, bindAll: bindAll };
+    bindAll();
+})();

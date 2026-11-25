@@ -60,7 +60,7 @@
     @foreach (var i in invoices)
     {
         var pay = payments.Where(p => p.InvoiceId == i.Id && p.Status != PaymentStatus.Rejected).OrderByDescending(p => p.RequestedAt).FirstOrDefault();
-        <div class="border-bottom pb-2 mb-2">@L["HĐ"] <b>@i.Series @i.InvoiceNo</b> @L["ngày"] @i.InvoiceDate.ToDate() · @i.Total.ToMoney() @L["đ ·"] <span class="badge bg-light text-dark border">@i.Status.GetDisplayName()</span> · @L["hạn thanh toán"] @i.DueDate.ToDate()
+        <div class="border-bottom pb-2 mb-2">@L["HĐ"] <b>@i.Series @i.InvoiceNo</b> @L["ngày [date]"] @i.InvoiceDate.ToDate() · @i.Total.ToMoney() @L["đ ·"] <span class="badge bg-light text-dark border">@i.Status.GetDisplayName()</span> · @L["hạn thanh toán"] @i.DueDate.ToDate()
             @if (pay != null) { <span> · @pay.Status.GetDisplayName()@(pay.PaidAt != null ? L[" ngày {0}, thực nhận {1} đ", pay.PaidAt?.ToString("dd/MM/yyyy"), pay.NetAmount.ToMoney()] : "")@(pay.PenaltyAmount > 0 ? L[" (phạt chậm giao {0} đ)", pay.PenaltyAmount.ToMoney()] : "")</span> }
             @if (i.Status is InvoiceStatus.Exception or InvoiceStatus.Rejected) { <div class="text-danger">@i.MatchNote @i.DecisionNote</div> }</div>
     }

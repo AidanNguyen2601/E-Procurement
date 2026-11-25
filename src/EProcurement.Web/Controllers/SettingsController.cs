@@ -47,6 +47,7 @@ public class SettingsController : Controller
         ViewBag.AlertsOn = AlertSettings.Defs.Count(d => alerts.On(d.Key));
         ViewBag.Email = await _notify.EmailConfigAsync();
         ViewBag.Numbering = await _store.ExistsAsync(SettingsStore.Numbering);
+        ViewBag.TierCount = (await _store.GetAsync(SettingsStore.PackageTiers, () => new PackageTierSettings())).Tiers.Count;
         ViewData["Title"] = "Thiết lập";
         return View();
     }
@@ -163,6 +164,31 @@ public class SettingsController : Controller
         if (items.Sum(i => i.Weight) == 0) { TempData["Error"] = I18n.T("Tổng trọng số phải lớn hơn 0."); return RedirectToAction(nameof(SupplierCriteria)); }
         await _store.SaveAsync(SettingsStore.SupplierCriteria, new SupplierCriteriaSettings { Items = items });
         return Saved("Đã lưu tiêu chí đánh giá NCC. Điểm tổng hợp và xếp loại tính lại theo trọng số mới.", nameof(SupplierCriteria));
+    }
+
+    // ------------------------------------------------------------------ hạn mức & thời gian thực hiện của gói
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> PackageTiers()
+    {
+        ViewData["Title"] = "Hạn mức & thời gian thực hiện gói";
+        ViewBag.Fields = await new CatalogService(_db).NamesAsync(CatalogType.ProcurementField);
+        return View((await _store.GetAsync(SettingsStore.PackageTiers, () => new PackageTierSettings())).Tiers);
+    }
+
+    [Authorize(Roles = AppRoles.Admin)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> PackageTiers(List<PackageTier> tiers, bool reset = false)
+    {
+        if (reset) { await _store.SaveAsync(SettingsStore.PackageTiers, new PackageTierSettings()); return Saved("Đã khôi phục hạn mức mặc định.", nameof(PackageTiers)); }
+        tiers = (tiers ?? new()).Where(t => !string.IsNullOrWhiteSpace(t.Name) || t.MaxValue != 0 || t.TotalDays != 0).ToList();
+        foreach (var t in tiers) t.Name = (t.Name ?? "").Trim();
+        foreach (var t in tiers) t.Field = string.IsNullOrWhiteSpace(t.Field) ? null : t.Field.Trim();
+        // gom theo bộ: mặc định trước, rồi theo tên lĩnh vực; giữ thứ tự nhập trong từng bộ
+        tiers = tiers.Select((t, i) => (t, i)).OrderBy(x => x.t.Field == null ? 0 : 1).ThenBy(x => x.t.Field, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.i).Select(x => x.t).ToList();
+        var errors = PackageTierSettings.Validate(tiers);
+        if (errors.Count > 0) { ViewData["Title"] = "Hạn mức & thời gian thực hiện gói"; ViewBag.Errors = errors; ViewBag.Fields = await new CatalogService(_db).NamesAsync(CatalogType.ProcurementField); return View(tiers); }
+        await _store.SaveAsync(SettingsStore.PackageTiers, new PackageTierSettings { Tiers = tiers });
+        return Saved(I18n.T("Đã lưu {0} hạn mức. Tiến độ các gói được tính lại theo hạn mức mới.", tiers.Count), nameof(PackageTiers));
     }
 
     // ------------------------------------------------------------------ cảnh báo

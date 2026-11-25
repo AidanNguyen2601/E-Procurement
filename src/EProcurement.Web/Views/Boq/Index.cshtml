@@ -180,18 +180,20 @@ else if (!Model.CanEdit)
                 <div class="row g-2 mb-2">
                     <div class="col-4"><label class="form-label small mb-1">@L["ĐVT"]</label><input name="Unit" value="@f.Unit" maxlength="30" class="form-control form-control-sm" /></div>
                     <div class="col-4"><label class="form-label small mb-1">@L["Khối lượng"]</label><input name="Quantity" type="number" step="0.001" min="0" value="@f.Quantity.ToString("0.###", inv)" class="form-control form-control-sm" /></div>
-                    <div class="col-4"><label class="form-label small mb-1">@L["Đơn giá (trước VAT)"]</label><input name="UnitPrice" type="number" step="1" min="0" value="@f.UnitPrice.ToString("0", inv)" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Đơn giá (trước VAT)"]</label><input name="UnitPrice" data-money value="@f.UnitPrice.ToString("0", inv)" class="form-control form-control-sm" /></div>
                 </div>
                 <div class="row g-2 mb-1">
-                    <div class="col-4"><label class="form-label small mb-1">@L["Vật liệu"]</label><input name="MaterialPrice" id="mp" type="number" step="1" min="0" value="@(f.MaterialPrice == 0 ? "" : f.MaterialPrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
-                    <div class="col-4"><label class="form-label small mb-1">@L["Nhân công"]</label><input name="LaborPrice" id="lp" type="number" step="1" min="0" value="@(f.LaborPrice == 0 ? "" : f.LaborPrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
-                    <div class="col-4"><label class="form-label small mb-1">@L["Máy thi công"]</label><input name="MachinePrice" id="cp" type="number" step="1" min="0" value="@(f.MachinePrice == 0 ? "" : f.MachinePrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Vật liệu"]</label><input name="MaterialPrice" id="mp" data-money value="@(f.MaterialPrice == 0 ? "" : f.MaterialPrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Nhân công"]</label><input name="LaborPrice" id="lp" data-money value="@(f.LaborPrice == 0 ? "" : f.LaborPrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Máy thi công"]</label><input name="MachinePrice" id="cp" data-money value="@(f.MachinePrice == 0 ? "" : f.MachinePrice.ToString("0", inv))" class="form-control form-control-sm" /></div>
                 </div>
                 <div class="small text-muted mb-2">@L["Có nhập cơ cấu giá (vật liệu / nhân công / máy) thì đơn giá = tổng ba thành phần. Để trống khối lượng / đơn giá nếu dòng này sẽ có dòng con."]</div>
                 <script>
                 (function () {
                     var m = document.getElementById('mp'), l = document.getElementById('lp'), c = document.getElementById('cp'), u = document.querySelector('input[name=UnitPrice]');
-                    function sync() { var s = (parseFloat(m.value) || 0) + (parseFloat(l.value) || 0) + (parseFloat(c.value) || 0); if (s > 0) { u.value = s; u.readOnly = true; } else u.readOnly = false; }
+                    function num(v) { return parseFloat(String(v).replace(/./g, '')) || 0; }
+                    function fmt(n) { return String(Math.round(n)).replace(/B(?=(d{3})+(?!d))/g, '.'); }
+                    function sync() { var s = num(m.value) + num(l.value) + num(c.value); if (s > 0) { u.value = fmt(s); u.readOnly = true; } else u.readOnly = false; }
                     [m, l, c].forEach(function (i) { i.addEventListener('input', sync); }); sync();
                 })();
                 </script>

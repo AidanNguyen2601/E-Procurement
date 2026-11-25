@@ -14,7 +14,7 @@ public class SettingsStore
     public SettingsStore(EProcDbContext db, IMemoryCache cache) { _db = db; _cache = cache; }
 
     public const string Alerts = "alerts", Email = "email", Templates = "notify.templates", Numbering = "numbering",
-        Permissions = "permissions", SupplierCriteria = "supplier.criteria", Print = "print";
+        Permissions = "permissions", SupplierCriteria = "supplier.criteria", Print = "print", PackageTiers = "package.tiers";
 
     /// <summary>Đọc cấu hình; chưa lưu → giá trị mặc định do <paramref name="fallback"/> tạo</summary>
     public async Task<T> GetAsync<T>(string key, Func<T> fallback) where T : class

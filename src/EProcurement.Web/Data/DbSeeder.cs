@@ -333,6 +333,7 @@ public static class DbSeeder
             "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseOrderLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE PurchaseOrderLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
             "IF COL_LENGTH('ContractLines','OriginalQuantity') IS NULL ALTER TABLE ContractLines ADD OriginalQuantity decimal(18,3) NULL",
             "IF COL_LENGTH('ContractLines','AddedByAmendment') IS NULL ALTER TABLE ContractLines ADD AddedByAmendment nvarchar(30) NULL",
+            "IF COL_LENGTH('ProcurementPackages','Field') IS NULL ALTER TABLE ProcurementPackages ADD Field nvarchar(100) NULL",
             // BOQ: cơ cấu đơn giá (vật liệu / nhân công / máy) và cơ cấu chi phí của gói
             "IF COL_LENGTH('BoqItems','MaterialPrice') IS NULL ALTER TABLE BoqItems ADD MaterialPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Mat DEFAULT 0",
             "IF COL_LENGTH('BoqItems','LaborPrice') IS NULL ALTER TABLE BoqItems ADD LaborPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Lab DEFAULT 0",
@@ -359,6 +360,7 @@ public static class DbSeeder
         await EProcurement.Web.Infrastructure.Packages.EnsureLegacyAsync(db);
         await EProcurement.Web.Infrastructure.StandardPrices.SyncReferenceAsync(db); // bảng giá tiêu chuẩn tới ngày hiệu lực // PR đã chọn hình thức trước khi có gói → sinh gói + KHLCNT tương ứng
         await EProcurement.Web.Infrastructure.Catalogs.EnsureAsync(db); // danh mục dùng chung: nạp mặc định + giá trị đang dùng
+        await EProcurement.Web.Infrastructure.Packages.BackfillFieldsAsync(db); // gói cũ chưa có lĩnh vực: suy ra từ nhóm hàng / tên gói
         await EProcurement.Web.Infrastructure.OrgUnits.EnsureAsync(db); // cơ cấu tổ chức: khởi tạo từ phòng ban đang dùng, đồng bộ danh mục Phòng ban
         await EProcurement.Web.Infrastructure.CriteriaSeed.EnsureAsync(db); // thư viện bộ tiêu chí mẫu
     }

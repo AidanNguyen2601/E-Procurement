@@ -32,9 +32,10 @@
 
     <div class="card mb-3"><div class="card-header">@L["2. Thông tin gói (theo mẫu kế hoạch lựa chọn nhà cung cấp)"]</div><div class="card-body"><div class="row g-3">
         <div class="col-md-8"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /></div>
-        <div class="col-md-4"><label asp-for="Budget" class="form-label"></label><input asp-for="Budget" type="number" step="1000" class="form-control" /><div class="form-text">@L["Để 0 = bằng tổng dự toán các PR."]</div></div>
+        <div class="col-md-4"><label asp-for="Budget" class="form-label"></label><input asp-for="Budget" type="number" step="1000" data-money class="form-control" /><div class="form-text">@L["Để 0 = bằng tổng dự toán các PR."]</div></div>
         <div class="col-md-4"><label asp-for="Method" class="form-label"></label><select asp-for="Method" asp-items="Html.GetEnumSelectList<ProcurementMethod>()" class="form-select" id="pkg-method"></select></div>
         <div class="col-md-4 tender-only"><label asp-for="EnvelopeMethod" class="form-label"></label><select asp-for="EnvelopeMethod" asp-items="Html.GetEnumSelectList<EnvelopeMethod>()" class="form-select"></select></div>
+        <div class="col-md-4"><label asp-for="Field" class="form-label"></label><select asp-for="Field" asp-items="await Catalog.SelectAsync(CatalogType.ProcurementField, Model.Field)" class="form-select"><option value="">@L["-- Chọn lĩnh vực --"]</option></select><span asp-validation-for="Field" class="text-danger small"></span></div>
         <div class="col-md-4"><label asp-for="FundingSource" class="form-label"></label><input asp-for="FundingSource" class="form-control" list="dl-fundingsource" />@await Catalog.DatalistAsync(CatalogType.FundingSource)</div>
         <div class="col-12"><label asp-for="MethodReason" class="form-label"></label><textarea asp-for="MethodReason" rows="2" class="form-control" placeholder="@L["Bắt buộc khi chọn chỉ định thầu hoặc hình thức kém cạnh tranh hơn gợi ý"]"></textarea></div>
         <div class="col-md-4"><label asp-for="ContractType" class="form-label"></label><input asp-for="ContractType" list="ct-list" class="form-control" />

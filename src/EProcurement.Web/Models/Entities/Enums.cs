@@ -151,7 +151,8 @@ public enum CatalogType
     [Display(Name = "Lĩnh vực kinh doanh")] BusinessSector = 13,
     [Display(Name = "Xếp loại nhà cung cấp")] SupplierGrade = 14,
     [Display(Name = "Xuất xứ")] Origin = 15,
-    [Display(Name = "Thương hiệu")] Brand = 16
+    [Display(Name = "Thương hiệu")] Brand = 16,
+    [Display(Name = "Lĩnh vực gói (loại mua sắm)")] ProcurementField = 17
 }
 
 public enum NotificationKind

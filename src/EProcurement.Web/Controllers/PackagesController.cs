@@ -17,6 +17,7 @@ public class PackageForm
     [Display(Name = "Đề nghị mua hàng trong gói")] public List<int> PrIds { get; set; } = new();
     [Range(0, 1_000_000_000_000)][Display(Name = "Giá gói (trước VAT)")] public decimal Budget { get; set; }
     [StringLength(200)][Display(Name = "Nguồn vốn")] public string? FundingSource { get; set; } = "Ngân sách hoạt động";
+    [Required(ErrorMessage = "Chọn lĩnh vực của gói"), StringLength(100)][Display(Name = "Lĩnh vực")] public string? Field { get; set; }
     [Display(Name = "Hình thức lựa chọn NCC")] public ProcurementMethod Method { get; set; } = ProcurementMethod.CompetitiveQuotation;
     [StringLength(1000)][Display(Name = "Lý do chọn hình thức")] public string? MethodReason { get; set; }
     [Display(Name = "Phương thức")] public EnvelopeMethod EnvelopeMethod { get; set; } = EnvelopeMethod.OneEnvelope;
@@ -39,15 +40,33 @@ public class PackagesController : ProcControllerBase
 {
     public PackagesController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }
 
-    public async Task<IActionResult> Index(PackageStatus? status, ProcurementMethod? method, string? q)
+    public async Task<IActionResult> Index(PackageStatus? status, ProcurementMethod? method, string? q, string? field)
     {
         var query = Db.ProcurementPackages.AsNoTracking().Include(p => p.SelectionPlan).Include(p => p.Buyer).Include(p => p.PurchaseRequests).AsQueryable();
         if (status.HasValue) query = query.Where(p => p.Status == status);
         if (method.HasValue) query = query.Where(p => p.Method == method);
+        if (!string.IsNullOrEmpty(field)) query = query.Where(p => p.Field == field);
         if (!string.IsNullOrWhiteSpace(q)) { var k = q.Trim(); query = query.Where(p => p.Number.Contains(k) || p.Title.Contains(k) || p.PurchaseRequests.Any(r => r.Number.Contains(k))); }
-        ViewBag.Status = status; ViewBag.Method = method; ViewBag.Q = q;
+        ViewBag.Status = status; ViewBag.Method = method; ViewBag.Q = q; ViewBag.Field = field;
         ViewBag.Waiting = await AvailablePrs().CountAsync();
         return View(await query.OrderByDescending(p => p.CreatedAt).ToListAsync());
+    }
+
+    /// <summary>Theo dõi tiến độ mọi gói: đang ở giai đoạn nào, hạn theo hạn mức, quá hạn bao nhiêu ngày</summary>
+    public async Task<IActionResult> Progress(int? stage, string? state, string? tier, string? q, string? field)
+    {
+        var svc = HttpContext.RequestServices.GetRequiredService<PackageProgressService>();
+        var all = await svc.ComputeAsync();
+        ViewBag.Tiers = (await svc.TiersAsync()).Tiers;
+        ViewBag.All = all;
+        var list = all.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(q)) { var k = q.Trim(); list = list.Where(x => x.Package.Number.Contains(k, StringComparison.OrdinalIgnoreCase) || x.Package.Title.Contains(k, StringComparison.OrdinalIgnoreCase)); }
+        if (!string.IsNullOrEmpty(tier)) list = list.Where(x => x.Progress.Tier.Name == tier);
+        if (!string.IsNullOrEmpty(field)) list = list.Where(x => x.Package.Field == field);
+        if (stage.HasValue) list = list.Where(x => x.Progress.CurrentIndex == stage && x.Progress.State != ProgressState.Cancelled);
+        if (!string.IsNullOrEmpty(state) && Enum.TryParse<ProgressState>(state, out var st)) list = list.Where(x => x.Progress.State == st);
+        ViewBag.Stage = stage; ViewBag.State = state; ViewBag.Tier = tier; ViewBag.Q = q; ViewBag.Field = field;
+        return View(list.OrderByDescending(x => x.Progress.State == ProgressState.Overdue).ThenByDescending(x => x.Progress.Current?.DaysLate ?? 0).ThenBy(x => x.Progress.Current?.Due ?? DateTime.MaxValue).ToList());
     }
 
     /// <summary>PR đã duyệt, chưa thuộc gói, không đặt theo hợp đồng khung, chưa có hồ sơ lựa chọn NCC</summary>
@@ -89,6 +108,7 @@ public class PackagesController : ProcControllerBase
         {
             vm.Title = vm.PrIds.Count == 1 ? first.Title : $"{first.Title} và {vm.PrIds.Count - 1} đề nghị khác";
             vm.Budget = vm.Estimate;
+            vm.Field = Packages.SuggestField(string.Join(" ", vm.Available.Where(p => vm.PrIds.Contains(p.Id)).SelectMany(p => p.Lines.Select(l => l.Description).Append(p.Title))));
             if (vm.Suggested.HasValue) vm.Method = vm.Suggested.Value;
             vm.ContractDurationDays = Math.Max(1, (vm.Available.Where(p => vm.PrIds.Contains(p.Id)).Min(p => p.NeededDate) - DateTime.Today).Days);
         }
@@ -104,7 +124,7 @@ public class PackagesController : ProcControllerBase
         if (!await PackageAccess.CanEditAsync(Db, User, id)) { TempData["Error"] = PackageAccess.Explain; return RedirectToAction(nameof(Details), new { id }); }
         var vm = new PackageForm
         {
-            Id = p.Id, Number = p.Number, Title = p.Title, PrIds = p.PurchaseRequests.Select(r => r.Id).ToList(), Budget = p.Budget, FundingSource = p.FundingSource,
+            Id = p.Id, Number = p.Number, Title = p.Title, PrIds = p.PurchaseRequests.Select(r => r.Id).ToList(), Budget = p.Budget, FundingSource = p.FundingSource, Field = p.Field,
             Method = p.Method, MethodReason = p.MethodReason, EnvelopeMethod = p.EnvelopeMethod, ContractType = p.ContractType,
             ContractDurationDays = p.ContractDurationDays, PlannedStart = p.PlannedStart, Note = p.Note, Team = p.Team
         };
@@ -134,6 +154,8 @@ public class PackagesController : ProcControllerBase
         if (chosen.Count > 0 && vm.Suggested.HasValue)
             foreach (var e in Packages.MethodProblems(vm.Method, vm.Suggested.Value, vm.MethodReason, vm.HasReference, vm.Budget, vm.Estimate, Settings))
                 ModelState.AddModelError(nameof(vm.Method), e);
+        if (!string.IsNullOrWhiteSpace(vm.Field) && !await HttpContext.RequestServices.GetRequiredService<CatalogService>().IsValidAsync(CatalogType.ProcurementField, vm.Field, p?.Field))
+            ModelState.AddModelError(nameof(vm.Field), I18n.T("Chọn lĩnh vực trong danh mục (Danh mục dùng chung → Lĩnh vực gói)."));
         if (!ModelState.IsValid) return View("Form", vm);
 
         if (p == null)
@@ -141,7 +163,7 @@ public class PackagesController : ProcControllerBase
             p = new ProcurementPackage { Number = await DocNumbers.NextAsync(Db.ProcurementPackages.Select(x => x.Number), "GM"), BuyerId = Me, CreatedAt = DateTime.Now };
             Db.ProcurementPackages.Add(p);
         }
-        p.Title = vm.Title.Trim(); p.Budget = vm.Budget; p.FundingSource = vm.FundingSource; p.Method = vm.Method;
+        p.Title = vm.Title.Trim(); p.Budget = vm.Budget; p.FundingSource = vm.FundingSource; p.Field = vm.Field?.Trim(); p.Method = vm.Method;
         p.MethodReason = string.IsNullOrWhiteSpace(vm.MethodReason) ? null : vm.MethodReason.Trim();
         p.EnvelopeMethod = vm.Method == ProcurementMethod.OpenTender ? vm.EnvelopeMethod : EnvelopeMethod.OneEnvelope;
         p.ContractType = vm.ContractType; p.ContractDurationDays = vm.ContractDurationDays; p.PlannedStart = vm.PlannedStart; p.Note = vm.Note;
@@ -171,6 +193,7 @@ public class PackagesController : ProcControllerBase
         ViewBag.History = await HistoryAsync(DocType.Package, id);
         ViewBag.Members = await Db.PackageMembers.AsNoTracking().Include(m => m.User).Where(m => m.PackageId == id).OrderBy(m => m.Role).ToListAsync();
         ViewBag.CanEdit = await PackageAccess.CanEditAsync(Db, User, id);
+        ViewBag.Progress = (await HttpContext.RequestServices.GetRequiredService<PackageProgressService>().ComputeAsync(new[] { id })).Select(x => x.Progress).FirstOrDefault();
         var boq = await Db.BoqItems.AsNoTracking().Where(b => b.PackageId == id).ToListAsync();
         ViewBag.BoqCount = boq.Count; ViewBag.BoqTotal = BoqCost.Summary(boq, p.BoqOverheadPercent, p.BoqProfitPercent, p.BoqContingencyPercent, p.BoqVatPercent).TotalExVat;
         ViewBag.OpenPlans = User.IsPurchasing() && p.Status == PackageStatus.Draft

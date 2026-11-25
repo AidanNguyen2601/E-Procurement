@@ -15,17 +15,19 @@
 <form method="get" class="toolbar">
     <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="statusItems" onchange="this.form.submit()"><option value="">@L["-- Mọi trạng thái --"]</option></select>
     <select name="method" class="form-select form-select-sm" style="width:auto" asp-items="methodItems" onchange="this.form.submit()"><option value="">@L["-- Mọi hình thức --"]</option></select>
+    <select name="field" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()"><option value="">@L["-- Mọi lĩnh vực --"]</option>@foreach (var fl in await Catalog.NamesAsync(CatalogType.ProcurementField)) { <option value="@fl" selected="@((string?)ViewBag.Field == fl)">@fl</option> }</select>
     <input name="q" value="@ViewBag.Q" class="form-control form-control-sm" style="max-width:240px" placeholder="@L["Số gói, tên gói, số PR"]" />
     <button class="btn btn-sm btn-outline-secondary">@L["Lọc"]</button>
     @if (User.IsPurchasing()) { <a asp-action="Create" class="btn btn-sm btn-primary ms-auto">@Icon.Svg("plus", 14) @L["Lập gói"]</a> }
 </form>
 <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
-    <thead><tr><th>@L["Số gói"]</th><th>@L["Tên gói"]</th><th>@L["Đề nghị"]</th><th>@L["Hình thức"]</th><th class="money">@L["Giá gói"]</th><th>@L["Bắt đầu LCNT"]</th><th>KHLCNT</th><th>@L["Trạng thái"]</th></tr></thead>
+    <thead><tr><th>@L["Số gói"]</th><th>@L["Tên gói"]</th><th>@L["Lĩnh vực"]</th><th>@L["Đề nghị"]</th><th>@L["Hình thức"]</th><th class="money">@L["Giá gói"]</th><th>@L["Bắt đầu LCNT"]</th><th>KHLCNT</th><th>@L["Trạng thái"]</th></tr></thead>
     <tbody>
     @foreach (var p in Model)
     {
         <tr><td><a asp-action="Details" asp-route-id="@p.Id" class="fw-semibold">@p.Number</a><br /><small class="text-muted">@p.Buyer?.FullName</small></td>
             <td>@p.Title</td>
+            <td class="small">@p.Field</td>
             <td class="small">@string.Join(", ", p.PurchaseRequests.OrderBy(r => r.Id).Select(r => r.Number))</td>
             <td class="small">@p.Method.GetDisplayName()@if (p.Method == ProcurementMethod.OpenTender) { <div class="text-muted">@p.EnvelopeMethod.GetDisplayName()</div> }</td>
             <td class="money">@p.Budget.ToMoney()</td>

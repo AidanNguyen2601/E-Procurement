@@ -299,6 +299,28 @@ public class NotificationService
         }
 
         var directors = await DirectorsAsync();
+
+        // Gói mua sắm sắp đến hạn / quá hạn giai đoạn hiện tại (theo hạn mức & thời gian gói)
+        if (_store != null && (a.On("package-due-soon") || a.On("package-overdue")))
+        {
+            var progress = await new PackageProgressService(_db, _store).ComputeAsync(take: 1000);
+            var memberMap = (await _db.PackageMembers.AsNoTracking().Where(m => m.Role != PackageRole.Viewer).Select(m => new { m.PackageId, m.UserId }).ToListAsync())
+                .GroupBy(m => m.PackageId).ToDictionary(g => g.Key, g => g.Select(x => x.UserId).ToList());
+            var week = System.Globalization.ISOWeek.GetYear(today) * 100 + System.Globalization.ISOWeek.GetWeekOfYear(today);
+            foreach (var (p, pr) in progress)
+            {
+                var cur = pr.Current;
+                if (cur == null || cur.Due == null) continue;
+                var owners = new List<int> { p.BuyerId }; if (memberMap.TryGetValue(p.Id, out var ms)) owners.AddRange(ms);
+                var title = $"Gói {p.Number} – giai đoạn \"{cur.Name}\"";
+                if (a.On("package-overdue") && cur.DaysLate > a.Val("package-overdue"))
+                    R(owners.Concat(directors).Distinct(), NotificationKind.Warning, $"{title} quá hạn {cur.DaysLate} ngày (hạn {cur.Due.ToDate()})",
+                        $"{p.Title} · hạn mức {pr.Tier.Name}: {cur.PlannedDays} ngày cho giai đoạn này", DocType.Package, p.Id, $"rem:PK:{p.Id}:s{cur.Index}:overdue:{week}");
+                else if (a.On("package-due-soon") && !cur.Late && cur.Due.Value.Date >= today && cur.Due.Value.Date <= today.AddDays(a.Val("package-due-soon")))
+                    R(owners.Distinct(), NotificationKind.Reminder, $"{title} đến hạn {cur.Due.ToDate()}",
+                        $"{p.Title} · hạn mức {pr.Tier.Name}: {cur.PlannedDays} ngày cho giai đoạn này", DocType.Package, p.Id, $"rem:PK:{p.Id}:s{cur.Index}:soon");
+            }
+        }
         if (a.On("contract-expiry"))
         {
             var soon = today.AddDays(a.Val("contract-expiry"));

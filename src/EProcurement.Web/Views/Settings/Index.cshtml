@@ -15,6 +15,7 @@
         (L["Thông báo"], "alert", "Cảnh báo", "Bật / tắt, ngưỡng nhắc hạn: báo giá, đóng thầu, hợp đồng, ngân sách…", $"{(int)ViewBag.AlertsOn}/{AlertSettings.Defs.Length} loại đang bật", Url.Action("Alerts"), true),
         (L["Thông báo"], "send", "Email, thông báo", "Máy chủ gửi email (SMTP), gửi thử", email.Enabled && !string.IsNullOrEmpty(email.Host) ? "Đang gửi email · " + email.Host : "Chưa bật gửi email", Url.Action("Email"), true),
         (L["Thông báo"], "bell", "Thiết lập mẫu thông báo", "Mẫu email, bật / tắt thông báo theo loại chứng từ", "Tiêu đề, nội dung, kênh", Url.Action("Templates"), true),
+        (L["Hệ thống"], "clock", "Hạn mức & thời gian gói", "Hạn mức giá trị gói và số ngày thực hiện từng giai đoạn (lập gói → thanh toán)", $"{(int)ViewBag.TierCount} hạn mức", Url.Action("PackageTiers"), true),
         (L["Hệ thống"], "tag", "Thiết lập mã tự sinh", "Mẫu số chứng từ: PR-2026-0001, PO/2026/11/001…", (bool)ViewBag.Numbering ? "Đã tùy chỉnh" : "Mặc định MÃ-NĂM-STT", Url.Action("Numbering"), true),
         (L["Hệ thống"], "network", "Phân cấp hàng hóa dịch vụ", "Cây nhóm hàng nhiều cấp", $"{c["categories"]} nhóm", Url.Action("Index", "Categories"), false),
         (L["Hệ thống"], "file-text", "Biểu mẫu", "Thư viện file mẫu; thông tin công ty in trên chứng từ", $"{c["forms"]} biểu mẫu", Url.Action("Index", "FormTemplates"), false),

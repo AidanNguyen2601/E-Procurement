@@ -1,0 +1,47 @@
+@model List<(Tender T, BoqActualsResult R, Contract? C)>
+@using EProcurement.Web.Infrastructure
+@{
+    ViewData["Title"] = L["Dự toán – thực tế theo gói thầu"];
+    string Cls(decimal v) => v > 0 ? "text-danger" : v < 0 ? "text-success" : "";
+    string Sg(decimal v) => v > 0 ? "+" : "";
+    var status = ViewBag.Status as TenderStatus?;
+    var withAward = Model.Where(x => x.R.AwardPrice > 0 && x.R.EstTotal > 0).ToList();
+    var saved = withAward.Sum(x => x.R.EstTotal - x.R.AwardPrice);
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h5 class="mb-0">@L["Giá dự toán – giá trúng thầu – giá thực tế theo gói thầu"]</h5>
+    <form method="get" class="ms-auto"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">@L["Tất cả gói thầu đã có kết quả"]</option>
+        @foreach (var s in new[] { TenderStatus.Awarded, TenderStatus.Contracted }) { <option value="@s" selected="@(status == s)">@s.GetDisplayName()</option> }
+    </select></form>
+</div>
+@if (withAward.Any())
+{
+    <div class="small mb-2">@L["Tiết kiệm do đấu thầu (dự toán − giá trúng thầu, trước VAT)"]: <b class="@(saved >= 0 ? "text-success" : "text-danger")">@saved.ToMoney() đ</b>
+        (@(withAward.Sum(x => x.R.EstTotal) == 0 ? 0 : Math.Round(saved * 100 / withAward.Sum(x => x.R.EstTotal), 1).ToString("0.#", I18n.ViCulture))% @L["trên"] @withAward.Count @L["gói thầu"])</div>
+}
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0 align-middle small">
+    <thead><tr><th>@L["Gói thầu"]</th><th>@L["Nhà thầu trúng"]</th><th class="text-end">@L["Giá gói"]</th><th class="text-end">@L["Dự toán"]</th><th class="text-end">@L["Giá trúng thầu"]</th><th class="text-end">@L["± dự toán"]</th><th class="text-end">@L["Hợp đồng"]</th><th class="text-end">@L["Thực tế đã làm"]</th><th>@L["Tiến độ"]</th><th class="text-end">@L["Thực chi"]</th></tr></thead>
+    <tbody>
+    @foreach (var (t, r, c) in Model)
+    {
+        var d = r.AwardPrice - r.EstTotal; var pct = r.EstTotal > 0 && r.AwardPrice > 0 ? Math.Round(d * 100 / r.EstTotal, 1) : 0;
+        var prog = r.ContractCurrent > 0 ? Math.Round(r.ActualTotal * 100 / r.ContractCurrent, 1) : 0;
+        <tr>
+            <td><a asp-action="Actuals" asp-route-id="@t.Id">@t.Number</a><div class="text-muted">@t.Title</div></td>
+            <td>@t.AwardedVendor?.Name</td>
+            <td class="text-end">@r.PackageBudget.ToMoney()</td><td class="text-end">@r.EstTotal.ToMoney()</td><td class="text-end">@(r.AwardPrice > 0 ? r.AwardPrice.ToMoney() : "")</td>
+            <td class="text-end @Cls(d)">@(r.AwardPrice > 0 && r.EstTotal > 0 ? Sg(d) + d.ToMoney() + " (" + Sg(pct) + pct.ToString("0.#", I18n.ViCulture) + "%)" : "")</td>
+            <td class="text-end">@(c != null ? r.ContractCurrent.ToMoney() : "")</td>
+            <td class="text-end">@(c != null ? r.ActualTotal.ToMoney() : "")</td>
+            <td style="min-width:110px">@if (c != null) { <div class="progress" style="height:8px"><div class="progress-bar bg-success" style="width:@Math.Min(100, prog).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></div></div><div class="text-muted">@prog.ToString("0.#", I18n.ViCulture)%</div> }</td>
+            <td class="text-end">@(c != null ? r.PaidNet.ToMoney() : "")</td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="10" class="text-muted p-3">@L["Chưa có gói thầu nào có kết quả lựa chọn nhà thầu."]</td></tr> }
+    </tbody>
+    @if (Model.Any())
+    {
+        <tfoot><tr class="fw-semibold"><td colspan="2">@L["Tổng cộng"]</td><td class="text-end">@Model.Sum(x => x.R.PackageBudget).ToMoney()</td><td class="text-end">@Model.Sum(x => x.R.EstTotal).ToMoney()</td><td class="text-end">@Model.Sum(x => x.R.AwardPrice).ToMoney()</td><td></td>
+            <td class="text-end">@Model.Sum(x => x.R.ContractCurrent).ToMoney()</td><td class="text-end">@Model.Sum(x => x.R.ActualTotal).ToMoney()</td><td></td><td class="text-end">@Model.Sum(x => x.R.PaidNet).ToMoney()</td></tr></tfoot>
+    }
+</table></div></div>

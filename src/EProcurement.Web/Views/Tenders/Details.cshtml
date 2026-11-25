@@ -67,6 +67,7 @@
     @if (buyer || director) { <a class="btn btn-outline-secondary" asp-action="ExportPublication" asp-route-id="@Model.Id">@Icon.Svg("external", 14) @L["Xuất dữ liệu đăng tải"]</a> }
     @if (Model.OpenedAt.HasValue && (buyer || director || member != null)) { <a class="btn btn-outline-secondary" asp-action="Report" asp-route-id="@Model.Id" target="_blank">@L["Biên bản mở thầu & báo cáo đánh giá"]</a> }
     @if (buyer && s == TenderStatus.Awarded) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Create" asp-route-tenderId="@Model.Id">@L["Ký hợp đồng"]</a> }
+    @if ((buyer || director) && s >= TenderStatus.Awarded && s != TenderStatus.Cancelled) { <a class="btn btn-outline-secondary" asp-action="Actuals" asp-route-id="@Model.Id">@L["Dự toán – thực tế"]</a> }
     @if (contract != null) { <a class="btn btn-success" asp-controller="Contracts" asp-action="Details" asp-route-id="@contract.Id">@L["Hợp đồng"] @contract.Number</a> }
     @if (buyer && s is not (TenderStatus.Contracted or TenderStatus.Cancelled))
     {

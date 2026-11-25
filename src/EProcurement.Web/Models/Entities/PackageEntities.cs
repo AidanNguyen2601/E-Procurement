@@ -19,6 +19,8 @@ public class ProcurementPackage
     [Display(Name = "Trạng thái")] public PackageStatus Status { get; set; } = PackageStatus.Draft;
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Giá gói (trước VAT)")] public decimal Budget { get; set; }
     [StringLength(200)][Display(Name = "Nguồn vốn")] public string? FundingSource { get; set; } = "Ngân sách hoạt động";
+    /// <summary>Lĩnh vực của gói (danh mục "Lĩnh vực gói"): Hàng hóa, Xây lắp, Dịch vụ… – quyết định bộ hạn mức & thời gian áp dụng</summary>
+    [StringLength(100)][Display(Name = "Lĩnh vực")] public string? Field { get; set; }
     [Display(Name = "Hình thức lựa chọn NCC")] public ProcurementMethod Method { get; set; } = ProcurementMethod.CompetitiveQuotation;
     [StringLength(1000)][Display(Name = "Lý do chọn hình thức")] public string? MethodReason { get; set; }
     /// <summary>Phương thức (chỉ áp dụng đấu thầu)</summary>

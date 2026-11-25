@@ -1,0 +1,76 @@
+@model List<PackageTier>
+@using EProcurement.Web.Infrastructure
+@{
+    ViewData["Title"] = L["Hạn mức & thời gian thực hiện gói"];
+    var errors = ViewBag.Errors as List<string>;
+    var stages = PackageProgress.StageNames;
+    var fields = (List<string>)ViewBag.Fields;
+    // giữ lĩnh vực đã lưu dù đã bị ngưng trong danh mục
+    foreach (var t in Model) if (!string.IsNullOrEmpty(t.Field) && !fields.Contains(t.Field, StringComparer.OrdinalIgnoreCase)) fields.Add(t.Field);
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← @L["Thiết lập"]</a>
+    <h5 class="mb-0">@L["Hạn mức & thời gian thực hiện gói"]</h5>
+    <a asp-controller="Packages" asp-action="Progress" class="btn btn-outline-primary btn-sm ms-auto">@L["Xem tiến độ các gói"]</a>
+</div>
+<div class="small text-muted mb-3">
+    @L["Mỗi gói mua sắm thuộc một hạn mức theo giá gói (trước VAT): hạn mức đầu tiên có giá trị tối đa ≥ giá gói. Mỗi hạn mức có thời gian thực hiện (số ngày) cho từng giai đoạn; giai đoạn sau bắt đầu tính khi giai đoạn trước hoàn thành. Quá thời gian thì gói được cảnh báo quá hạn ở trang Tiến độ gói."]
+    <br />@L["Có thể thiết lập bộ hạn mức riêng cho từng lĩnh vực (loại mua sắm): chọn lĩnh vực ở cột đầu. Gói thuộc lĩnh vực chưa có bộ riêng dùng bộ \"Mặc định\". Mỗi bộ phải có hạn mức cuối cùng không giới hạn."]
+</div>
+@if (errors != null) { <div class="alert alert-danger small"><ul class="mb-0">@foreach (var e in errors) { <li>@e</li> }</ul></div> }
+<form asp-action="PackageTiers" method="post" id="tf">
+<div class="card"><div class="table-responsive">
+<table class="table table-sm align-middle mb-0 small" id="tt">
+    <thead><tr><th>@L["Lĩnh vực"]</th><th>@L["Tên hạn mức"]</th><th>@L["Giá gói tối đa (VND, trước VAT)"]</th>@for (var i = 0; i < stages.Length; i++) { <th style="width:92px">@L[stages[i]]<div class="text-muted fw-normal">@L["(ngày)"]</div></th> }<th class="text-end">@L["Tổng (ngày)"]</th><th></th></tr></thead>
+    <tbody>
+    @for (var i = 0; i < Model.Count; i++)
+    {
+        var t = Model[i];
+        <tr>
+            <td><select name="tiers[@i].Field" class="form-select form-select-sm" style="min-width:150px"><option value="">@L["Mặc định (mọi lĩnh vực)"]</option>@foreach (var fl in fields) { <option value="@fl" selected="@string.Equals(t.Field, fl, StringComparison.OrdinalIgnoreCase)">@fl</option> }</select></td>
+            <td><input name="tiers[@i].Name" value="@t.Name" maxlength="60" class="form-control form-control-sm" style="min-width:130px" required /></td>
+            <td><input name="tiers[@i].MaxValue" data-money value="@(t.MaxValue == 0 ? "" : t.MaxValue.ToString("0"))" placeholder="@L["Không giới hạn"]" class="form-control form-control-sm text-end" style="min-width:150px" /></td>
+            <td><input name="tiers[@i].PlanDays" type="number" min="0" max="1000" value="@t.PlanDays" class="form-control form-control-sm d" /></td>
+            <td><input name="tiers[@i].ApprovalDays" type="number" min="0" max="1000" value="@t.ApprovalDays" class="form-control form-control-sm d" /></td>
+            <td><input name="tiers[@i].SelectionDays" type="number" min="0" max="1000" value="@t.SelectionDays" class="form-control form-control-sm d" /></td>
+            <td><input name="tiers[@i].ContractDays" type="number" min="0" max="1000" value="@t.ContractDays" class="form-control form-control-sm d" /></td>
+            <td><input name="tiers[@i].ExecutionDays" type="number" min="0" max="1000" value="@t.ExecutionDays" class="form-control form-control-sm d" /></td>
+            <td><input name="tiers[@i].PaymentDays" type="number" min="0" max="1000" value="@t.PaymentDays" class="form-control form-control-sm d" /></td>
+            <td class="text-end fw-semibold tot">@t.TotalDays</td>
+            <td><button type="button" class="btn btn-link text-danger btn-sm p-0 rm" title="@L["Xóa hạn mức"]">✕</button></td>
+        </tr>
+    }
+    </tbody>
+</table></div></div>
+<div class="mt-3 d-flex flex-wrap gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="add">＋ @L["Thêm hạn mức"]</button>
+    <button class="btn btn-primary btn-sm">@L["Lưu"]</button>
+    <button class="btn btn-outline-danger btn-sm ms-auto" name="reset" value="true" formnovalidate data-confirm="@L["Khôi phục hạn mức mặc định? Cấu hình hiện tại sẽ mất."]">@L["Khôi phục mặc định"]</button>
+</div>
+<div class="small text-muted mt-2">@L["Hạn mức cuối cùng phải để trống giá trị tối đa (không giới hạn). Giá trị tối đa của các hạn mức phải tăng dần."] @L["Khi lưu, các hạn mức được gom theo lĩnh vực (mặc định trước)."]</div>
+</form>
+<script>
+(function () {
+    var tb = document.querySelector('#tt tbody');
+    function renumber() {
+        [].forEach.call(tb.rows, function (r, i) {
+            [].forEach.call(r.querySelectorAll('input,select'), function (el) { el.name = el.name.replace(/tiers\[\d+\]/, 'tiers[' + i + ']'); });
+        });
+    }
+    function total(r) { var s = 0; [].forEach.call(r.querySelectorAll('input.d'), function (i) { s += parseInt(i.value) || 0; }); r.querySelector('.tot').textContent = s; }
+    tb.addEventListener('input', function (e) { if (e.target.classList.contains('d')) total(e.target.closest('tr')); });
+    tb.addEventListener('click', function (e) {
+        if (!e.target.classList.contains('rm')) return;
+        if (tb.rows.length <= 1) return;
+        e.target.closest('tr').remove(); renumber();
+    });
+    document.getElementById('add').addEventListener('click', function () {
+        var c = tb.rows[tb.rows.length - 1].cloneNode(true);
+        [].forEach.call(c.querySelectorAll('input'), function (i) { i.value = i.classList.contains('d') ? '0' : ''; if (i.hasAttribute('data-money')) i.removeAttribute('data-money-bound'), delete i.dataset.moneyBound; });
+        c.querySelector('select').value = '';
+        c.querySelector('.tot').textContent = '0';
+        tb.appendChild(c); renumber();
+        if (window.eprocMoney) window.eprocMoney.bindAll(c);
+    });
+})();
+</script>

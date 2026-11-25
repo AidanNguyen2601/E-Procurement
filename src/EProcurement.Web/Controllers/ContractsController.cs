@@ -302,6 +302,15 @@ public class ContractsController : ProcControllerBase
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    // ------------------------------------------------------------------ Giá dự toán – giá hợp đồng – giá thực tế: tính theo gói thầu (TendersController.Actuals)
+    public async Task<IActionResult> Actuals(int id)
+    {
+        var tenderId = await Db.Contracts.AsNoTracking().Where(c => c.Id == id).Select(c => c.TenderId).FirstOrDefaultAsync();
+        return tenderId.HasValue ? RedirectToAction("Actuals", "Tenders", new { id = tenderId }) : RedirectToAction(nameof(Details), new { id });
+    }
+
+    public IActionResult ActualsSummary() => RedirectToAction("ActualsSummary", "Tenders");
+
     // ------------------------------------------------------------------ Phụ lục điều chỉnh khối lượng BOQ
     public async Task<IActionResult> Variation(int id)
     {

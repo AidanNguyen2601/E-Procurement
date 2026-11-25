@@ -31,6 +31,8 @@ public class AlertSettings
         new("vendor-doc", "Hồ sơ pháp lý NCC", "Cảnh báo giấy tờ của NCC đang hợp tác sắp hết hiệu lực", "ngày trước hạn", 30, 1, 365),
         new("budget", "Ngân sách", "Cảnh báo khi ngân sách phòng ban đã dùng tới ngưỡng", "% đã dùng", 90, 50, 100),
         new("stale-approval", "Chứng từ chờ duyệt lâu", "Nhắc người duyệt khi đề nghị / đơn hàng chờ duyệt quá số ngày (nhắc lại mỗi tuần)", "ngày", 2, 1, 30),
+        new("package-due-soon", "Gói sắp đến hạn giai đoạn", "Nhắc người phụ trách gói trước hạn của giai đoạn hiện tại (theo hạn mức & thời gian gói)", "ngày trước hạn", 2, 0, 30),
+        new("package-overdue", "Gói quá hạn giai đoạn", "Cảnh báo người phụ trách gói và Giám đốc khi gói quá thời gian của giai đoạn hiện tại (nhắc lại mỗi tuần)", "ngày ân hạn", 0, 0, 60),
         new("rfq-open", "Đủ điều kiện mở báo giá", "Báo người mua khi RFQ đã đủ điều kiện mở báo giá", "", 0, 0, 0),
         new("tender-open", "Đến giờ mở thầu", "Báo bên mời thầu khi đã đến giờ đóng thầu để mở thầu", "", 0, 0, 0),
     };

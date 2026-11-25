@@ -7,6 +7,7 @@
 }
 <form method="get" class="toolbar">
     <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="items" onchange="this.form.submit()"><option value="">@L["-- Mọi trạng thái --"]</option></select>
+    <a asp-action="ActualsSummary" class="btn btn-sm btn-outline-secondary">@L["Dự toán – thực tế theo gói thầu"]</a>
     <a asp-action="Public" target="_blank" class="btn btn-sm btn-outline-secondary ms-auto">@L["Trang thông báo mời thầu công khai ↗"]</a>
 </form>
 <div class="card"><div class="card-body p-0"><table class="table mb-0">

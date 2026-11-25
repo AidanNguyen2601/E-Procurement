@@ -73,7 +73,7 @@ public static class SampleConstruction
         var prA = NewPr("001", "Xây dựng nhà kho lạnh khu B – lập dự toán", PrStatus.Approved, 20, directTotal);
         var pkgA = new ProcurementPackage
         {
-            Number = PackageA, Title = "Xây dựng nhà kho lạnh khu B – hạng mục móng, thân, hoàn thiện", Status = PackageStatus.Draft, Method = ProcurementMethod.OpenTender,
+            Number = PackageA, Title = "Xây dựng nhà kho lạnh khu B – hạng mục móng, thân, hoàn thiện", Field = "Xây lắp", Status = PackageStatus.Draft, Method = ProcurementMethod.OpenTender,
             MethodReason = "Gói xây lắp giá trị lớn: đấu thầu rộng rãi.", EnvelopeMethod = EnvelopeMethod.OneEnvelope, ContractType = "Đơn giá cố định", ContractDurationDays = 120,
             PlannedStart = today.AddDays(30), BuyerId = buyer.Id, Team = "Tổ dự án xây dựng", CreatedAt = today.AddDays(-18), FundingSource = "Vốn đầu tư phát triển",
             BoqOverheadPercent = 6.5m, BoqProfitPercent = 5.5m, BoqContingencyPercent = 3, BoqVatPercent = 10, Note = "Mẫu: gói xây dựng đang lập BOQ"
@@ -110,7 +110,7 @@ public static class SampleConstruction
         };
         var pkgB = new ProcurementPackage
         {
-            Number = PackageB, Title = "Xây dựng nhà xưởng đóng gói khu A", Status = PackageStatus.Executing, Method = ProcurementMethod.OpenTender, MethodReason = "Gói xây lắp giá trị lớn.",
+            Field = "Xây lắp", Number = PackageB, Title = "Xây dựng nhà xưởng đóng gói khu A", Status = PackageStatus.Executing, Method = ProcurementMethod.OpenTender, MethodReason = "Gói xây lắp giá trị lớn.",
             EnvelopeMethod = EnvelopeMethod.OneEnvelope, ContractType = "Đơn giá cố định", ContractDurationDays = 180, PlannedStart = today.AddDays(-125), BuyerId = buyer.Id,
             Budget = directTotal * 1.02m, CreatedAt = today.AddDays(-138), SelectionPlan = plan, FundingSource = "Vốn đầu tư phát triển", Team = "Tổ dự án xây dựng",
             BoqOverheadPercent = 6.5m, BoqProfitPercent = 5.5m, BoqContingencyPercent = 0, BoqVatPercent = 10, Note = "Mẫu: gói xây dựng đã đấu thầu theo BOQ"

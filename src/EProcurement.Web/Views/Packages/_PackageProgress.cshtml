@@ -1,0 +1,32 @@
+@model PackageProgressResult
+@using EProcurement.Web.Infrastructure
+@{
+    var r = Model; var now = DateTime.Now;
+    string Badge(ProgressState s) => s switch { ProgressState.Overdue => "bg-danger", ProgressState.DueSoon => "bg-warning text-dark", ProgressState.Completed => "bg-success", ProgressState.Cancelled => "bg-dark", _ => "bg-primary" };
+    string StateText(ProgressState s) => s switch { ProgressState.Overdue => L["Quá hạn"], ProgressState.DueSoon => L["Sắp đến hạn"], ProgressState.Completed => L["Hoàn thành"], ProgressState.Cancelled => L["Đã hủy"], _ => L["Đúng tiến độ"] };
+}
+<div class="card mb-3"><div class="card-header d-flex flex-wrap align-items-center gap-2">@L["Tiến độ gói"]
+    <span class="badge @Badge(r.State)">@StateText(r.State)@(r.Current != null && r.Current.Late ? " " + r.Current.DaysLate + " " + L["ngày"] : "")</span>
+    <span class="small text-muted">@L["Hạn mức"]: <b>@r.Tier.Name</b>@(string.IsNullOrEmpty(r.Tier.Field) ? "" : " (" + r.Tier.Field + ")") · @L["mục tiêu"] @r.Tier.TotalDays @L["ngày"]</span>
+    <a asp-action="Progress" class="btn btn-outline-secondary btn-sm ms-auto">@L["Tất cả các gói"]</a></div>
+<div class="table-responsive"><table class="table table-sm mb-0 small align-middle">
+    <thead><tr><th>#</th><th>@L["Giai đoạn"]</th><th>@L["Trạng thái"]</th><th>@L["Bắt đầu"]</th><th>@L["Hạn (theo hạn mức)"]</th><th>@L["Hoàn thành"]</th><th class="text-end">@L["Kế hoạch (ngày)"]</th><th class="text-end">@L["Thực tế (ngày)"]</th></tr></thead>
+    <tbody>
+    @foreach (var s in r.Stages)
+    {
+        var cls = s.Status == StageStatus.Current ? (s.Late ? "table-danger" : "table-primary") : "";
+        <tr class="@cls">
+            <td>@(s.Index + 1)</td><td>@L[s.Name]</td>
+            <td>@if (s.Status == StageStatus.Done) { <span class="text-success">✔ @L["Đã xong"]</span>@if (s.Late) { <span class="text-danger"> · @L["trễ"] @s.DaysLate @L["ngày"]</span> } }
+                else if (s.Status == StageStatus.Current) { <b>▶ @L["Đang thực hiện"]</b> }
+                else { <span class="text-muted">@L["Chưa đến"]</span> }</td>
+            <td>@(s.Status == StageStatus.Pending ? "" : s.Start.ToDate())</td>
+            <td class="@(s.Status == StageStatus.Current && s.Late ? "text-danger fw-semibold" : "")">@s.Due.ToDate()@if (s.Status == StageStatus.Pending) { <span class="text-muted"> (@L["dự kiến"])</span> }</td>
+            <td>@s.CompletedAt.ToDate()</td>
+            <td class="text-end">@s.PlannedDays</td>
+            <td class="text-end">@(s.Status == StageStatus.Pending ? "" : s.DaysUsed.ToString())</td>
+        </tr>
+    }
+    </tbody>
+    <tfoot><tr class="fw-semibold"><td colspan="6" class="text-end">@L["Tổng thời gian"] (@L["hạn hoàn thành toàn bộ"] @r.FinalDue.ToDate())</td><td class="text-end">@r.Tier.TotalDays</td><td class="text-end">@r.ElapsedDays</td></tr></tfoot>
+</table></div></div>
