@@ -84,7 +84,7 @@
     {
         <div class="border-bottom pb-2 mb-2 small"><b>@a.Number</b> · <span class="badge @(a.Status == AmendmentStatus.Approved ? "bg-success" : a.Status == AmendmentStatus.Pending ? "bg-warning text-dark" : "bg-secondary")">@a.Status.GetDisplayName()</span>
             @(a.ValueChange != 0 ? L[" · giá trị {0}{1} đ", (a.ValueChange > 0 ? "+" : ""), a.ValueChange.ToMoney()] : "") @(a.NewEndDate.HasValue ? L[" · gia hạn đến {0:dd/MM/yyyy}", a.NewEndDate] : "")
-            <div>@a.Description</div>@if (!string.IsNullOrEmpty(a.DecisionNote)) { <div class="text-muted">@a.DecisionNote</div> }
+            <div>@a.Description</div>@if (a.Lines.Any()) { <div class="text-muted">@L["{0} dòng khối lượng BOQ điều chỉnh", a.Lines.Count] · <a asp-action="Variation" asp-route-id="@Model.Id">@L["xem chi tiết"]</a></div> }@if (!string.IsNullOrEmpty(a.DecisionNote)) { <div class="text-muted">@a.DecisionNote</div> }
             @if (a.Status == AmendmentStatus.Pending && director)
             {
                 <form asp-action="DecideAmendment" asp-route-id="@Model.Id" method="post" class="d-flex gap-2 mt-1"><input type="hidden" name="amendmentId" value="@a.Id" />

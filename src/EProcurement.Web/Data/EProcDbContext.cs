@@ -74,6 +74,7 @@ public class EProcDbContext : DbContext
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<ContractAmendment> ContractAmendments => Set<ContractAmendment>();
+    public DbSet<ContractAmendmentLine> ContractAmendmentLines => Set<ContractAmendmentLine>();
     public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
     public DbSet<ContractGuarantee> ContractGuarantees => Set<ContractGuarantee>();
     public DbSet<ApiClient> ApiClients => Set<ApiClient>();

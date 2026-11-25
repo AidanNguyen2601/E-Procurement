@@ -331,6 +331,8 @@ public static class DbSeeder
             "IF COL_LENGTH('ContractLines','BoqPath') IS NULL ALTER TABLE ContractLines ADD BoqPath nvarchar(500) NULL",
             "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ContractLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE ContractLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
             "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseOrderLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE PurchaseOrderLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
+            "IF COL_LENGTH('ContractLines','OriginalQuantity') IS NULL ALTER TABLE ContractLines ADD OriginalQuantity decimal(18,3) NULL",
+            "IF COL_LENGTH('ContractLines','AddedByAmendment') IS NULL ALTER TABLE ContractLines ADD AddedByAmendment nvarchar(30) NULL",
             // BOQ: cơ cấu đơn giá (vật liệu / nhân công / máy) và cơ cấu chi phí của gói
             "IF COL_LENGTH('BoqItems','MaterialPrice') IS NULL ALTER TABLE BoqItems ADD MaterialPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Mat DEFAULT 0",
             "IF COL_LENGTH('BoqItems','LaborPrice') IS NULL ALTER TABLE BoqItems ADD LaborPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Lab DEFAULT 0",

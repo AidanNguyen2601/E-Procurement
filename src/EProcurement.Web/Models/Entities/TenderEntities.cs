@@ -259,6 +259,10 @@ public class ContractLine
     /// <summary>Dòng từ BOQ: mã (1.2.3) và đường dẫn hạng mục cha</summary>
     [StringLength(30)] public string? BoqCode { get; set; }
     [StringLength(500)] public string? BoqPath { get; set; }
+    /// <summary>Khối lượng ban đầu khi ký (khi bị phụ lục điều chỉnh); null = chưa điều chỉnh</summary>
+    [Column(TypeName = "decimal(18,3)")] public decimal? OriginalQuantity { get; set; }
+    /// <summary>Số phụ lục đã thêm dòng này (dòng phát sinh)</summary>
+    [StringLength(30)] public string? AddedByAmendment { get; set; }
     public int SortOrder { get; set; }
 }
 

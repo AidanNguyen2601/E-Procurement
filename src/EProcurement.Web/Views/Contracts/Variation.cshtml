@@ -1,0 +1,135 @@
+@model Contract
+@using EProcurement.Web.Infrastructure
+@{
+    ViewData["Title"] = $"{L["Điều chỉnh khối lượng"]} {Model.Number}";
+    var cum = (Dictionary<int, decimal>)ViewBag.Cumulative;
+    var amendments = (List<ContractAmendment>)ViewBag.Amendments;
+    bool hasPending = ViewBag.HasPending;
+    var rows = BoqAcceptances.Progress(Model.Lines, cum);
+    var canEdit = User.IsPurchasing() && Model.Status == ContractStatus.Active && !Model.IsFramework && !hasPending;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    var groups = Model.Lines.Where(l => !string.IsNullOrEmpty(l.BoqPath)).Select(l => l.BoqPath!).Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
+    // các nhóm cha cũng chọn được (tiền tố của đường dẫn)
+    var allGroups = groups.SelectMany(g => { var p = g.Split(" › "); return Enumerable.Range(1, p.Length).Select(n => string.Join(" › ", p.Take(n))); }).Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
+    var origTotal = Model.Lines.Sum(l => Math.Round((l.OriginalQuantity ?? l.Quantity) * l.UnitPrice, 0, MidpointRounding.AwayFromZero));
+    var curTotal = Model.Lines.Sum(l => Math.Round(l.Quantity * l.UnitPrice, 0, MidpointRounding.AwayFromZero));
+}
+<style>
+    .var-table td, .var-table th { white-space: nowrap; }
+    .var-table tr.grp > td { background: #f1f5f9; font-weight: 600; }
+    .var-table input.nq { width: 110px; }
+    .var-table tr.chg > td { background: #fffbeb; }
+</style>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">← @Model.Number</a>
+    <h5 class="mb-0">@L["Điều chỉnh khối lượng BOQ"] – @Model.Title</h5>
+</div>
+@if (hasPending) { <div class="alert alert-warning small py-2">@L["Đang có phụ lục chờ Giám đốc duyệt – chưa lập thêm được."]</div> }
+else if (Model.IsFramework) { <div class="alert alert-secondary small py-2">@L["Hợp đồng khung không điều chỉnh khối lượng theo BOQ."]</div> }
+else if (Model.Status != ContractStatus.Active) { <div class="alert alert-secondary small py-2">@L["Hợp đồng không còn hiệu lực."]</div> }
+else if (!User.IsPurchasing()) { <div class="alert alert-secondary small py-2">@L["Chỉ nhân viên mua hàng lập phụ lục điều chỉnh khối lượng."]</div> }
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Giá trị theo khối lượng ban đầu (trước VAT)"]</div><div class="fs-5 fw-semibold">@origTotal.ToMoney() đ</div></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Giá trị theo khối lượng hiện hành"]</div><div class="fs-5 fw-semibold">@curTotal.ToMoney() đ</div></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Chênh lệch do phụ lục đã duyệt"]</div><div class="fs-5 fw-semibold @(curTotal > origTotal ? "text-danger" : curTotal < origTotal ? "text-success" : "")">@(curTotal > origTotal ? "+" : "")@((curTotal - origTotal).ToMoney()) đ</div></div></div></div>
+</div>
+
+<form asp-action="AddBoqAmendment" asp-route-id="@Model.Id" method="post">
+<div class="card mb-3"><div class="table-responsive">
+<table class="table table-sm table-bordered mb-0 small align-middle var-table" data-grid="off">
+    <thead><tr><th>@L["Mã"]</th><th>@L["Hạng mục / công việc"]</th><th>@L["ĐVT"]</th><th class="text-end">@L["KL ban đầu"]</th><th class="text-end">@L["KL hiện hành"]</th><th class="text-end">@L["Đã nghiệm thu"]</th><th class="text-end">@L["Đơn giá"]</th>@if (canEdit) { <th>@L["KL mới"]</th><th class="text-end">@L["Chênh lệch giá trị"]</th> }</tr></thead>
+    <tbody>
+    @foreach (var r in rows)
+    {
+        if (r.IsGroup) { <tr class="grp"><td>@r.Code</td><td colspan="@(canEdit ? 8 : 6)" style="padding-left:@(8 + r.Depth * 16)px">@r.Name</td></tr> }
+        else
+        {
+            var l = r.Line; var orig = l.OriginalQuantity ?? l.Quantity; var done = cum.GetValueOrDefault(l.Id);
+            <tr data-price="@l.UnitPrice.ToString("0", inv)" data-qty="@l.Quantity.ToString("0.###", inv)">
+                <td>@r.Code</td>
+                <td style="padding-left:@(8 + r.Depth * 16)px">@r.Name@if (l.AddedByAmendment != null) { <span class="badge text-bg-info ms-1">@L["phát sinh"] @l.AddedByAmendment</span> }</td>
+                <td>@l.Unit</td>
+                <td class="text-end">@orig.ToQty()</td>
+                <td class="text-end @(orig != l.Quantity ? "fw-semibold text-primary" : "")">@l.Quantity.ToQty()</td>
+                <td class="text-end">@done.ToQty()</td><td class="text-end">@l.UnitPrice.ToMoney()</td>
+                @if (canEdit)
+                {
+                    <td><input type="number" class="form-control form-control-sm text-end nq" name="q[@l.Id]" min="@done.ToString("0.###", inv)" step="0.001" value="@l.Quantity.ToString("0.###", inv)" /></td>
+                    <td class="text-end dv">0</td>
+                }
+            </tr>
+        }
+    }
+    </tbody>
+</table></div></div>
+
+@if (canEdit)
+{
+<div class="card mb-3"><div class="card-header">@L["Dòng phát sinh (công việc mới)"]</div><div class="table-responsive">
+    <table class="table table-sm mb-0 small align-middle var-table" data-grid="off">
+        <thead><tr><th>@L["Thuộc hạng mục"]</th><th>@L["Công việc"]</th><th>@L["ĐVT"]</th><th>@L["Khối lượng"]</th><th>@L["Đơn giá (trước VAT)"]</th><th class="text-end">@L["Thành tiền"]</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < 4; i++)
+        {
+            <tr class="add-row">
+                <td><select name="addGroup" class="form-select form-select-sm"><option value="">@L["(hạng mục gốc)"]</option>@foreach (var g in allGroups) { <option value="@g">@g</option> }</select></td>
+                <td><input name="addDesc" maxlength="300" class="form-control form-control-sm" style="min-width:240px" /></td>
+                <td><input name="addUnit" maxlength="30" class="form-control form-control-sm" style="width:80px" /></td>
+                <td><input name="addQty" type="number" min="0" step="0.001" class="form-control form-control-sm text-end aq" style="width:110px" /></td>
+                <td><input name="addPrice" type="number" min="0" step="1" class="form-control form-control-sm text-end ap" style="width:130px" /></td>
+                <td class="text-end aa">0</td>
+            </tr>
+        }
+        </tbody>
+    </table></div></div>
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-md-8"><label class="form-label small mb-1">@L["Nội dung phụ lục"]</label><input name="description" maxlength="2000" class="form-control form-control-sm" placeholder="@L["Điều chỉnh khối lượng BOQ"]" /></div>
+    <div class="col-md-2"><div class="small text-muted">@L["Tổng chênh lệch (trước VAT)"]</div><div class="fw-semibold" id="vsum">0</div></div>
+    <div class="col-md-2"><button class="btn btn-primary btn-sm w-100">@L["Trình phụ lục"]</button></div>
+</div>
+}
+</form>
+
+@if (amendments.Any())
+{
+<div class="card"><div class="card-header">@L["Phụ lục điều chỉnh khối lượng"]</div><div class="card-body small">
+    @foreach (var a in amendments)
+    {
+        <div class="border-bottom pb-2 mb-2">
+            <b>@a.Number</b> · <span class="badge @(a.Status == AmendmentStatus.Approved ? "bg-success" : a.Status == AmendmentStatus.Pending ? "bg-warning text-dark" : "bg-secondary")">@a.Status.GetDisplayName()</span>
+            · @a.CreatedAt.ToDateTime() · <b>@(a.ValueChange > 0 ? "+" : "")@a.ValueChange.ToMoney() đ</b> – @a.Description
+            <table class="table table-sm mb-0 mt-1"><tbody>
+            @foreach (var l in a.Lines)
+            {
+                <tr><td>@l.BoqCode</td><td>@l.Description@if (l.ContractLineId == null) { <span class="badge text-bg-info ms-1">@L["thêm mới"]</span> }</td><td class="text-end">@l.OldQuantity.ToQty() → <b>@l.NewQuantity.ToQty()</b> @l.Unit</td><td class="text-end">@(l.Delta > 0 ? "+" : "")@l.Delta.ToMoney()</td></tr>
+            }
+            </tbody></table>
+        </div>
+    }
+    <div class="text-muted">@L["Giám đốc duyệt / không duyệt phụ lục tại trang hợp đồng (mục Phụ lục hợp đồng)."]</div>
+</div></div>
+}
+<script>
+(function () {
+    var fmt = new Intl.NumberFormat('vi-VN');
+    function calc() {
+        var sum = 0;
+        document.querySelectorAll('.var-table tbody tr[data-price]').forEach(function (r) {
+            var inp = r.querySelector('input.nq'); if (!inp) return;
+            var q = parseFloat(inp.value), old = parseFloat(r.getAttribute('data-qty')) || 0, p = parseFloat(r.getAttribute('data-price')) || 0;
+            if (isNaN(q)) q = old;
+            var d = Math.round((q - old) * p); sum += d;
+            r.querySelector('.dv').textContent = (d > 0 ? '+' : '') + fmt.format(d);
+            r.classList.toggle('chg', q !== old);
+        });
+        document.querySelectorAll('.add-row').forEach(function (r) {
+            var a = Math.round((parseFloat(r.querySelector('.aq').value) || 0) * (parseFloat(r.querySelector('.ap').value) || 0));
+            r.querySelector('.aa').textContent = fmt.format(a); sum += a;
+        });
+        var el = document.getElementById('vsum'); if (el) el.textContent = (sum > 0 ? '+' : '') + fmt.format(sum);
+    }
+    document.querySelectorAll('.var-table input').forEach(function (i) { i.addEventListener('input', calc); });
+    calc();
+})();
+</script>

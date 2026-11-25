@@ -970,6 +970,27 @@ public class ContractAmendment
     public AppUser? DecidedBy { get; set; }
     public DateTime? DecidedAt { get; set; }
     [StringLength(1000)] public string? DecisionNote { get; set; }
+    /// <summary>Điều chỉnh khối lượng BOQ kèm theo (nếu có)</summary>
+    public ICollection<ContractAmendmentLine> Lines { get; set; } = new List<ContractAmendmentLine>();
+}
+
+/// <summary>Một điều chỉnh khối lượng trong phụ lục: sửa khối lượng dòng hiện có hoặc thêm dòng phát sinh (ContractLineId = null)</summary>
+public class ContractAmendmentLine
+{
+    public int Id { get; set; }
+    public int AmendmentId { get; set; }
+    public ContractAmendment? Amendment { get; set; }
+    public int? ContractLineId { get; set; }
+    public ContractLine? ContractLine { get; set; }
+    [Required, StringLength(300)] public string Description { get; set; } = string.Empty;
+    [StringLength(30)] public string? Unit { get; set; }
+    [StringLength(30)] public string? BoqCode { get; set; }
+    [StringLength(500)] public string? BoqPath { get; set; }
+    [Column(TypeName = "decimal(18,3)")] public decimal OldQuantity { get; set; }
+    [Column(TypeName = "decimal(18,3)")] public decimal NewQuantity { get; set; }
+    [Column(TypeName = "decimal(18,0)")] public decimal UnitPrice { get; set; }
+    /// <summary>Giá trị tăng / giảm (trước VAT) của dòng này</summary>
+    public decimal Delta => Math.Round((NewQuantity - OldQuantity) * UnitPrice, 0, MidpointRounding.AwayFromZero);
 }
 
 /// <summary>Lịch thanh toán của hợp đồng (tạm ứng, các đợt)</summary>

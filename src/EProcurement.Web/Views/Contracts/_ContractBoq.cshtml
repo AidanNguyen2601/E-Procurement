@@ -12,6 +12,7 @@
 {
 <div class="card mb-3"><div class="card-header d-flex align-items-center">@L["BOQ hợp đồng & tiến độ nghiệm thu"]
     <span class="ms-auto d-flex gap-1">
+        <a asp-action="Variation" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">@L["Điều chỉnh khối lượng"]</a>
         <a asp-controller="Acceptances" asp-action="Index" asp-route-contractId="@Model.Id" class="btn btn-outline-secondary btn-sm">@L["Các biên bản"] (@accs.Count)</a>
         @if (purchasing && active) { <a asp-controller="Acceptances" asp-action="Create" asp-route-contractId="@Model.Id" class="btn btn-primary btn-sm">@L["Lập nghiệm thu khối lượng"]</a> }
     </span></div>

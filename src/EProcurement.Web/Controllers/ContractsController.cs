@@ -279,10 +279,17 @@ public class ContractsController : ProcControllerBase
     [RequireSignature(DocType.Contract)]
     public async Task<IActionResult> DecideAmendment(int id, int amendmentId, bool approve, string? comment)
     {
-        var c = await Db.Contracts.FindAsync(id);
-        var a = await Db.ContractAmendments.FirstOrDefaultAsync(x => x.Id == amendmentId && x.ContractId == id && x.Status == AmendmentStatus.Pending);
+        var c = await Db.Contracts.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id);
+        var a = await Db.ContractAmendments.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == amendmentId && x.ContractId == id && x.Status == AmendmentStatus.Pending);
         if (c == null || a == null) return NotFound();
         if (!approve && string.IsNullOrWhiteSpace(comment)) { TempData["Error"] = I18n.T("Nhập lý do không duyệt."); return RedirectToAction(nameof(Details), new { id }); }
+        if (approve && a.Lines.Count > 0)
+        {
+            // điều chỉnh khối lượng BOQ: kiểm tra lại với khối lượng đã nghiệm thu tại thời điểm duyệt rồi áp dụng
+            var cum = BoqAcceptances.Cumulative(await Db.BoqAcceptances.AsNoTracking().Include(x => x.Lines).Where(x => x.ContractId == id && x.Status == AcceptanceStatus.Confirmed).ToListAsync());
+            var applyErrors = BoqVariations.Apply(c, a, cum);
+            if (applyErrors.Count > 0) { TempData["Error"] = string.Join(" ", applyErrors); return RedirectToAction(nameof(Details), new { id }); }
+        }
         a.Status = approve ? AmendmentStatus.Approved : AmendmentStatus.Rejected; a.DecidedById = Me; a.DecidedAt = DateTime.Now; a.DecisionNote = comment?.Trim();
         if (approve)
         {
@@ -293,6 +300,46 @@ public class ContractsController : ProcControllerBase
         await Db.SaveChangesAsync();
         TempData["Success"] = approve ? I18n.T("Phụ lục {0} có hiệu lực.", a.Number) : I18n.T("Đã trả lại phụ lục {0}.", a.Number);
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // ------------------------------------------------------------------ Phụ lục điều chỉnh khối lượng BOQ
+    public async Task<IActionResult> Variation(int id)
+    {
+        var c = await LoadAsync(id);
+        if (c == null) return NotFound();
+        ViewBag.Cumulative = BoqAcceptances.Cumulative(await Db.BoqAcceptances.AsNoTracking().Include(x => x.Lines).Where(x => x.ContractId == id && x.Status == AcceptanceStatus.Confirmed).ToListAsync());
+        ViewBag.Amendments = await Db.ContractAmendments.AsNoTracking().Include(x => x.Lines).Where(x => x.ContractId == id && x.Lines.Any()).OrderBy(x => x.CreatedAt).ToListAsync();
+        ViewBag.HasPending = await Db.ContractAmendments.AnyAsync(x => x.ContractId == id && x.Status == AmendmentStatus.Pending);
+        return View(c);
+    }
+
+    /// <summary>Trình phụ lục điều chỉnh khối lượng: q[lineId] = khối lượng MỚI; dòng phát sinh qua các mảng add*. Giá trị chênh lệch tự tính theo đơn giá hợp đồng.</summary>
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddBoqAmendment(int id, string? description, Dictionary<int, decimal?>? q, List<string?>? addDesc, List<string?>? addUnit, List<decimal?>? addQty, List<decimal?>? addPrice, List<string?>? addGroup)
+    {
+        var c = await Db.Contracts.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id);
+        if (c == null) return NotFound();
+        IActionResult Back(string e) { TempData["Error"] = e; return RedirectToAction(nameof(Variation), new { id }); }
+        if (c.Status != ContractStatus.Active) return Back(I18n.T("Chỉ lập phụ lục cho hợp đồng đang thực hiện."));
+        if (c.IsFramework) return Back(I18n.T("Hợp đồng khung không điều chỉnh khối lượng theo BOQ."));
+        if (await Db.ContractAmendments.AnyAsync(a => a.ContractId == id && a.Status == AmendmentStatus.Pending)) return Back(I18n.T("Đang có phụ lục chờ duyệt."));
+        var cum = BoqAcceptances.Cumulative(await Db.BoqAcceptances.AsNoTracking().Include(x => x.Lines).Where(x => x.ContractId == id && x.Status == AcceptanceStatus.Confirmed).ToListAsync());
+        var adds = new List<VariationAddition>();
+        for (var i = 0; i < (addDesc?.Count ?? 0); i++)
+            adds.Add(new VariationAddition(addDesc![i] ?? "", addUnit?.ElementAtOrDefault(i), addQty?.ElementAtOrDefault(i) ?? 0, addPrice?.ElementAtOrDefault(i) ?? 0, addGroup?.ElementAtOrDefault(i)));
+        var newQty = (q ?? new()).Where(kv => kv.Value.HasValue).ToDictionary(kv => kv.Key, kv => kv.Value!.Value);
+        var plan = BoqVariations.Plan(c.Lines.ToList(), cum, newQty, adds);
+        if (plan.Errors.Count > 0) return Back(string.Join(" ", plan.Errors));
+        if (c.Value + plan.ValueChange <= 0) return Back(I18n.T("Giá trị hợp đồng sau điều chỉnh phải lớn hơn 0."));
+        var n = await Db.ContractAmendments.CountAsync(a => a.ContractId == id) + 1;
+        var desc = string.IsNullOrWhiteSpace(description) ? I18n.T("Điều chỉnh khối lượng BOQ") : description.Trim();
+        var amendment = new ContractAmendment { ContractId = id, Number = $"PL{n:00}", Description = desc[..Math.Min(2000, desc.Length)], ValueChange = plan.ValueChange, CreatedById = Me, CreatedAt = DateTime.Now, Lines = plan.Lines };
+        Db.ContractAmendments.Add(amendment);
+        Log(DocType.Contract, id, I18n.T("Trình duyệt phụ lục {0}", amendment.Number), $"{amendment.Description} · " + I18n.T("{0} dòng điều chỉnh", plan.Lines.Count) + $" · {(plan.ValueChange > 0 ? "+" : "")}{plan.ValueChange.ToMoney()} đ");
+        await Db.SaveChangesAsync();
+        TempData["Success"] = I18n.T("Đã trình phụ lục {0} – chờ Giám đốc duyệt.", amendment.Number);
+        return RedirectToAction(nameof(Variation), new { id });
     }
 
     // ------------------------------------------------------------------ Lịch thanh toán, bảo lãnh, điều khoản phạt
@@ -392,7 +439,7 @@ public class ContractsController : ProcControllerBase
     private async Task<Contract?> LoadAsync(int id)
     {
         var c = await Db.Contracts.Include(x => x.Vendor).Include(x => x.Tender).Include(x => x.CreatedBy).Include(x => x.Lines)
-            .Include(x => x.Amendments).Include(x => x.Milestones).Include(x => x.Guarantees).AsSplitQuery()
+            .Include(x => x.Amendments).ThenInclude(a => a.Lines).Include(x => x.Milestones).Include(x => x.Guarantees).AsSplitQuery()
             .AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (c != null) c.Lines = c.Lines.OrderBy(l => l.SortOrder).ToList();
         return c;
