@@ -847,5 +847,16 @@ public static partial class I18n
         ["Xây lắp nhỏ"] = "Small construction",
         ["Xây lắp vừa"] = "Medium construction",
         ["Xây lắp lớn"] = "Large construction",
+        ["Hình thức mua sắm"] = "Procurement method",
+        ["Mọi hình thức"] = "All methods",
+        ["Cần có bộ hạn mức mặc định (lĩnh vực và hình thức để trống) cho các gói chưa có bộ riêng."] = "A default tier set (blank field and method) is required for packages without their own set.",
+        ["Có thể thiết lập bộ hạn mức riêng theo lĩnh vực và / hoặc hình thức mua sắm (mua trực tiếp, chào hàng cạnh tranh, chỉ định thầu, đấu thầu rộng rãi). Gói dùng bộ cụ thể nhất có sẵn theo thứ tự: lĩnh vực + hình thức → lĩnh vực → hình thức → Mặc định. Mỗi bộ phải có hạn mức cuối cùng không giới hạn."] = "You can set separate tier sets by field and / or procurement method (direct purchase, competitive quotation, direct award, open tender). A package uses the most specific available set in this order: field + method → field → method → Default. Each set must end with an unlimited tier.",
+        ["Mua trực tiếp"] = "Direct purchase",
+        ["Chỉ định thầu nhỏ"] = "Small direct award",
+        ["Chỉ định thầu lớn"] = "Large direct award",
+        ["Chào hàng nhỏ"] = "Small competitive quotation",
+        ["Chào hàng lớn"] = "Large competitive quotation",
+        ["Đấu thầu vừa"] = "Medium tender",
+        ["Đấu thầu lớn"] = "Large tender",
     };
 }

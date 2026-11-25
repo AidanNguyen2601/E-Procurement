@@ -61,7 +61,7 @@
             <td><a asp-action="Details" asp-route-id="@p.Id">@p.Number</a><div class="text-muted">@p.Title</div></td>
             <td class="small">@p.Field</td>
             <td class="text-end">@p.Budget.ToMoney()</td>
-            <td>@r.Tier.Name</td>
+            <td>@r.Tier.Name@if (!string.IsNullOrEmpty(r.Tier.Scope)) { <div class="text-muted">@r.Tier.Scope</div> }</td>
             <td><span class="stg">@foreach (var s in r.Stages) { var c = s.Status == StageStatus.Done ? (s.Late ? "dlate" : "done") : s.Status == StageStatus.Current ? (s.Late ? "late" : "cur") : ""; <i class="@c" title="@(s.Index + 1). @L[s.Name]"></i>@if (s.Index < 5) { <u></u> } }</span></td>
             <td>@if (cur != null) { <span>@(cur.Index + 1). @L[cur.Name]</span><div class="text-muted">@L["đã"] @cur.DaysUsed / @cur.PlannedDays @L["ngày"]</div> } else if (r.State == ProgressState.Completed) { <span class="text-success">@L["Đã hoàn thành"]</span> } else { <span class="text-muted">@L["Đã hủy"]</span> }</td>
             <td class="@(r.State == ProgressState.Overdue ? "text-danger fw-semibold" : "")">@(cur?.Due.ToDate())</td>

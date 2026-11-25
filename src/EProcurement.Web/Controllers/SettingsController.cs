@@ -184,7 +184,7 @@ public class SettingsController : Controller
         foreach (var t in tiers) t.Name = (t.Name ?? "").Trim();
         foreach (var t in tiers) t.Field = string.IsNullOrWhiteSpace(t.Field) ? null : t.Field.Trim();
         // gom theo bộ: mặc định trước, rồi theo tên lĩnh vực; giữ thứ tự nhập trong từng bộ
-        tiers = tiers.Select((t, i) => (t, i)).OrderBy(x => x.t.Field == null ? 0 : 1).ThenBy(x => x.t.Field, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.i).Select(x => x.t).ToList();
+        tiers = tiers.Select((t, i) => (t, i)).OrderBy(x => x.t.Field == null && x.t.Method == null ? 0 : 1).ThenBy(x => x.t.Field ?? "", StringComparer.OrdinalIgnoreCase).ThenBy(x => x.t.Method.HasValue ? (int)x.t.Method.Value : 0).ThenBy(x => x.i).Select(x => x.t).ToList();
         var errors = PackageTierSettings.Validate(tiers);
         if (errors.Count > 0) { ViewData["Title"] = "Hạn mức & thời gian thực hiện gói"; ViewBag.Errors = errors; ViewBag.Fields = await new CatalogService(_db).NamesAsync(CatalogType.ProcurementField); return View(tiers); }
         await _store.SaveAsync(SettingsStore.PackageTiers, new PackageTierSettings { Tiers = tiers });

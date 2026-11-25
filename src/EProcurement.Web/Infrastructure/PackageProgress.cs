@@ -10,6 +10,10 @@ public class PackageTier
     public string Name { get; set; } = "";
     /// <summary>Lĩnh vực (loại mua sắm) áp dụng; rỗng = bộ hạn mức mặc định cho mọi lĩnh vực chưa có bộ riêng</summary>
     public string? Field { get; set; }
+    /// <summary>Hình thức mua sắm áp dụng (mua trực tiếp / chào hàng cạnh tranh / chỉ định thầu / đấu thầu rộng rãi); null = mọi hình thức</summary>
+    public ProcurementMethod? Method { get; set; }
+    /// <summary>Phạm vi áp dụng để hiển thị: "Xây lắp · Đấu thầu rộng rãi"; rỗng = mặc định</summary>
+    public string Scope => string.Join(" · ", new[] { string.IsNullOrWhiteSpace(Field) ? null : Field, Method?.GetDisplayName() }.Where(x => x != null));
     /// <summary>Giá gói tối đa (trước VAT) của hạn mức; 0 = không giới hạn (hạn mức cuối cùng)</summary>
     public decimal MaxValue { get; set; }
     public int PlanDays { get; set; }
@@ -29,26 +33,41 @@ public class PackageTierSettings
 
     public static List<PackageTier> Defaults() => new()
     {
+        // Bộ mặc định (mọi lĩnh vực, mọi hình thức) – dùng khi không có bộ riêng phù hợp
         new() { Name = "Gói nhỏ", MaxValue = 100_000_000, PlanDays = 3, ApprovalDays = 2, SelectionDays = 7, ContractDays = 3, ExecutionDays = 30, PaymentDays = 15 },
         new() { Name = "Gói vừa", MaxValue = 1_000_000_000, PlanDays = 5, ApprovalDays = 3, SelectionDays = 20, ContractDays = 7, ExecutionDays = 60, PaymentDays = 30 },
         new() { Name = "Gói lớn", MaxValue = 5_000_000_000, PlanDays = 7, ApprovalDays = 5, SelectionDays = 45, ContractDays = 10, ExecutionDays = 120, PaymentDays = 30 },
         new() { Name = "Gói rất lớn", MaxValue = 0, PlanDays = 10, ApprovalDays = 7, SelectionDays = 75, ContractDays = 15, ExecutionDays = 180, PaymentDays = 45 },
-        // Xây lắp: thi công kéo dài hơn
+        // Theo hình thức mua sắm: càng cạnh tranh, giai đoạn lựa chọn NCC càng dài
+        new() { Method = ProcurementMethod.DirectPurchase, Name = "Mua trực tiếp", MaxValue = 0, PlanDays = 1, ApprovalDays = 1, SelectionDays = 3, ContractDays = 1, ExecutionDays = 15, PaymentDays = 10 },
+        new() { Method = ProcurementMethod.DirectAward, Name = "Chỉ định thầu nhỏ", MaxValue = 100_000_000, PlanDays = 2, ApprovalDays = 2, SelectionDays = 5, ContractDays = 2, ExecutionDays = 30, PaymentDays = 15 },
+        new() { Method = ProcurementMethod.DirectAward, Name = "Chỉ định thầu lớn", MaxValue = 0, PlanDays = 3, ApprovalDays = 3, SelectionDays = 10, ContractDays = 3, ExecutionDays = 45, PaymentDays = 20 },
+        new() { Method = ProcurementMethod.CompetitiveQuotation, Name = "Chào hàng nhỏ", MaxValue = 500_000_000, PlanDays = 3, ApprovalDays = 2, SelectionDays = 12, ContractDays = 4, ExecutionDays = 45, PaymentDays = 20 },
+        new() { Method = ProcurementMethod.CompetitiveQuotation, Name = "Chào hàng lớn", MaxValue = 0, PlanDays = 5, ApprovalDays = 3, SelectionDays = 20, ContractDays = 6, ExecutionDays = 60, PaymentDays = 30 },
+        new() { Method = ProcurementMethod.OpenTender, Name = "Đấu thầu vừa", MaxValue = 5_000_000_000, PlanDays = 7, ApprovalDays = 5, SelectionDays = 50, ContractDays = 10, ExecutionDays = 90, PaymentDays = 30 },
+        new() { Method = ProcurementMethod.OpenTender, Name = "Đấu thầu lớn", MaxValue = 0, PlanDays = 10, ApprovalDays = 7, SelectionDays = 80, ContractDays = 15, ExecutionDays = 150, PaymentDays = 45 },
+        // Xây lắp: thi công kéo dài hơn (ưu tiên hơn bộ theo hình thức)
         new() { Field = "Xây lắp", Name = "Xây lắp nhỏ", MaxValue = 1_000_000_000, PlanDays = 7, ApprovalDays = 3, SelectionDays = 25, ContractDays = 7, ExecutionDays = 120, PaymentDays = 30 },
         new() { Field = "Xây lắp", Name = "Xây lắp vừa", MaxValue = 10_000_000_000, PlanDays = 10, ApprovalDays = 5, SelectionDays = 45, ContractDays = 10, ExecutionDays = 240, PaymentDays = 45 },
         new() { Field = "Xây lắp", Name = "Xây lắp lớn", MaxValue = 0, PlanDays = 15, ApprovalDays = 7, SelectionDays = 75, ContractDays = 15, ExecutionDays = 400, PaymentDays = 60 }
     };
 
     private static string Key(string? field) => (field ?? "").Trim();
+    private static bool SameField(PackageTier t, string? field) => string.Equals(Key(t.Field), Key(field), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Hạn mức áp dụng cho một giá trị gói theo lĩnh vực: nếu lĩnh vực có bộ hạn mức riêng thì dùng bộ đó, không thì dùng bộ mặc định (Field rỗng).
-    /// Trong bộ: hạn mức đầu tiên có MaxValue ≥ giá trị (hoặc không giới hạn).
+    /// Hạn mức áp dụng cho một gói theo lĩnh vực và hình thức: dùng bộ cụ thể nhất có sẵn, theo thứ tự
+    /// (lĩnh vực + hình thức) → (lĩnh vực) → (hình thức) → (mặc định). Trong bộ: hạn mức đầu tiên có MaxValue ≥ giá trị (hoặc không giới hạn).
     /// </summary>
-    public PackageTier TierFor(decimal value, string? field = null)
+    public PackageTier TierFor(decimal value, string? field = null, ProcurementMethod? method = null)
     {
-        var group = Tiers.Where(t => string.Equals(Key(t.Field), Key(field), StringComparison.OrdinalIgnoreCase)).ToList();
-        if (group.Count == 0 || Key(field).Length == 0) group = Tiers.Where(t => Key(t.Field).Length == 0).ToList();
+        var hasField = Key(field).Length > 0;
+        List<PackageTier> Set(bool byField, bool byMethod) => Tiers.Where(t => (byField ? SameField(t, field) : Key(t.Field).Length == 0) && (byMethod ? t.Method == method : t.Method == null)).ToList();
+        var group = new List<PackageTier>();
+        if (hasField && method != null) group = Set(true, true);
+        if (group.Count == 0 && hasField) group = Set(true, false);
+        if (group.Count == 0 && method != null) group = Set(false, true);
+        if (group.Count == 0) group = Set(false, false);
         if (group.Count == 0) group = Tiers.ToList();
         return group.OrderBy(t => t.MaxValue == 0 ? decimal.MaxValue : t.MaxValue).FirstOrDefault(t => t.MaxValue == 0 || value <= t.MaxValue) ?? group.Last();
     }
@@ -57,17 +76,17 @@ public class PackageTierSettings
     public IEnumerable<string> Fields => Tiers.Select(t => Key(t.Field)).Where(k => k.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Kiểm tra cấu hình theo từng bộ (mặc định + mỗi lĩnh vực): phải có bộ mặc định; trong bộ: tên không trống, giá trị tăng dần,
-    /// chỉ hạn mức cuối không giới hạn, số ngày 0–1000, tổng &gt; 0. Trả về danh sách lỗi.
+    /// Kiểm tra cấu hình theo từng bộ (lĩnh vực + hình thức): phải có bộ mặc định (cả hai để trống); trong bộ: tên không trống,
+    /// giá trị tăng dần, chỉ hạn mức cuối không giới hạn, số ngày 0–1000, tổng &gt; 0. Trả về danh sách lỗi.
     /// </summary>
     public static List<string> Validate(IReadOnlyList<PackageTier> tiers)
     {
         var errors = new List<string>();
         if (tiers.Count == 0) { errors.Add(I18n.T("Cần ít nhất một hạn mức.")); return errors; }
-        if (!tiers.Any(t => Key(t.Field).Length == 0)) errors.Add(I18n.T("Cần có bộ hạn mức mặc định (lĩnh vực để trống) cho các lĩnh vực chưa có bộ riêng."));
-        foreach (var g in tiers.GroupBy(t => Key(t.Field), StringComparer.OrdinalIgnoreCase))
+        if (!tiers.Any(t => Key(t.Field).Length == 0 && t.Method == null)) errors.Add(I18n.T("Cần có bộ hạn mức mặc định (lĩnh vực và hình thức để trống) cho các gói chưa có bộ riêng."));
+        foreach (var g in tiers.GroupBy(t => Key(t.Field).ToLowerInvariant() + "|" + (t.Method?.ToString() ?? "")))
         {
-            var list = g.ToList(); var pre = g.Key.Length == 0 ? "" : "[" + g.Key + "] ";
+            var list = g.ToList(); var scope = list[0].Scope; var pre = scope.Length == 0 ? "" : "[" + scope + "] ";
             for (var i = 0; i < list.Count; i++)
             {
                 var t = list[i];
@@ -241,7 +260,7 @@ public class PackageProgressService
                 }
             }
             var facts = new PackageFacts(p.CreatedAt, p.Status == PackageStatus.Cancelled, planSubmitted, planApproved, selectionDone, contractAt, execDone, payDone);
-            result.Add((p, PackageProgress.Compute(facts, tiers.TierFor(p.Budget, p.Field), now)));
+            result.Add((p, PackageProgress.Compute(facts, tiers.TierFor(p.Budget, p.Field, p.Method), now)));
         }
         return result;
     }

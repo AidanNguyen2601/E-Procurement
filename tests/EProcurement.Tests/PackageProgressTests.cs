@@ -165,6 +165,56 @@ public class PackageProgressTests
         await Packages.BackfillFieldsAsync(db);                                                  // an toàn khi gọi lại
     }
 
+    // ----- hạn mức theo hình thức mua sắm -----
+    [Fact]
+    public void TierFor_picks_the_most_specific_set_field_method_then_field_then_method_then_default()
+    {
+        var s = new PackageTierSettings();
+        // chỉ có hình thức
+        Assert.Equal("Chào hàng nhỏ", s.TierFor(300_000_000, "Hàng hóa", ProcurementMethod.CompetitiveQuotation).Name);
+        Assert.Equal("Chào hàng lớn", s.TierFor(900_000_000, null, ProcurementMethod.CompetitiveQuotation).Name);
+        Assert.Equal("Mua trực tiếp", s.TierFor(50_000_000, null, ProcurementMethod.DirectPurchase).Name);
+        Assert.Equal("Chỉ định thầu nhỏ", s.TierFor(100_000_000, null, ProcurementMethod.DirectAward).Name);
+        Assert.Equal("Đấu thầu lớn", s.TierFor(20_000_000_000, "Hàng hóa", ProcurementMethod.OpenTender).Name);
+        // lĩnh vực có bộ riêng thắng bộ theo hình thức
+        Assert.Equal("Xây lắp nhỏ", s.TierFor(500_000_000, "Xây lắp", ProcurementMethod.OpenTender).Name);
+        // lĩnh vực + hình thức cùng khớp thắng tất cả
+        s.Tiers.Add(new PackageTier { Field = "Xây lắp", Method = ProcurementMethod.OpenTender, Name = "Xây lắp đấu thầu", MaxValue = 0, PlanDays = 20, ApprovalDays = 10, SelectionDays = 90, ContractDays = 20, ExecutionDays = 300, PaymentDays = 60 });
+        Assert.Equal("Xây lắp đấu thầu", s.TierFor(500_000_000, "Xây lắp", ProcurementMethod.OpenTender).Name);
+        Assert.Equal("Xây lắp nhỏ", s.TierFor(500_000_000, "Xây lắp", ProcurementMethod.DirectAward).Name);
+        // không biết hình thức → bộ mặc định
+        Assert.Equal("Gói vừa", s.TierFor(500_000_000).Name);
+        // hình thức không có bộ riêng → mặc định
+        s.Tiers.RemoveAll(t => t.Method == ProcurementMethod.DirectPurchase);
+        Assert.Equal("Gói nhỏ", s.TierFor(50_000_000, null, ProcurementMethod.DirectPurchase).Name);
+    }
+
+    [Fact]
+    public void Validate_handles_method_sets_and_scope_text()
+    {
+        Assert.Empty(PackageTierSettings.Validate(PackageTierSettings.Defaults()));
+        var t = PackageTierSettings.Defaults();
+        t.First(x => x.Method == ProcurementMethod.OpenTender && x.MaxValue == 0).MaxValue = 99_000_000_000;
+        var errs = PackageTierSettings.Validate(t);
+        Assert.NotEmpty(errs); Assert.All(errs, e => Assert.StartsWith("[" + ProcurementMethod.OpenTender.GetDisplayName() + "]", e));
+        t = PackageTierSettings.Defaults(); t.RemoveAll(x => x.Method == null && x.Field == null);   // thiếu bộ mặc định thật sự
+        Assert.NotEmpty(PackageTierSettings.Validate(t));
+        Assert.Equal("", PackageTierSettings.Defaults()[0].Scope);
+        Assert.Equal("Xây lắp · " + ProcurementMethod.OpenTender.GetDisplayName(), new PackageTier { Field = "Xây lắp", Method = ProcurementMethod.OpenTender }.Scope);
+    }
+
+    [Fact]
+    public void Tier_settings_round_trip_through_json_with_method()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new PackageTierSettings());
+        var back = System.Text.Json.JsonSerializer.Deserialize<PackageTierSettings>(json)!;
+        Assert.Equal(PackageTierSettings.Defaults().Count, back.Tiers.Count);
+        Assert.Contains(back.Tiers, x => x.Method == ProcurementMethod.DirectAward);
+        // cấu hình cũ (chưa có trường Method) vẫn đọc được: Method = null
+        var old = System.Text.Json.JsonSerializer.Deserialize<PackageTierSettings>("{\"Tiers\":[{\"Name\":\"A\",\"MaxValue\":0,\"PlanDays\":1,\"ApprovalDays\":1,\"SelectionDays\":1,\"ContractDays\":1,\"ExecutionDays\":1,\"PaymentDays\":1}]}")!;
+        Assert.Null(old.Tiers[0].Method); Assert.Equal("A", old.TierFor(5, null, ProcurementMethod.OpenTender).Name);
+    }
+
     // ----- dịch vụ nạp dữ liệu trên bộ dữ liệu mẫu xây dựng -----
     [Fact]
     public async Task Service_places_sample_packages_in_the_expected_stage()

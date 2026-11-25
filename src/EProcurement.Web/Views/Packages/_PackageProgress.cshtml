@@ -7,7 +7,7 @@
 }
 <div class="card mb-3"><div class="card-header d-flex flex-wrap align-items-center gap-2">@L["Tiến độ gói"]
     <span class="badge @Badge(r.State)">@StateText(r.State)@(r.Current != null && r.Current.Late ? " " + r.Current.DaysLate + " " + L["ngày"] : "")</span>
-    <span class="small text-muted">@L["Hạn mức"]: <b>@r.Tier.Name</b>@(string.IsNullOrEmpty(r.Tier.Field) ? "" : " (" + r.Tier.Field + ")") · @L["mục tiêu"] @r.Tier.TotalDays @L["ngày"]</span>
+    <span class="small text-muted">@L["Hạn mức"]: <b>@r.Tier.Name</b>@(string.IsNullOrEmpty(r.Tier.Scope) ? "" : " (" + r.Tier.Scope + ")") · @L["mục tiêu"] @r.Tier.TotalDays @L["ngày"]</span>
     <a asp-action="Progress" class="btn btn-outline-secondary btn-sm ms-auto">@L["Tất cả các gói"]</a></div>
 <div class="table-responsive"><table class="table table-sm mb-0 small align-middle">
     <thead><tr><th>#</th><th>@L["Giai đoạn"]</th><th>@L["Trạng thái"]</th><th>@L["Bắt đầu"]</th><th>@L["Hạn (theo hạn mức)"]</th><th>@L["Hoàn thành"]</th><th class="text-end">@L["Kế hoạch (ngày)"]</th><th class="text-end">@L["Thực tế (ngày)"]</th></tr></thead>
