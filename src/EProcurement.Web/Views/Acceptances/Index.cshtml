@@ -1,0 +1,24 @@
+@model List<BoqAcceptance>
+@{
+    ViewData["Title"] = L["Nghiệm thu khối lượng"];
+    var paid = (HashSet<int>)ViewBag.Paid;
+}
+<div class="d-flex align-items-center mb-3"><h5 class="mb-0">@L["Nghiệm thu khối lượng theo BOQ"]</h5></div>
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-3"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">@L["Tất cả trạng thái"]</option>
+        @foreach (var s in Enum.GetValues<AcceptanceStatus>()) { <option value="@s" selected="@(ViewBag.Status == s)">@s.GetDisplayName()</option> }
+    </select></div>
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+    <thead><tr><th>@L["Số biên bản"]</th><th>@L["Hợp đồng"]</th><th>@L["Nhà cung cấp"]</th><th>@L["Đợt"]</th><th>@L["Ngày nghiệm thu"]</th><th class="text-end">@L["Giá trị (trước VAT)"]</th><th>@L["Trạng thái"]</th><th>@L["Thanh toán"]</th></tr></thead>
+    <tbody>
+    @foreach (var a in Model)
+    {
+        <tr><td><a asp-action="Details" asp-route-id="@a.Id">@a.Number</a></td><td><a asp-controller="Contracts" asp-action="Details" asp-route-id="@a.ContractId">@a.Contract?.Number</a></td><td>@a.Contract?.Vendor?.Name</td>
+            <td>@a.Period</td><td>@a.AcceptanceDate.ToDate()</td><td class="text-end">@a.SubTotal.ToMoney()</td><td><partial name="_Badge" model="a.Status" /></td>
+            <td>@(paid.Contains(a.Id) ? L["Đã đề nghị"] : a.Status == AcceptanceStatus.Confirmed ? L["Chưa đề nghị"] : "")</td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="8" class="text-muted p-3">@L["Chưa có biên bản nghiệm thu khối lượng."]</td></tr> }
+    </tbody>
+</table></div></div>

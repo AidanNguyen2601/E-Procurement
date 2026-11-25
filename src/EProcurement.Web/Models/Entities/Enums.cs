@@ -218,7 +218,8 @@ public enum PaymentType
 {
     [Display(Name = "Tạm ứng hợp đồng")] Advance = 1,
     [Display(Name = "Thanh toán theo hóa đơn")] Invoice = 2,
-    [Display(Name = "Thanh toán theo đợt hợp đồng")] Milestone = 3
+    [Display(Name = "Thanh toán theo đợt hợp đồng")] Milestone = 3,
+    [Display(Name = "Thanh toán theo khối lượng nghiệm thu")] Acceptance = 4
 }
 
 public enum PaymentStatus

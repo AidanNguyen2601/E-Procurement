@@ -17,6 +17,7 @@
         <div class="small mt-2">
             @if (Model.Invoice != null) { <span>@L["Hóa đơn"] <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId">@Model.Invoice.Series @Model.Invoice.InvoiceNo</a> · </span> }
             @if (Model.Contract != null) { <span>@L["Hợp đồng"] <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId">@Model.Contract.Number</a> · </span> }
+            @if (Model.AcceptanceId != null) { <span>@L["Nghiệm thu khối lượng"] <a asp-controller="Acceptances" asp-action="Details" asp-route-id="@Model.AcceptanceId">@L["xem biên bản"]</a> · </span> }
             Đề nghị: @Model.RequestedBy?.FullName @Model.RequestedAt.ToDateTime()
             @if (Model.ApprovedBy != null) { <span> @L["· Duyệt:"] @Model.ApprovedBy.FullName @Model.ApprovedAt.ToDateTime()</span> }
             @if (Model.PaidAt != null) { <span> @L["· Đã chi"] @Model.PaidAt.ToDate() (UNC @Model.PaymentRef, @Model.PaidBy?.FullName)</span> }

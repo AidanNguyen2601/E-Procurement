@@ -40,6 +40,10 @@ public class ContractsController : ProcControllerBase
         ViewBag.Attachments = await AttachmentPanelAsync(DocType.Contract, id, User.IsPurchasing() && c.Status == ContractStatus.Active);
         ViewBag.Payments = await Db.Payments.AsNoTracking().Where(p => p.ContractId == id).OrderBy(p => p.RequestedAt).ToListAsync();
         ViewBag.PaySummary = await HttpContext.RequestServices.GetRequiredService<FinanceService>().ContractPaymentsAsync(id);
+        var accs = await Db.BoqAcceptances.AsNoTracking().Include(a => a.Lines).Where(a => a.ContractId == id && a.Status != AcceptanceStatus.Cancelled).ToListAsync();
+        ViewBag.Acceptances = accs;
+        ViewBag.BoqProgress = !c.IsFramework && c.Lines.Any() ? BoqAcceptances.Progress(c.Lines, BoqAcceptances.Cumulative(accs)) : new List<BoqProgressRow>();
+        ViewBag.AcceptancePaid = (await Db.Payments.AsNoTracking().Where(p => p.ContractId == id && p.AcceptanceId != null && p.Status != PaymentStatus.Rejected).Select(p => p.AcceptanceId!.Value).ToListAsync()).ToHashSet();
         return View(c);
     }
 
@@ -89,7 +93,7 @@ public class ContractsController : ProcControllerBase
         foreach (var l in t.Lines.OrderBy(l => l.SortOrder))
         {
             var price = bid.Lines.First(x => x.TenderLineId == l.Id).UnitPrice;
-            c.Lines.Add(new ContractLine { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, UnitPrice = Math.Round(price * factor, 0), SortOrder = l.SortOrder });
+            c.Lines.Add(new ContractLine { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, UnitPrice = Math.Round(price * factor, 0), SortOrder = l.SortOrder, BoqCode = l.BoqCode, BoqPath = l.BoqPath });
         }
         Db.Contracts.Add(c);
         t.Status = TenderStatus.Contracted;

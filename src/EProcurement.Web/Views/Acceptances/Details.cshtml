@@ -1,0 +1,78 @@
+@model EProcurement.Web.Controllers.AcceptanceDetails
+@using EProcurement.Web.Infrastructure
+@{
+    var a = Model.Acceptance; var c = a.Contract!;
+    ViewData["Title"] = $"{L["Biên bản nghiệm thu khối lượng"]} {a.Number}";
+    var history = (List<ApprovalHistory>)ViewBag.History;
+    var finance = User.IsAdmin() || User.IsInRole(AppRoles.Accountant);
+    var canConfirm = a.Status == AcceptanceStatus.Draft && (User.IsPurchasing() || User.IsInRole(AppRoles.Director));
+    var vat = Math.Round(a.SubTotal * c.VatPercent / 100m, 0);
+}
+<style>
+    .acc-table td, .acc-table th { white-space: nowrap; }
+    .acc-table tr.grp > td { background: #f1f5f9; font-weight: 600; }
+</style>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-controller="Contracts" asp-action="Details" asp-route-id="@c.Id" class="btn btn-outline-secondary btn-sm">← @c.Number</a>
+    <h5 class="mb-0">@a.Number</h5> <partial name="_Badge" model="a.Status" />
+    <span class="ms-auto d-flex flex-wrap gap-1">
+        @if (a.Status == AcceptanceStatus.Draft && User.IsPurchasing()) { <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-outline-secondary btn-sm">@L["Sửa"]</a> }
+        @if (canConfirm)
+        {
+            <form asp-action="Confirm" asp-route-id="@a.Id" method="post" data-confirm="@L["Xác nhận biên bản nghiệm thu này?"]"><button class="btn btn-success btn-sm">@L["Xác nhận nghiệm thu"]</button></form>
+        }
+        @if (a.Status == AcceptanceStatus.Confirmed && Model.Payment == null && finance)
+        {
+            <form asp-action="RequestPayment" asp-route-id="@a.Id" method="post" data-confirm="@L["Lập đề nghị thanh toán theo khối lượng đã nghiệm thu?"]"><button class="btn btn-primary btn-sm">@L["Đề nghị thanh toán"]</button></form>
+        }
+    </span>
+</div>
+<div class="row g-3">
+<div class="col-lg-8">
+    <div class="card mb-3"><div class="table-responsive">
+    <table class="table table-sm table-bordered mb-0 small align-middle acc-table" data-grid="off">
+        <thead><tr><th>@L["Mã"]</th><th>@L["Hạng mục / công việc"]</th><th>@L["ĐVT"]</th><th class="text-end">@L["KL hợp đồng"]</th><th class="text-end">@L["KL kỳ này"]</th><th class="text-end">@L["Đơn giá"]</th><th class="text-end">@L["Thành tiền kỳ này"]</th></tr></thead>
+        <tbody>
+        @foreach (var r in Model.Rows)
+        {
+            if (r.IsGroup)
+            {
+                var sub = Model.Rows.Where(x => !x.IsGroup && x.Code.StartsWith(r.Code + ".")).Sum(x => Math.Round(Model.Qty.GetValueOrDefault(x.Line.Id) * x.UnitPrice, 0));
+                if (sub == 0) { continue; }
+                <tr class="grp"><td>@r.Code</td><td colspan="5" style="padding-left:@(8 + r.Depth * 16)px">@r.Name</td><td class="text-end">@sub.ToMoney()</td></tr>
+            }
+            else if (Model.Qty.TryGetValue(r.Line.Id, out var q) && q > 0)
+            {
+                <tr><td>@r.Code</td><td style="padding-left:@(8 + r.Depth * 16)px">@r.Name</td><td>@r.Unit</td><td class="text-end">@r.Contracted.ToQty()</td><td class="text-end fw-semibold">@q.ToQty()</td><td class="text-end">@r.UnitPrice.ToMoney()</td><td class="text-end">@Math.Round(q * r.UnitPrice, 0).ToMoney()</td></tr>
+            }
+        }
+        </tbody>
+        <tfoot>
+            <tr><td colspan="6" class="text-end">@L["Giá trị nghiệm thu (trước VAT)"]</td><td class="text-end fw-semibold">@a.SubTotal.ToMoney()</td></tr>
+            <tr><td colspan="6" class="text-end">VAT @c.VatPercent.ToString("0.#")%</td><td class="text-end">@vat.ToMoney()</td></tr>
+            <tr><td colspan="6" class="text-end fw-semibold">@L["Cộng (gồm VAT)"]</td><td class="text-end fw-semibold">@Model.Gross.ToMoney()</td></tr>
+            @if (Model.AdvanceDeduction > 0) { <tr><td colspan="6" class="text-end">@L["Khấu trừ tạm ứng"]</td><td class="text-end">−@Model.AdvanceDeduction.ToMoney()</td></tr>
+                <tr><td colspan="6" class="text-end fw-semibold">@L["Thực chi dự kiến"]</td><td class="text-end fw-semibold">@((Model.Gross - Model.AdvanceDeduction).ToMoney())</td></tr> }
+        </tfoot>
+    </table></div></div>
+</div>
+<div class="col-lg-4">
+    <div class="card mb-3"><div class="card-body small">
+        <dl class="row mb-0">
+            <dt class="col-5">@L["Hợp đồng"]</dt><dd class="col-7"><a asp-controller="Contracts" asp-action="Details" asp-route-id="@c.Id">@c.Number</a> – @c.Vendor?.Name</dd>
+            <dt class="col-5">@L["Đợt nghiệm thu"]</dt><dd class="col-7">@a.Period</dd>
+            <dt class="col-5">@L["Ngày nghiệm thu"]</dt><dd class="col-7">@a.AcceptanceDate.ToDate()</dd>
+            <dt class="col-5">@L["Người lập"]</dt><dd class="col-7">@a.CreatedBy?.FullName</dd>
+            @if (a.ConfirmedBy != null) { <dt class="col-5">@L["Người xác nhận"]</dt><dd class="col-7">@a.ConfirmedBy.FullName @a.ConfirmedAt.ToDateTime()</dd> }
+            @if (!string.IsNullOrEmpty(a.Note)) { <dt class="col-5">@L["Ghi chú"]</dt><dd class="col-7">@a.Note</dd> }
+            @if (Model.Payment != null) { <dt class="col-5">@L["Thanh toán"]</dt><dd class="col-7"><a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.Payment.Id">@Model.Payment.Number</a> <span class="text-muted">@Model.Payment.Status.GetDisplayName()</span></dd> }
+        </dl>
+    </div></div>
+    @if (a.Status != AcceptanceStatus.Cancelled && Model.Payment == null && (User.IsPurchasing() || User.IsInRole(AppRoles.Director)))
+    {
+        <form asp-action="Cancel" asp-route-id="@a.Id" method="post" class="d-flex gap-1 mb-3" data-confirm="@L["Hủy biên bản nghiệm thu này?"]">
+            <input name="reason" class="form-control form-control-sm" placeholder="@L["Lý do hủy"]" required /><button class="btn btn-outline-danger btn-sm text-nowrap">@L["Hủy biên bản"]</button>
+        </form>
+    }
+</div>
+</div>

@@ -1,0 +1,64 @@
+@model EProcurement.Web.Controllers.AcceptanceForm
+@using EProcurement.Web.Infrastructure
+@{
+    var a = Model.Acceptance; var c = Model.Contract;
+    ViewData["Title"] = a.Id > 0 ? $"{L["Sửa biên bản nghiệm thu"]} {a.Number}" : L["Lập biên bản nghiệm thu khối lượng"];
+    var errors = ViewBag.Errors as List<string>;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<style>
+    .acc-table td, .acc-table th { white-space: nowrap; }
+    .acc-table tr.grp > td { background: #f1f5f9; font-weight: 600; }
+    .acc-table input.q { width: 110px; }
+</style>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-controller="Contracts" asp-action="Details" asp-route-id="@c.Id" class="btn btn-outline-secondary btn-sm">← @c.Number</a>
+    <h5 class="mb-0">@ViewData["Title"] – @c.Title</h5>
+</div>
+@if (errors != null) { <div class="alert alert-danger small"><ul class="mb-0">@foreach (var e in errors) { <li>@e</li> }</ul></div> }
+<form asp-action="Save" method="post">
+    <input type="hidden" name="id" value="@a.Id" /><input type="hidden" name="contractId" value="@c.Id" />
+    <div class="row g-2 mb-3">
+        <div class="col-md-2"><label class="form-label small mb-1">@L["Đợt nghiệm thu"]</label><input class="form-control form-control-sm" value="@a.Period" disabled /></div>
+        <div class="col-md-3"><label class="form-label small mb-1">@L["Ngày nghiệm thu"]</label><input type="date" name="acceptanceDate" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@a.AcceptanceDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" required /></div>
+        <div class="col-md-7"><label class="form-label small mb-1">@L["Ghi chú"]</label><input name="note" maxlength="1000" value="@a.Note" class="form-control form-control-sm" /></div>
+    </div>
+    <div class="small text-muted mb-2">@L["Nhập khối lượng hoàn thành trong kỳ này cho từng dòng. Khối lượng lũy kế không được vượt khối lượng hợp đồng."]</div>
+    <div class="card"><div class="table-responsive">
+    <table class="table table-sm table-bordered mb-0 small align-middle acc-table" data-grid="off">
+        <thead><tr><th>@L["Mã"]</th><th>@L["Hạng mục / công việc"]</th><th>@L["ĐVT"]</th><th class="text-end">@L["KL hợp đồng"]</th><th class="text-end">@L["Đã nghiệm thu"]</th><th class="text-end">@L["Còn lại"]</th><th class="text-end">@L["Đơn giá"]</th><th>@L["KL kỳ này"]</th><th class="text-end">@L["Thành tiền kỳ này"]</th></tr></thead>
+        <tbody>
+        @foreach (var r in Model.Rows)
+        {
+            if (r.IsGroup) { <tr class="grp"><td>@r.Code</td><td colspan="8" style="padding-left:@(8 + r.Depth * 16)px">@r.Name</td></tr> }
+            else
+            {
+                var id = r.Line.Id; var done = Model.Cumulative.GetValueOrDefault(id); var rem = Math.Max(0, r.Contracted - done);
+                <tr data-price="@r.UnitPrice.ToString("0", inv)">
+                    <td>@r.Code</td><td style="padding-left:@(8 + r.Depth * 16)px">@r.Name</td><td>@r.Unit</td>
+                    <td class="text-end">@r.Contracted.ToQty()</td><td class="text-end">@done.ToQty()</td><td class="text-end">@rem.ToQty()</td><td class="text-end">@r.UnitPrice.ToMoney()</td>
+                    <td><input type="number" class="form-control form-control-sm text-end q" name="q[@id]" min="0" max="@rem.ToString("0.###", inv)" step="0.001" value="@(Model.Qty.TryGetValue(id, out var qv) && qv > 0 ? qv.ToString("0.###", inv) : "")" /></td>
+                    <td class="text-end amt">0</td>
+                </tr>
+            }
+        }
+        </tbody>
+        <tfoot><tr class="fw-semibold"><td colspan="8" class="text-end">@L["Giá trị nghiệm thu kỳ này (trước VAT)"]</td><td class="text-end" id="sum">0</td></tr></tfoot>
+    </table></div></div>
+    <div class="mt-3"><button class="btn btn-primary btn-sm">@L["Lưu biên bản"]</button> <a asp-controller="Contracts" asp-action="Details" asp-route-id="@c.Id" class="btn btn-outline-secondary btn-sm">@L["Hủy"]</a></div>
+</form>
+<script>
+(function () {
+    var fmt = new Intl.NumberFormat('vi-VN');
+    function calc() {
+        var sum = 0;
+        document.querySelectorAll('.acc-table tbody tr[data-price]').forEach(function (r) {
+            var q = parseFloat(r.querySelector('input.q').value) || 0, p = parseFloat(r.getAttribute('data-price')) || 0;
+            var a = Math.round(q * p); sum += a; r.querySelector('.amt').textContent = fmt.format(a);
+        });
+        document.getElementById('sum').textContent = fmt.format(sum);
+    }
+    document.querySelectorAll('.acc-table input.q').forEach(function (i) { i.addEventListener('input', calc); });
+    calc();
+})();
+</script>

@@ -511,7 +511,7 @@ public class PurchaseOrderLine
     public Item? Item { get; set; }
     [Required, StringLength(300)] public string Description { get; set; } = string.Empty;
     [StringLength(30)] public string? Unit { get; set; }
-    [Column(TypeName = "decimal(18,2)")] public decimal Quantity { get; set; } = 1;
+    [Column(TypeName = "decimal(18,3)")] public decimal Quantity { get; set; } = 1;
     [Column(TypeName = "decimal(18,0)")] public decimal UnitPrice { get; set; }
     [Column(TypeName = "decimal(18,0)")] public decimal Amount { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal ReceivedQuantity { get; set; }
@@ -929,6 +929,8 @@ public class Payment
     public Contract? Contract { get; set; }
     public int? MilestoneId { get; set; }
     public ContractMilestone? Milestone { get; set; }
+    public int? AcceptanceId { get; set; }
+    public BoqAcceptance? Acceptance { get; set; }
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Số tiền đề nghị")] public decimal Amount { get; set; }
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Phạt chậm giao")] public decimal PenaltyAmount { get; set; }
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Khấu trừ tạm ứng")] public decimal AdvanceDeduction { get; set; }

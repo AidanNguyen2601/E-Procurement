@@ -254,7 +254,53 @@ public class ContractLine
     public Item? Item { get; set; }
     [Required, StringLength(300)] public string Description { get; set; } = string.Empty;
     [StringLength(30)] public string? Unit { get; set; }
-    [Column(TypeName = "decimal(18,2)")] public decimal Quantity { get; set; }
+    [Column(TypeName = "decimal(18,3)")] public decimal Quantity { get; set; }
     [Column(TypeName = "decimal(18,0)")] public decimal UnitPrice { get; set; }
+    /// <summary>Dòng từ BOQ: mã (1.2.3) và đường dẫn hạng mục cha</summary>
+    [StringLength(30)] public string? BoqCode { get; set; }
+    [StringLength(500)] public string? BoqPath { get; set; }
     public int SortOrder { get; set; }
+}
+
+/// <summary>Trạng thái biên bản nghiệm thu khối lượng</summary>
+public enum AcceptanceStatus
+{
+    [Display(Name = "Nháp")] Draft = 1,
+    [Display(Name = "Đã xác nhận")] Confirmed = 2,
+    [Display(Name = "Đã hủy")] Cancelled = 3
+}
+
+/// <summary>
+/// Biên bản nghiệm thu khối lượng theo BOQ hợp đồng: mỗi đợt ghi khối lượng hoàn thành của từng dòng. Khối lượng lũy kế
+/// (các đợt đã xác nhận) không vượt khối lượng hợp đồng. Biên bản đã xác nhận là cơ sở đề nghị thanh toán theo khối lượng hoàn thành.
+/// </summary>
+public class BoqAcceptance
+{
+    public int Id { get; set; }
+    [Required, StringLength(30)][Display(Name = "Số biên bản")] public string Number { get; set; } = string.Empty;
+    public int ContractId { get; set; }
+    public Contract? Contract { get; set; }
+    [Display(Name = "Đợt nghiệm thu")] public int Period { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Ngày nghiệm thu")] public DateTime AcceptanceDate { get; set; } = DateTime.Today;
+    [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    [Display(Name = "Trạng thái")] public AcceptanceStatus Status { get; set; } = AcceptanceStatus.Draft;
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Giá trị nghiệm thu (trước VAT)")] public decimal SubTotal { get; set; }
+    public int CreatedById { get; set; }
+    public AppUser? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public int? ConfirmedById { get; set; }
+    public AppUser? ConfirmedBy { get; set; }
+    public DateTime? ConfirmedAt { get; set; }
+    public ICollection<BoqAcceptanceLine> Lines { get; set; } = new List<BoqAcceptanceLine>();
+}
+
+public class BoqAcceptanceLine
+{
+    public int Id { get; set; }
+    public int AcceptanceId { get; set; }
+    public BoqAcceptance? Acceptance { get; set; }
+    public int ContractLineId { get; set; }
+    public ContractLine? ContractLine { get; set; }
+    [Column(TypeName = "decimal(18,3)")][Display(Name = "Khối lượng nghiệm thu kỳ này")] public decimal Quantity { get; set; }
+    [StringLength(300)] public string? Note { get; set; }
 }

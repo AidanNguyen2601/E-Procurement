@@ -1,0 +1,42 @@
+@model Contract
+@using EProcurement.Web.Infrastructure
+@{
+    var rows = (List<BoqProgressRow>)ViewBag.BoqProgress;
+    var accs = (List<BoqAcceptance>)ViewBag.Acceptances;
+    var paidIds = (HashSet<int>)ViewBag.AcceptancePaid;
+    var purchasing = User.IsPurchasing(); var active = Model.Status == ContractStatus.Active;
+    var total = rows.Where(r => !r.IsGroup).Sum(r => r.ContractAmount);
+    var done = rows.Where(r => !r.IsGroup).Sum(r => r.AcceptedAmount);
+}
+@if (rows.Any())
+{
+<div class="card mb-3"><div class="card-header d-flex align-items-center">@L["BOQ hợp đồng & tiến độ nghiệm thu"]
+    <span class="ms-auto d-flex gap-1">
+        <a asp-controller="Acceptances" asp-action="Index" asp-route-contractId="@Model.Id" class="btn btn-outline-secondary btn-sm">@L["Các biên bản"] (@accs.Count)</a>
+        @if (purchasing && active) { <a asp-controller="Acceptances" asp-action="Create" asp-route-contractId="@Model.Id" class="btn btn-primary btn-sm">@L["Lập nghiệm thu khối lượng"]</a> }
+    </span></div>
+    <div class="card-body small pb-2">
+        <div class="d-flex justify-content-between mb-1"><span>@L["Đã nghiệm thu"] <b>@done.ToMoney()</b> / @total.ToMoney() đ @L["(trước VAT)"]</span><span>@(total == 0 ? 0 : Math.Round(done * 100 / total, 1))%</span></div>
+        <div class="progress mb-2" style="height:8px"><div class="progress-bar bg-success" style="width:@(total == 0 ? 0 : Math.Min(100, done * 100 / total))%"></div></div>
+    </div>
+    <div class="table-responsive"><table class="table table-sm table-bordered mb-0 small align-middle" data-grid="off">
+        <thead><tr><th>@L["Mã"]</th><th>@L["Hạng mục / công việc"]</th><th>@L["ĐVT"]</th><th class="text-end">@L["KL hợp đồng"]</th><th class="text-end">@L["Đã nghiệm thu"]</th><th class="text-end">%</th><th class="text-end">@L["Đơn giá"]</th><th class="text-end">@L["Thành tiền HĐ"]</th></tr></thead>
+        <tbody>
+        @foreach (var r in rows)
+        {
+            if (r.IsGroup) { <tr class="table-light fw-semibold"><td>@r.Code</td><td style="padding-left:@(8 + r.Depth * 16)px">@r.Name</td><td colspan="2"></td><td class="text-end">@r.AcceptedAmount.ToMoney()</td><td class="text-end">@(r.ContractAmount == 0 ? 0 : Math.Round(r.AcceptedAmount * 100 / r.ContractAmount, 1))</td><td></td><td class="text-end">@r.ContractAmount.ToMoney()</td></tr> }
+            else { <tr><td>@r.Code</td><td style="padding-left:@(8 + r.Depth * 16)px">@r.Name</td><td>@r.Unit</td><td class="text-end">@r.Contracted.ToQty()</td><td class="text-end">@r.Accepted.ToQty()</td><td class="text-end">@r.Percent.ToString("0.#")</td><td class="text-end">@r.UnitPrice.ToMoney()</td><td class="text-end">@r.ContractAmount.ToMoney()</td></tr> }
+        }
+        </tbody>
+    </table></div>
+    @if (accs.Any())
+    {
+        <ul class="list-group list-group-flush border-top">
+            @foreach (var a in accs.OrderBy(x => x.Period))
+            {
+                <li class="list-group-item d-flex justify-content-between small"><span><a asp-controller="Acceptances" asp-action="Details" asp-route-id="@a.Id">@a.Number</a> · @L["đợt"] @a.Period · @a.AcceptanceDate.ToDate() · @a.SubTotal.ToMoney() đ@(paidIds.Contains(a.Id) ? " · " + L["đã đề nghị thanh toán"] : "")</span><partial name="_Badge" model="a.Status" /></li>
+            }
+        </ul>
+    }
+</div>
+}

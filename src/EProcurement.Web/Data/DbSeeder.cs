@@ -327,6 +327,12 @@ public static class DbSeeder
             "IF COL_LENGTH('TenderLines','BoqCode') IS NULL ALTER TABLE TenderLines ADD BoqCode nvarchar(30) NULL",
             "IF COL_LENGTH('TenderLines','BoqPath') IS NULL ALTER TABLE TenderLines ADD BoqPath nvarchar(500) NULL",
             "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('TenderLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE TenderLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
+            "IF COL_LENGTH('ContractLines','BoqCode') IS NULL ALTER TABLE ContractLines ADD BoqCode nvarchar(30) NULL",
+            "IF COL_LENGTH('ContractLines','BoqPath') IS NULL ALTER TABLE ContractLines ADD BoqPath nvarchar(500) NULL",
+            "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ContractLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE ContractLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
+            "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseOrderLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE PurchaseOrderLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
+            // Thanh toán theo khối lượng nghiệm thu BOQ (khóa ngoại tới BoqAcceptances do script bảng mới tạo)
+            "IF COL_LENGTH('Payments','AcceptanceId') IS NULL ALTER TABLE Payments ADD AcceptanceId int NULL",
             // Giao diện riêng của người dùng
             "IF COL_LENGTH('Users','UiPrefs') IS NULL ALTER TABLE Users ADD UiPrefs nvarchar(1000) NULL",
             // Thiết lập: cấu hình dài (mẫu email), phân cấp nhóm hàng
