@@ -1,0 +1,162 @@
+@model EProcurement.Web.Controllers.BoqPage
+@using EProcurement.Web.Infrastructure
+@{
+    ViewData["Title"] = $"BOQ {Model.Package.Number}";
+    var f = Model.Form; var nodes = Model.Nodes;
+    var editing = f.Id > 0;
+    var byId = nodes.ToDictionary(n => n.Item.Id);
+    var parentNode = f.ParentId != null && byId.TryGetValue(f.ParentId.Value, out var pn) ? pn : null;
+    var editNode = editing && byId.TryGetValue(f.Id, out var en) ? en : null;
+    var isGroup = editNode?.IsGroup == true;
+    var diff = Model.Package.Budget - Model.Total;
+    var leaves = nodes.Count(n => !n.IsGroup);
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<style>
+    .boq-table td.name { white-space: nowrap; }
+    .boq-table tr.grp > td { background: #f8fafc; font-weight: 600; }
+    .boq-table tr.d0 > td { background: #eef2ff; }
+    .boq-table .tg { display: inline-block; width: 18px; cursor: pointer; color: #64748b; user-select: none; }
+    .boq-table .acts form { display: inline; }
+    .boq-table .acts .btn { padding: 0 6px; line-height: 1.5; }
+    .boq-table tr.sel > td { outline: 2px solid var(--bs-primary, #4f46e5); outline-offset: -2px; }
+</style>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-controller="Packages" asp-action="Details" asp-route-id="@Model.Package.Id" class="btn btn-outline-secondary btn-sm">← @L["Gói mua sắm"] @Model.Package.Number</a>
+    <h5 class="mb-0">@L["BOQ phân cấp"] – @Model.Package.Title</h5>
+    <span class="ms-auto d-flex gap-1">
+        <a asp-action="Export" asp-route-packageId="@Model.Package.Id" class="btn btn-outline-success btn-sm @(nodes.Count == 0 ? "disabled" : "")">@L["Xuất CSV"]</a>
+        @if (Model.CanEdit)
+        {
+            <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#imp">@L["Nhập BOQ"]</button>
+            <form asp-action="ApplyBudget" asp-route-packageId="@Model.Package.Id" method="post" data-confirm="@L["Cập nhật giá gói bằng tổng BOQ?"]"><button class="btn btn-primary btn-sm" disabled="@(Model.Total <= 0)">@L["Áp tổng BOQ vào giá gói"]</button></form>
+        }
+    </span>
+</div>
+
+@if (Model.Locked)
+{
+    <div class="alert alert-secondary py-2 small">@L["Gói không còn ở trạng thái Nháp – BOQ chỉ để xem. Trả lại kế hoạch để chỉnh sửa."]</div>
+}
+else if (!Model.CanEdit)
+{
+    <div class="alert alert-secondary py-2 small">@L["Bạn chỉ có quyền xem BOQ của gói này."]</div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Tổng BOQ (trước VAT)"]</div><div class="fs-5 fw-semibold">@Model.Total.ToMoney() đ</div><div class="small text-muted">@nodes.Count(n => n.Depth == 0) @L["hạng mục"] · @leaves @L["dòng chi tiết"]</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Giá gói (trước VAT)"]</div><div class="fs-5 fw-semibold">@Model.Package.Budget.ToMoney() đ</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2"><div class="small text-muted">@L["Chênh lệch giá gói − BOQ"]</div><div class="fs-5 fw-semibold @(diff == 0 ? "text-success" : "text-warning")">@(diff == 0 ? L["Khớp"] : diff.ToMoney() + " đ")</div></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body py-2 small text-muted">@L["Dòng có dòng con là hạng mục (nhóm): thành tiền = tổng các dòng con. Dòng lá: thành tiền = khối lượng × đơn giá."]</div></div></div>
+</div>
+
+@if (Model.CanEdit)
+{
+    <div class="collapse mb-3" id="imp"><div class="card"><div class="card-body">
+        <form asp-action="Import" method="post">
+            <input type="hidden" name="packageId" value="@Model.Package.Id" />
+            <label class="form-label small mb-1">@L["Dán từ Excel / CSV: Mã, Tên, ĐVT, Khối lượng, Đơn giá (cách nhau bằng Tab hoặc dấu ;). Mã 1, 1.1, 1.1.1… quyết định cấp; dòng nhóm có thể để trống ĐVT / khối lượng / đơn giá."]</label>
+            <textarea name="text" rows="7" class="form-control form-control-sm font-monospace" placeholder="1;Hạ tầng máy chủ;;;&#10;1.1;Máy chủ rack 2U;Bộ;2;385000000"></textarea>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                <div class="form-check"><input class="form-check-input" type="radio" name="replace" value="true" id="r1" checked /><label class="form-check-label small" for="r1">@L["Thay thế toàn bộ BOQ hiện có"]</label></div>
+                <div class="form-check"><input class="form-check-input" type="radio" name="replace" value="false" id="r2" /><label class="form-check-label small" for="r2">@L["Nối thêm vào cuối"]</label></div>
+                <button class="btn btn-primary btn-sm ms-auto">@L["Nhập"]</button>
+                <button class="btn btn-outline-secondary btn-sm" name="sample" value="true" formnovalidate data-confirm="@L["Nạp BOQ mẫu (thay thế BOQ hiện có)?"]">@L["Nạp BOQ mẫu"]</button>
+            </div>
+        </form>
+    </div></div></div>
+}
+
+<div class="row g-3">
+<div class="@(Model.CanEdit ? "col-xl-8" : "col-12")">
+    <div class="card"><div class="card-header d-flex align-items-center">@L["Bảng khối lượng"]
+        <span class="ms-auto small"><a href="#" class="text-decoration-none" id="expAll">@L["Mở hết"]</a> · <a href="#" class="text-decoration-none" id="colAll">@L["Thu gọn"]</a></span></div>
+    <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle boq-table small" data-grid="off">
+        <thead><tr><th>@L["Mã"]</th><th>@L["Hạng mục / công việc"]</th><th>@L["ĐVT"]</th><th class="text-end">@L["Khối lượng"]</th><th class="text-end">@L["Đơn giá (trước VAT)"]</th><th class="text-end">@L["Thành tiền"]</th>@if (Model.CanEdit) { <th></th> }</tr></thead>
+        <tbody>
+        @foreach (var n in nodes)
+        {
+            var i = n.Item;
+            <tr class="@(n.IsGroup ? "grp" : "") d@(Math.Min(n.Depth, 1)) @(editing && f.Id == i.Id ? "sel" : "")" data-code="@n.Code">
+                <td class="text-nowrap">@n.Code</td>
+                <td class="name" style="padding-left:@(8 + n.Depth * 20)px">@if (n.IsGroup) { <span class="tg" title="@L["Thu gọn / mở"]">▾</span> } else { <span class="tg"></span> }@i.Name@if (!string.IsNullOrEmpty(i.Note)) { <span class="text-muted fw-normal"> · @i.Note</span> }</td>
+                <td>@(n.IsGroup ? "" : i.Unit)</td>
+                <td class="text-end">@(n.IsGroup ? "" : i.Quantity.ToString("#,##0.###", I18n.ViCulture))</td>
+                <td class="text-end">@(n.IsGroup ? "" : i.UnitPrice.ToMoney())</td>
+                <td class="text-end">@n.Amount.ToMoney()</td>
+                @if (Model.CanEdit)
+                {
+                    <td class="acts text-nowrap text-end">
+                        @foreach (var (k, ic, tip) in new[] { ("Up", "↑", "Lên"), ("Down", "↓", "Xuống"), ("Indent", "→", "Thụt vào (thành con của dòng trên)"), ("Outdent", "←", "Lùi ra (thành cùng cấp với cha)") })
+                        {
+                            <form asp-action="MoveItem" method="post"><input type="hidden" name="id" value="@i.Id" /><input type="hidden" name="kind" value="@k" /><button class="btn btn-outline-secondary btn-sm" title="@L[tip]">@ic</button></form>
+                        }
+                        <a class="btn btn-outline-primary btn-sm" asp-action="Index" asp-route-packageId="@Model.Package.Id" asp-route-parent="@i.Id" title="@L["Thêm dòng con"]">＋</a>
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Index" asp-route-packageId="@Model.Package.Id" asp-route-edit="@i.Id" title="@L["Sửa"]">✎</a>
+                        <form asp-action="Delete" method="post" data-confirm="@L["Xóa dòng {0} cùng mọi dòng con?", n.Code]"><input type="hidden" name="id" value="@i.Id" /><button class="btn btn-outline-danger btn-sm" title="@L["Xóa"]">🗑</button></form>
+                    </td>
+                }
+            </tr>
+        }
+        @if (nodes.Count == 0) { <tr><td colspan="@(Model.CanEdit ? 7 : 6)" class="text-muted p-3">@L["Chưa có BOQ. Thêm hạng mục ở bên phải hoặc dùng \"Nhập BOQ\"."]</td></tr> }
+        </tbody>
+        @if (nodes.Count > 0)
+        {
+            <tfoot><tr class="fw-semibold"><td></td><td>@L["Tổng cộng"]</td><td></td><td></td><td></td><td class="text-end">@Model.Total.ToMoney()</td>@if (Model.CanEdit) { <td></td> }</tr></tfoot>
+        }
+    </table></div></div>
+</div>
+
+@if (Model.CanEdit)
+{
+<div class="col-xl-4">
+    <div class="card"><div class="card-header">@(editing ? L["Sửa dòng {0}", editNode?.Code ?? ""] : parentNode != null ? L["Thêm dòng con của {0}", parentNode.Code] : L["Thêm hạng mục gốc"])</div>
+    <div class="card-body">
+        <form asp-action="Save" method="post">
+            <input type="hidden" name="Id" value="@f.Id" /><input type="hidden" name="PackageId" value="@Model.Package.Id" /><input type="hidden" name="ParentId" value="@f.ParentId" />
+            @if (parentNode != null) { <div class="small text-muted mb-2">@L["Thuộc"]: <b>@parentNode.Code – @parentNode.Item.Name</b></div> }
+            <div class="mb-2"><label class="form-label small mb-1">@L["Hạng mục / công việc"] *</label><input name="Name" value="@f.Name" maxlength="250" class="form-control form-control-sm" required /></div>
+            @if (isGroup) { <div class="small text-muted mb-2">@L["Dòng này là nhóm: thành tiền tự cộng từ các dòng con."]</div> }
+            else
+            {
+                <div class="row g-2 mb-2">
+                    <div class="col-4"><label class="form-label small mb-1">@L["ĐVT"]</label><input name="Unit" value="@f.Unit" maxlength="30" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Khối lượng"]</label><input name="Quantity" type="number" step="0.001" min="0" value="@f.Quantity.ToString("0.###", inv)" class="form-control form-control-sm" /></div>
+                    <div class="col-4"><label class="form-label small mb-1">@L["Đơn giá (trước VAT)"]</label><input name="UnitPrice" type="number" step="1" min="0" value="@f.UnitPrice.ToString("0", inv)" class="form-control form-control-sm" /></div>
+                </div>
+                <div class="small text-muted mb-2">@L["Để trống khối lượng / đơn giá nếu dòng này sẽ có dòng con."]</div>
+            }
+            <div class="mb-3"><label class="form-label small mb-1">@L["Ghi chú"]</label><input name="Note" value="@f.Note" maxlength="500" class="form-control form-control-sm" /></div>
+            <button class="btn btn-primary btn-sm">@L["Lưu"]</button>
+            @if (editing || parentNode != null) { <a class="btn btn-outline-secondary btn-sm" asp-action="Index" asp-route-packageId="@Model.Package.Id">@L["Hủy"]</a> }
+        </form>
+    </div></div>
+</div>
+}
+</div>
+
+<script>
+(function () {
+    var rows = [].slice.call(document.querySelectorAll('.boq-table tbody tr[data-code]'));
+    function hasKids(r) { var c = r.getAttribute('data-code') + '.'; return rows.some(function (x) { return x.getAttribute('data-code').indexOf(c) === 0; }); }
+    // Hiện một dòng chỉ khi mọi tổ tiên của nó đang mở
+    function refresh() {
+        var closed = rows.filter(function (r) { return r.getAttribute('data-collapsed') === '1'; }).map(function (r) { return r.getAttribute('data-code') + '.'; });
+        rows.forEach(function (r) {
+            var c = r.getAttribute('data-code');
+            r.style.display = closed.some(function (p) { return c.indexOf(p) === 0; }) ? 'none' : '';
+        });
+    }
+    function mark(r, col) { r.setAttribute('data-collapsed', col ? '1' : '0'); var tg = r.querySelector('.tg'); if (tg && tg.textContent) tg.textContent = col ? '▸' : '▾'; }
+    rows.forEach(function (r) {
+        var tg = r.querySelector('.tg'); if (!tg || !tg.textContent) return;
+        tg.addEventListener('click', function () { mark(r, r.getAttribute('data-collapsed') !== '1'); refresh(); });
+    });
+    function all(col) { rows.forEach(function (r) { if (hasKids(r)) mark(r, col); }); refresh(); }
+    var e = document.getElementById('expAll'), c = document.getElementById('colAll');
+    if (e) e.addEventListener('click', function (ev) { ev.preventDefault(); all(false); });
+    if (c) c.addEventListener('click', function (ev) { ev.preventDefault(); all(true); });
+})();
+</script>

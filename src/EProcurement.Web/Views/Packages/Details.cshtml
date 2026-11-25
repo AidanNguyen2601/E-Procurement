@@ -77,6 +77,12 @@
         </dl>
     </div></div>
 
+    <div class="card mb-3"><div class="card-header d-flex align-items-center">@L["BOQ phân cấp"]<a asp-controller="Boq" asp-action="Index" asp-route-packageId="@Model.Id" class="btn btn-outline-primary btn-sm ms-auto">@(buyer && Model.Status == PackageStatus.Draft ? L["Lập / sửa BOQ"] : L["Xem BOQ"])</a></div>
+        <div class="card-body small">
+            @if ((int)ViewBag.BoqCount == 0) { <span class="text-muted">@L["Chưa có BOQ."]</span> }
+            else { <span>@((int)ViewBag.BoqCount) @L["dòng"] · @L["tổng"] <b>@(((decimal)ViewBag.BoqTotal).ToMoney()) đ</b>@if ((decimal)ViewBag.BoqTotal != Model.Budget) { <span class="text-warning"> · @L["khác giá gói"] @Model.Budget.ToMoney() đ</span> }</span> }
+        </div></div>
+
     <div class="card mb-3"><div class="card-header">@L["Đề nghị mua hàng trong gói ("]@Model.PurchaseRequests.Count)</div><ul class="list-group list-group-flush">
         @foreach (var r in Model.PurchaseRequests.OrderBy(r => r.Id))
         {

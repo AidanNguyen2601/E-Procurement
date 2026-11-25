@@ -323,6 +323,10 @@ public static class DbSeeder
             "IF COL_LENGTH('Vendors','BusinessSector') IS NULL ALTER TABLE Vendors ADD BusinessSector nvarchar(200) NULL",
             "IF COL_LENGTH('Items','Origin') IS NULL ALTER TABLE Items ADD Origin nvarchar(100) NULL",
             "IF COL_LENGTH('Items','Brand') IS NULL ALTER TABLE Items ADD Brand nvarchar(100) NULL",
+            // BOQ phân cấp: dòng gói thầu sinh từ BOQ (mã, đường dẫn hạng mục), khối lượng 3 số lẻ
+            "IF COL_LENGTH('TenderLines','BoqCode') IS NULL ALTER TABLE TenderLines ADD BoqCode nvarchar(30) NULL",
+            "IF COL_LENGTH('TenderLines','BoqPath') IS NULL ALTER TABLE TenderLines ADD BoqPath nvarchar(500) NULL",
+            "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('TenderLines') AND name = 'Quantity' AND scale <> 3) ALTER TABLE TenderLines ALTER COLUMN Quantity decimal(18,3) NOT NULL",
             // Giao diện riêng của người dùng
             "IF COL_LENGTH('Users','UiPrefs') IS NULL ALTER TABLE Users ADD UiPrefs nvarchar(1000) NULL",
             // Thiết lập: cấu hình dài (mẫu email), phân cấp nhóm hàng

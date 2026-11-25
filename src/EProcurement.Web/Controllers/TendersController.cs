@@ -84,6 +84,22 @@ public class TendersController : ProcControllerBase
         View(await VisibleWithEvaluation().Where(t => t.Status == TenderStatus.Opened || (t.Status == TenderStatus.Published && t.ClosingAt <= DateTime.Now))
             .OrderBy(t => t.ClosingAt).ToListAsync());
 
+    /// <summary>So sánh giá dự thầu theo từng dòng BOQ (chỉ khi giá đã được xem: sau mở thầu / mở hồ sơ tài chính)</summary>
+    public async Task<IActionResult> BoqCompare(int id, bool csv = false)
+    {
+        var t = await VisibleWithEvaluation().Include(x => x.Lines).Include(x => x.Bidders).ThenInclude(b => b.Lines).FirstOrDefaultAsync(x => x.Id == id);
+        if (t == null) return NotFound();
+        if (!TenderEvaluation.PricesVisible(t)) { TempData["Error"] = I18n.T("Giá dự thầu chỉ được xem sau khi mở thầu (hai túi hồ sơ: sau khi mở hồ sơ tài chính)."); return RedirectToAction(nameof(Details), new { id }); }
+        var res = BoqBid.Build(t, t.Bidders.Where(b => b.Submitted && b.Valid != false && b.Qualified != false));
+        if (csv)
+        {
+            var bytes = new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(BoqBid.ToCsv(res))).ToArray();
+            return File(bytes, "text/csv; charset=utf-8", $"SoSanhGia-{t.Number}.csv");
+        }
+        ViewBag.Results = TenderEvaluation.Evaluate(t);
+        return View(Tuple.Create(t, res));
+    }
+
     /// <summary>Đàm phán hợp đồng: gói chờ đàm phán + các biên bản đàm phán</summary>
     public async Task<IActionResult> Negotiations() =>
         View(await VisibleWithEvaluation().Where(t => t.Negotiations.Any() || t.Status == TenderStatus.Opened).OrderByDescending(t => t.OpenedAt).ToListAsync());
@@ -188,8 +204,14 @@ public class TendersController : ProcControllerBase
         {
             t = new Tender { Number = await DocNumbers.NextAsync(Db.Tenders.Select(x => x.Number), "TD"), PurchaseRequestId = pr.Id, PackageId = pkg!.Id, BuyerId = Me, CreatedAt = DateTime.Now };
             var s = 1;
-            foreach (var l in Packages.Lines(pkg))
-                t.Lines.Add(new TenderLine { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, EstimatedPrice = l.EstimatedPrice, SortOrder = s++ });
+            // Gói có BOQ → dòng gói thầu sinh từ các dòng lá của BOQ (nhà thầu chào giá từng dòng); không thì lấy dòng đề nghị mua hàng
+            var leaves = Boq.Leaves(await Db.BoqItems.AsNoTracking().Where(b => b.PackageId == pkg.Id).ToListAsync());
+            if (leaves.Count > 0)
+                foreach (var lf in leaves)
+                    t.Lines.Add(new TenderLine { Description = lf.Node.Item.Name, Unit = lf.Node.Item.Unit, Quantity = lf.Node.Item.Quantity, EstimatedPrice = lf.Node.Item.UnitPrice, BoqCode = lf.Node.Code, BoqPath = lf.Path, SortOrder = s++ });
+            else
+                foreach (var l in Packages.Lines(pkg))
+                    t.Lines.Add(new TenderLine { ItemId = l.ItemId, Description = l.Description, Unit = l.Unit, Quantity = l.Quantity, EstimatedPrice = l.EstimatedPrice, SortOrder = s++ });
             Db.Tenders.Add(t);
         }
         t.Title = vm.Title; t.PackageBudget = vm.PackageBudget; t.EnvelopeMethod = vm.EnvelopeMethod; t.ContractType = vm.ContractType;

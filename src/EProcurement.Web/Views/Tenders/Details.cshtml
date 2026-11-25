@@ -123,7 +123,13 @@
 
     <div class="card mb-3"><div class="card-body p-0"><table class="table table-sm mb-0">
         <thead><tr><th>#</th><th>@L["Hạng mục"]</th><th>@L["ĐVT"]</th><th class="money">SL</th><th class="money">@L["Đơn giá dự toán"]</th></tr></thead>
-        <tbody>@foreach (var l in Model.Lines) { <tr><td>@l.SortOrder</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.EstimatedPrice.ToMoney()</td></tr> }</tbody>
+        <tbody>@{ string? prevPath = null; }
+        @foreach (var l in Model.Lines.OrderBy(x => x.SortOrder))
+        {
+            if (!string.IsNullOrEmpty(l.BoqPath) && l.BoqPath != prevPath) { <tr class="table-light"><td colspan="5" class="small fw-semibold">@l.BoqPath</td></tr> }
+            prevPath = l.BoqPath;
+            <tr><td>@(l.BoqCode ?? l.SortOrder.ToString())</td><td>@l.Description</td><td>@l.Unit</td><td class="money">@l.Quantity.ToQty()</td><td class="money">@l.EstimatedPrice.ToMoney()</td></tr>
+        }</tbody>
     </table></div></div>
 
     @* ---------------- Nhà thầu & HSDT ---------------- *@
@@ -167,7 +173,7 @@
     @* ---------------- Đánh giá ---------------- *@
     @if (Model.OpenedAt.HasValue)
     {
-        <div class="card mb-3"><div class="card-header">@L["Kết quả đánh giá"]</div><div class="card-body p-0"><table class="table mb-0">
+        <div class="card mb-3"><div class="card-header d-flex align-items-center">@L["Kết quả đánh giá"]@if (pricesVisible && (buyer || User.IsInRole(AppRoles.Director) || Model.Committee.Any(m => m.UserId == User.GetUserId()))) { <a asp-action="BoqCompare" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm ms-auto">@L["So sánh giá theo BOQ"]</a> }</div><div class="card-body p-0"><table class="table mb-0">
             <thead><tr><th>@L["Nhà thầu"]</th><th>@L["Hợp lệ"]</th><th>@L["Năng lực"]</th><th class="money">@L["Điểm KT (TB)"]</th><th class="money">@L["Giá đánh giá"]</th>@if (Model.EvaluationMethod == TenderEvaluationMethod.Combined) { <th class="money">@L["Tổng điểm"]</th> }<th>@L["Xếp hạng"]</th></tr></thead>
             <tbody>
             @foreach (var r in results)

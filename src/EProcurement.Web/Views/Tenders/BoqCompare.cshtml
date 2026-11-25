@@ -1,0 +1,88 @@
+@model Tuple<Tender, BoqCompareResult>
+@using EProcurement.Web.Infrastructure
+@{
+    var t = Model.Item1; var r = Model.Item2;
+    ViewData["Title"] = $"{L["So sánh giá theo BOQ"]} {t.Number}";
+    var results = (List<BidResult>)ViewBag.Results;
+    var rank = results.Where(x => x.Rank.HasValue).ToDictionary(x => x.Bid.Id, x => x.Rank!.Value);
+    var cols = r.Bidders.Count;
+}
+<style>
+    .boq-cmp td, .boq-cmp th { white-space: nowrap; }
+    .boq-cmp tr.grp > td { background: #f1f5f9; font-weight: 600; }
+    .boq-cmp td.low { background: #dcfce7; }
+    .boq-cmp td.flag-low, .boq-cmp td.flag-high { background: #fef3c7; }
+    .boq-cmp td.flag-missing { background: #fee2e2; }
+    .boq-cmp .bh { border-left: 2px solid #cbd5e1; }
+</style>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-outline-secondary btn-sm">← @t.Number</a>
+    <h5 class="mb-0">@L["So sánh giá dự thầu theo BOQ"] – @t.Title</h5>
+    <a asp-action="BoqCompare" asp-route-id="@t.Id" asp-route-csv="true" class="btn btn-outline-success btn-sm ms-auto">@L["Xuất CSV"]</a>
+</div>
+
+@if (!r.HasBoq)
+{
+    <div class="alert alert-info small">@L["Gói thầu này không lập từ BOQ – bảng so sánh theo từng dòng hàng hóa / dịch vụ."]</div>
+}
+@if (cols == 0)
+{
+    <div class="alert alert-secondary">@L["Chưa có hồ sơ dự thầu hợp lệ để so sánh."]</div>
+}
+else
+{
+<div class="small text-muted mb-2">
+    <span class="badge text-bg-success">@L["Thấp nhất"]</span> @L["đơn giá thấp nhất của dòng"] ·
+    <span class="badge text-bg-warning">@L["Thấp / cao bất thường"]</span> @L["đơn giá < {0}% hoặc > {1}% dự toán", BoqBid.LowPercent.ToString("0"), BoqBid.HighPercent.ToString("0")] ·
+    <span class="badge text-bg-danger">@L["Thiếu giá"]</span>
+</div>
+<div class="card"><div class="table-responsive">
+<table class="table table-sm table-bordered mb-0 small boq-cmp align-middle" data-grid="off">
+    <thead>
+        <tr><th rowspan="2">@L["Mã"]</th><th rowspan="2">@L["Hạng mục / công việc"]</th><th rowspan="2">@L["ĐVT"]</th><th rowspan="2" class="text-end">@L["Khối lượng"]</th><th colspan="2" class="text-center bh">@L["Dự toán"]</th>
+            @foreach (var b in r.Bidders) { <th colspan="2" class="text-center bh">@b.Vendor?.Name @if (rank.TryGetValue(b.Id, out var rk)) { <span class="badge text-bg-primary">@L["Hạng {0}", rk]</span> }</th> }</tr>
+        <tr><th class="text-end bh">@L["Đơn giá"]</th><th class="text-end">@L["Thành tiền"]</th>
+            @foreach (var b in r.Bidders) { <th class="text-end bh">@L["Đơn giá"]</th><th class="text-end">@L["Thành tiền"]</th> }</tr>
+    </thead>
+    <tbody>
+    @foreach (var row in r.Rows)
+    {
+        <tr class="@(row.IsGroup ? "grp" : "")">
+            <td>@row.Code</td>
+            <td style="padding-left:@(8 + row.Depth * 16)px">@row.Name</td>
+            <td>@(row.IsGroup ? "" : row.Unit)</td>
+            <td class="text-end">@(row.IsGroup ? "" : row.Quantity.ToString("#,##0.###", I18n.ViCulture))</td>
+            <td class="text-end bh">@(row.IsGroup ? "" : row.EstimatedUnit.ToMoney())</td>
+            <td class="text-end">@row.EstimatedAmount.ToMoney()</td>
+            @foreach (var b in r.Bidders)
+            {
+                var c = row.Cells[b.Id];
+                if (row.IsGroup)
+                {
+                    <td class="bh"></td><td class="text-end">@c.Amount.ToMoney()</td>
+                }
+                else
+                {
+                    var cls = c.Flag != null ? "flag-" + c.Flag : c.Lowest ? "low" : "";
+                    <td class="text-end bh @cls" title="@(c.Flag == "low" ? L["Thấp bất thường so với dự toán"] : c.Flag == "high" ? L["Cao bất thường so với dự toán"] : c.Flag == "missing" ? L["Thiếu giá"] : "")">
+                        @(c.UnitPrice > 0 ? c.UnitPrice.ToMoney() : "—")@if (c.DeviationPct != null) { <div class="text-muted" style="font-size:.75em">@(c.DeviationPct > 0 ? "+" : "")@c.DeviationPct.Value.ToString("0.#", I18n.ViCulture)%</div> }
+                    </td>
+                    <td class="text-end @cls">@c.Amount.ToMoney()</td>
+                }
+            }
+        </tr>
+    }
+    </tbody>
+    <tfoot>
+        <tr class="fw-semibold"><td colspan="5" class="text-end">@L["Tổng theo các dòng (trước giảm giá, trước VAT)"]</td><td class="text-end">@r.EstimatedTotal.ToMoney()</td>
+            @foreach (var b in r.Bidders) { <td class="bh"></td><td class="text-end">@r.Totals[b.Id].ToMoney()</td> }</tr>
+        <tr><td colspan="5" class="text-end">@L["Giá dự thầu sau giảm giá (trước VAT)"]</td><td></td>
+            @foreach (var b in r.Bidders) { <td class="bh"></td><td class="text-end">@b.NetPrice.ToMoney()</td> }</tr>
+        <tr><td colspan="5" class="text-end">@L["Chênh lệch so với dự toán"]</td><td></td>
+            @foreach (var b in r.Bidders) { var d = r.EstimatedTotal > 0 ? (r.Totals[b.Id] / r.EstimatedTotal - 1) * 100 : 0; <td class="bh"></td><td class="text-end">@(d > 0 ? "+" : "")@d.ToString("0.#", I18n.ViCulture)%</td> }</tr>
+        <tr><td colspan="5" class="text-end">@L["Số dòng cảnh báo"]</td><td></td>
+            @foreach (var b in r.Bidders) { <td class="bh"></td><td class="text-end @(r.FlagCounts[b.Id] > 0 ? "text-danger fw-semibold" : "")">@r.FlagCounts[b.Id]</td> }</tr>
+    </tfoot>
+</table></div></div>
+}

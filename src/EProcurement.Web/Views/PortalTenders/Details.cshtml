@@ -64,7 +64,13 @@
         </div>
         <div class="table-responsive mt-3"><table class="table table-sm mb-0">
             <thead><tr><th>#</th><th>@L["Phạm vi cung cấp"]</th><th>@L["ĐVT"]</th><th class="money">@L["Khối lượng"]</th></tr></thead><tbody>
-            @for (var i = 0; i < lines.Count; i++) { <tr><td>@(i + 1)</td><td>@lines[i].Description</td><td>@lines[i].Unit</td><td class="money">@lines[i].Quantity.ToQty()</td></tr> }
+            @{ string? prevScope = null; }
+            @for (var i = 0; i < lines.Count; i++)
+            {
+                if (!string.IsNullOrEmpty(lines[i].BoqPath) && lines[i].BoqPath != prevScope) { <tr class="table-light"><td colspan="4" class="small fw-semibold">@lines[i].BoqPath</td></tr> }
+                prevScope = lines[i].BoqPath;
+                <tr><td>@(lines[i].BoqCode ?? (i + 1).ToString())</td><td>@lines[i].Description</td><td>@lines[i].Unit</td><td class="money">@lines[i].Quantity.ToQty()</td></tr>
+            }
         </tbody></table></div>
     </div>
     <ul class="list-group list-group-flush">
@@ -230,9 +236,12 @@
     <div class="card-header">@(latest == null ? L["Nộp HSDT online"] : L["Nộp lại HSDT (thay bản trước)"])</div><div class="card-body">
         <div class="table-responsive"><table class="table table-sm align-middle">
             <thead><tr><th>#</th><th>@L["Hàng hóa / dịch vụ"]</th><th>@L["ĐVT"]</th><th class="money">@L["Khối lượng"]</th><th style="width:170px">@L["Đơn giá dự thầu (chưa VAT)"]</th><th class="money">@L["Thành tiền"]</th></tr></thead><tbody>
+            @{ string? prevBidScope = null; }
             @for (var i = 0; i < lines.Count; i++)
             {
-                <tr><td>@(i + 1)</td><td>@lines[i].Description</td><td>@lines[i].Unit</td><td class="money">@lines[i].Quantity.ToQty()</td>
+                if (!string.IsNullOrEmpty(lines[i].BoqPath) && lines[i].BoqPath != prevBidScope) { <tr class="table-light"><td colspan="6" class="small fw-semibold">@lines[i].BoqPath</td></tr> }
+                prevBidScope = lines[i].BoqPath;
+                <tr><td>@(lines[i].BoqCode ?? (i + 1).ToString())</td><td>@lines[i].Description</td><td>@lines[i].Unit</td><td class="money">@lines[i].Quantity.ToQty()</td>
                     <td><input name="prices" type="number" min="1" step="1" class="form-control form-control-sm text-end bid-price" data-qty="@lines[i].Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" required /></td>
                     <td class="money bid-amount">0</td></tr>
             }

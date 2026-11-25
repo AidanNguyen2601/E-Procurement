@@ -60,7 +60,7 @@ public static class FormatExtensions
 {
     private static readonly CultureInfo Vi = CultureInfo.GetCultureInfo("vi-VN");
     public static string ToMoney(this decimal value) => value.ToString("N0", Vi);
-    public static string ToQty(this decimal value) => value.ToString("0.##", Vi);
+    public static string ToQty(this decimal value) => value.ToString("0.###", Vi);
     public static string ToShortMoney(this decimal value) =>
         value >= 1_000_000_000 ? (value / 1_000_000_000m).ToString("0.##", Vi) + I18n.T(" tỷ")
         : value >= 1_000_000 ? (value / 1_000_000m).ToString("0.#", Vi) + I18n.T(" tr")

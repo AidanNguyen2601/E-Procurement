@@ -44,6 +44,7 @@ public class EProcDbContext : DbContext
     public DbSet<TenderNegotiation> TenderNegotiations => Set<TenderNegotiation>();
     public DbSet<TenderAppraisal> TenderAppraisals => Set<TenderAppraisal>();
     public DbSet<ProcurementPackage> ProcurementPackages => Set<ProcurementPackage>();
+    public DbSet<BoqItem> BoqItems => Set<BoqItem>();
     public DbSet<SelectionPlan> SelectionPlans => Set<SelectionPlan>();
     public DbSet<Prequalification> Prequalifications => Set<Prequalification>();
     public DbSet<PrequalificationCriterion> PrequalificationCriteria => Set<PrequalificationCriterion>();
@@ -122,6 +123,9 @@ public class EProcDbContext : DbContext
         modelBuilder.Entity<OrgUnit>().HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId);
         modelBuilder.Entity<Category>().HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId);
         modelBuilder.Entity<CriteriaItem>().HasOne(x => x.CriteriaSet).WithMany(x => x.Items).HasForeignKey(x => x.CriteriaSetId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<BoqItem>().HasOne(x => x.Package).WithMany().HasForeignKey(x => x.PackageId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<BoqItem>().HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BoqItem>().HasIndex(x => new { x.PackageId, x.ParentId, x.SortOrder });
         modelBuilder.Entity<PackageMember>().HasIndex(x => new { x.PackageId, x.UserId }).IsUnique();
         modelBuilder.Entity<Contract>().HasIndex(x => x.Number).IsUnique();
         modelBuilder.Entity<CatalogEntry>().HasIndex(x => new { x.Type, x.Name }).IsUnique();

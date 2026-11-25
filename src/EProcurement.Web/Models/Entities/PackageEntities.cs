@@ -104,3 +104,24 @@ public class TenderAppraisal
     [StringLength(2000)][Display(Name = "Kiến nghị")] public string? Recommendation { get; set; }
     public bool IsVoid { get; set; }
 }
+
+/// <summary>
+/// Dòng BOQ (bảng khối lượng) phân cấp của gói mua sắm. Dòng có dòng con là NHÓM (hạng mục): thành tiền = tổng các dòng con;
+/// dòng lá có thành tiền = khối lượng × đơn giá. Mã (1, 1.1, 1.1.1…) tự đánh theo thứ tự cây.
+/// </summary>
+public class BoqItem
+{
+    public int Id { get; set; }
+    public int PackageId { get; set; }
+    public ProcurementPackage? Package { get; set; }
+    public int? ParentId { get; set; }
+    public BoqItem? Parent { get; set; }
+    public ICollection<BoqItem> Children { get; set; } = new List<BoqItem>();
+    [StringLength(30)][Display(Name = "Mã")] public string Code { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Nhập tên hạng mục / công việc"), StringLength(250)][Display(Name = "Hạng mục / công việc")] public string Name { get; set; } = string.Empty;
+    [StringLength(30)][Display(Name = "ĐVT")] public string? Unit { get; set; }
+    [Column(TypeName = "decimal(18,3)")][Range(0, 1_000_000_000)][Display(Name = "Khối lượng")] public decimal Quantity { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Đơn giá (trước VAT)")] public decimal UnitPrice { get; set; }
+    [Display(Name = "Thứ tự")] public int SortOrder { get; set; }
+    [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+}

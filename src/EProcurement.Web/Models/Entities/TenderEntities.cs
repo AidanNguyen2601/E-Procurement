@@ -77,9 +77,12 @@ public class TenderLine
     public Item? Item { get; set; }
     [Required, StringLength(300)] public string Description { get; set; } = string.Empty;
     [StringLength(30)] public string? Unit { get; set; }
-    [Column(TypeName = "decimal(18,2)")] public decimal Quantity { get; set; } = 1;
+    [Column(TypeName = "decimal(18,3)")] public decimal Quantity { get; set; } = 1;
     [Column(TypeName = "decimal(18,0)")] public decimal EstimatedPrice { get; set; }
     public int SortOrder { get; set; }
+    /// <summary>Dòng sinh từ BOQ của gói: mã BOQ (1.2.3) và đường dẫn các hạng mục cha ("1 Hạ tầng › 1.2 Mạng")</summary>
+    [StringLength(30)] public string? BoqCode { get; set; }
+    [StringLength(500)] public string? BoqPath { get; set; }
 }
 
 /// <summary>Nhà thầu: nhận HSMT → nộp HSDT → được đánh giá theo từng bước</summary>
