@@ -931,5 +931,8 @@ public static partial class I18n
         ["Chọn loại tiền tệ"] = "Select a currency",
         ["Đã lưu lịch sử giá."] = "Saved the price history.",
         ["Đơn vị cung cấp (ngoài danh sách NCC)"] = "Supplier (outside the supplier list)",
+        ["Thêm giá"] = "Add price",
+        ["Thêm giá cho mặt hàng này"] = "Add a price for this item",
+        ["Đơn giá từ chứng từ (đơn hàng, báo giá, HSDT, chỉ định, hợp đồng) cập nhật tự động theo chứng từ, không sửa / xóa ở đây. Giá nhập tay (lịch sử giá) sửa / xóa ở danh sách bên phải hoặc trang Lịch sử giá."] = "Unit prices from documents (orders, quotations, bids, direct awards, contracts) update automatically from those documents and cannot be edited / deleted here. Manually entered prices (price history) are edited / deleted in the list on the right or on the Price history page.",
     };
 }

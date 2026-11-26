@@ -9,11 +9,13 @@
     <select name="months" class="form-select form-select-sm" style="width:auto">@foreach (var m in new[] { 3, 6, 12, 24, 36 }) { <option value="@m" selected="@(m == months)">@m @L["tháng gần nhất"]</option> }</select>
     <label class="small d-flex align-items-center gap-1"><input type="checkbox" name="onlyWithData" value="true" class="form-check-input mt-0" @(only ? "checked" : "") /> @L["Chỉ mặt hàng có giá"]</label><input type="hidden" name="onlyWithData" value="false" />
     <button class="btn btn-sm btn-outline-secondary">@L["Lọc"]</button>
-    <span class="small text-muted ms-auto">@obsCount @L["đơn giá từ đơn hàng, báo giá, HSDT, chỉ định, hợp đồng, khảo sát"]</span>
+    <a asp-action="Records" class="btn btn-sm btn-outline-primary ms-auto">@L["Lịch sử giá"]</a>
+    @if (User.IsPurchasing()) { <a asp-action="Record" class="btn btn-sm btn-primary">@Icon.Svg("plus", 14) @L["Thêm giá"]</a> }
+    <span class="small text-muted w-100 text-end">@obsCount @L["đơn giá từ đơn hàng, báo giá, HSDT, chỉ định, hợp đồng, khảo sát"]</span>
 </form>
 <div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle">
     <thead><tr><th>@L["Hàng hóa"]</th><th>@L["ĐVT"]</th><th class="money">@L["Số giá"]</th><th class="money">@L["Thấp nhất"]</th><th class="money">@L["Trung vị"]</th><th class="money">@L["Trung bình"]</th><th class="money">@L["Cao nhất"]</th><th class="money">@L["Gần nhất"]</th>
-        <th class="money">@L["Giá tiêu chuẩn / trần"]</th><th class="money">@L["TB so với chuẩn"]</th></tr></thead>
+        <th class="money">@L["Giá tiêu chuẩn / trần"]</th><th class="money">@L["TB so với chuẩn"]</th><th></th></tr></thead>
     <tbody>
     @foreach (var r in Model)
     {
@@ -24,8 +26,8 @@
             <td class="money">@s?.Min.ToMoney()</td><td class="money">@s?.Median.ToMoney()</td><td class="money">@s?.Avg.ToMoney()</td><td class="money">@s?.Max.ToMoney()</td>
             <td class="money">@s?.Last.ToMoney()<div class="small text-muted">@s?.LastDate.ToDate()</div></td>
             <td class="money">@if (std != null) { <span>@std.Price.ToMoney()</span><div class="small text-muted">@L["trần"] @std.Ceiling.ToMoney()</div> } else { <span class="text-muted small">@L["tham khảo"] @r.Item.ReferencePrice.ToMoney()</span> }</td>
-            <td class="money @(diff > 10 ? "text-danger" : diff < -10 ? "text-success" : "")">@(diff.HasValue ? (diff > 0 ? "+" : "") + diff.Value.ToString("0.#") + "%" : "")</td></tr>
+            <td class="money @(diff > 10 ? "text-danger" : diff < -10 ? "text-success" : "")">@(diff.HasValue ? (diff > 0 ? "+" : "") + diff.Value.ToString("0.#") + "%" : "")</td><td class="text-nowrap text-end"><a asp-action="Item" asp-route-id="@r.Item.Id" class="btn btn-sm btn-outline-secondary py-0">@L["Chi tiết"]</a>@if (User.IsPurchasing()) { <a asp-action="Record" asp-route-itemId="@r.Item.Id" class="btn btn-sm btn-outline-primary py-0 ms-1" title="@L["Thêm giá cho mặt hàng này"]">＋ @L["Giá"]</a> }</td></tr>
     }
-    @if (!Model.Any()) { <tr><td colspan="10" class="text-muted p-3">@L["Không có dữ liệu giá."]</td></tr> }
+    @if (!Model.Any()) { <tr><td colspan="11" class="text-muted p-3">@L["Không có dữ liệu giá."]</td></tr> }
     </tbody>
 </table></div></div></div>

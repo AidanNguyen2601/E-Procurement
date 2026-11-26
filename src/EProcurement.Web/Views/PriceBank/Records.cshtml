@@ -37,7 +37,7 @@
             <td class="text-end fw-semibold">@(r.MaterialPrice == 0 && r.ServicePrice == 0 ? r.UnitPrice.ToString("#,##0.##", I18n.ViCulture) : r.PriceWithTax.ToString("#,##0.##", I18n.ViCulture))</td>
             <td>@r.Region</td>
             <td>@if (r.Tender != null) { <a asp-controller="Tenders" asp-action="Details" asp-route-id="@r.TenderId">@r.Tender.Number</a> }@if (r.Contract != null) { <div><a asp-controller="Contracts" asp-action="Details" asp-route-id="@r.ContractId">@r.Contract.Number</a></div> }</td>
-            <td class="text-nowrap"><a asp-action="Record" asp-route-id="@r.Id" class="btn btn-outline-secondary btn-sm py-0">@L["Xem"]</a>@if (User.IsPurchasing()) { <a asp-action="Record" asp-route-id="@r.Id" asp-route-edit="true" class="btn btn-outline-primary btn-sm py-0 ms-1">@L["Sửa"]</a> }</td>
+            <td class="text-nowrap"><a asp-action="Record" asp-route-id="@r.Id" class="btn btn-outline-secondary btn-sm py-0">@L["Xem"]</a>@if (User.IsPurchasing()) { <a asp-action="Record" asp-route-id="@r.Id" asp-route-edit="true" class="btn btn-outline-primary btn-sm py-0 ms-1">@L["Sửa"]</a><form asp-action="DeleteRecord" asp-route-id="@r.Id" asp-route-back="records" method="post" class="d-inline ms-1" data-confirm="@L["Xóa bản ghi lịch sử giá này?"]"><button class="btn btn-outline-danger btn-sm py-0">@L["Xóa"]</button></form> }</td>
         </tr>
     }
     @if (!Model.Any()) { <tr><td colspan="13" class="text-muted p-3">@L["Chưa có lịch sử giá phù hợp."]</td></tr> }

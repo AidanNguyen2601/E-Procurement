@@ -30,6 +30,7 @@
         }
         @if (!obs.Any()) { <tr><td colspan="7" class="text-muted p-3">@L["Chưa có đơn giá trong kỳ."]</td></tr> }
     </tbody></table></div></div></div>
+    <div class="small text-muted mt-2">@L["Đơn giá từ chứng từ (đơn hàng, báo giá, HSDT, chỉ định, hợp đồng) cập nhật tự động theo chứng từ, không sửa / xóa ở đây. Giá nhập tay (lịch sử giá) sửa / xóa ở danh sách bên phải hoặc trang Lịch sử giá."]</div>
 </div>
 <div class="col-lg-4">
     @if (User.IsPurchasing())
@@ -41,7 +42,7 @@
         {
             <li class="list-group-item d-flex justify-content-between gap-2"><span><a asp-action="Record" asp-route-id="@r.Id"><b>@r.UnitPrice.ToString("#,##0.##", I18n.ViCulture)</b> @(r.Currency ?? "VND")</a> · @r.PriceDate.ToDate() · @(r.Vendor?.Name ?? r.SupplierName)@(string.IsNullOrEmpty(r.Region) ? "" : " · " + r.Region)
                 <div class="text-muted">@r.Source.GetDisplayName()@(string.IsNullOrEmpty(r.SourceNote) ? "" : " – " + r.SourceNote) · @r.CreatedBy?.FullName</div></span>
-                @if (User.IsPurchasing()) { <form asp-action="DeleteRecord" asp-route-id="@r.Id" method="post" data-confirm="@L["Xóa giá khảo sát này?"]"><button class="btn btn-sm btn-link text-danger p-0">@L["Xóa"]</button></form> }</li>
+                @if (User.IsPurchasing()) { <span class="text-nowrap"><a asp-action="Record" asp-route-id="@r.Id" asp-route-edit="true" class="btn btn-sm btn-link p-0 me-2">@L["Sửa"]</a><form asp-action="DeleteRecord" asp-route-id="@r.Id" method="post" class="d-inline" data-confirm="@L["Xóa bản ghi lịch sử giá này?"]"><button class="btn btn-sm btn-link text-danger p-0">@L["Xóa"]</button></form></span> }</li>
         }
         @if (!manual.Any()) { <li class="list-group-item text-muted">@L["Chưa có."]</li> }
     </ul></div>
