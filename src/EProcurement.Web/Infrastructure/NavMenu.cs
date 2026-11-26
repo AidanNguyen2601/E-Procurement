@@ -38,7 +38,7 @@ public static class NavMenu
         return (ctrl, act) switch
         {
             ("Packages", "Progress") => "pkg-progress",
-            ("Tenders", "Actuals" or "ActualsSummary") => "td-actual",
+            ("Packages", "Actuals" or "ActualsSummary") => "pkg-actual",
             ("Tenders", "Evaluations" or "Screen" or "Score") => "td-eval",
             ("Tenders", "Negotiations" or "NegotiationMinutes") => "td-neg",
             ("Tenders", "EvaluationReports" or "Report") => "td-report",
@@ -87,6 +87,7 @@ public static class NavMenu
                 L("PurchaseRequests", "Yêu cầu mua sắm", "file-text", "PurchaseRequests"),
                 pd ? L("Packages", "Gói mua sắm", "package", "Packages") : null,
                 pd ? L("pkg-progress", "Tiến độ gói", "clock", "Packages", "Progress") : null,
+                pd ? L("pkg-actual", "Dự toán – thực tế", "bar-chart", "Packages", "ActualsSummary") : null,
                 pd ? L("SelectionPlans", "Kế hoạch lựa chọn NCC", "clipboard", "SelectionPlans") : null),
 
             G("select", "Lựa chọn nhà cung cấp", "trophy",
@@ -102,8 +103,7 @@ public static class NavMenu
                     L("td-eval", "Đánh giá HSDT/HSCG", "scale", "Tenders", "Evaluations"),
                     L("td-neg", "Đàm phán hợp đồng", "users", "Tenders", "Negotiations"),
                     L("td-report", "Báo cáo đánh giá LCNT", "bar-chart", "Tenders", "EvaluationReports"),
-                    L("td-appraisal", "Thẩm định kết quả LCNT", "shield-check", "Tenders", "Appraisals"),
-                    pd ? L("td-actual", "Dự toán – thực tế", "bar-chart", "Tenders", "ActualsSummary") : null),
+                    L("td-appraisal", "Thẩm định kết quả LCNT", "shield-check", "Tenders", "Appraisals")),
                 L("public-notices", "Thông báo mời thầu", "megaphone", "Tenders", "Public", external: true)),
 
             G("exec", "Hợp đồng & thanh toán", "file-check",

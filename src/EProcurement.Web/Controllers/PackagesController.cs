@@ -52,6 +52,33 @@ public class PackagesController : ProcControllerBase
         return View(await query.OrderByDescending(p => p.CreatedAt).ToListAsync());
     }
 
+    /// <summary>Giá dự toán – giá chọn – hợp đồng / đơn hàng – giá thực tế của một gói mua sắm (mọi hình thức)</summary>
+    public async Task<IActionResult> Actuals(int id, bool csv = false)
+    {
+        var v = await HttpContext.RequestServices.GetRequiredService<PackageActualsService>().BuildAsync(id);
+        if (v == null) return NotFound();
+        if (csv)
+        {
+            var sb = new System.Text.StringBuilder("Mã;Hạng mục;ĐVT;KL dự toán;Đơn giá dự toán;Thành tiền dự toán;KL hợp đồng / đơn hàng;Đơn giá;Thành tiền;KL thực tế;Thành tiền thực tế;Dự toán phần đã làm\r\n");
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            string Q(string? x) => x != null && (x.Contains(';') || x.Contains('"')) ? "\"" + x.Replace("\"", "\"\"") + "\"" : x ?? "";
+            foreach (var r in v.Result.Rows)
+                sb.Append(r.Code).Append(';').Append(Q(r.Name)).Append(';').Append(Q(r.IsGroup ? "" : r.Unit)).Append(';')
+                  .Append(r.IsGroup ? "" : r.EstQuantity.ToString("0.###", inv)).Append(';').Append(r.IsGroup ? "" : r.EstUnitPrice.ToString("0", inv)).Append(';').Append(r.EstAmount.ToString("0", inv)).Append(';')
+                  .Append(r.IsGroup ? "" : r.ContractQuantity.ToString("0.###", inv)).Append(';').Append(r.IsGroup ? "" : r.ContractUnitPrice.ToString("0", inv)).Append(';').Append(r.ContractAmount.ToString("0", inv)).Append(';')
+                  .Append(r.IsGroup ? "" : r.ActualQuantity.ToString("0.###", inv)).Append(';').Append(r.ActualAmount.ToString("0", inv)).Append(';').Append(r.EstForActual.ToString("0", inv)).Append("\r\n");
+            return File(new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(sb.ToString())).ToArray(), "text/csv; charset=utf-8", $"DuToan-ThucTe-{v.Package.Number}.csv");
+        }
+        return View(v);
+    }
+
+    /// <summary>Tổng hợp dự toán – giá chọn – thực tế của các gói đã chọn được nhà cung cấp, lọc theo hình thức và lĩnh vực</summary>
+    public async Task<IActionResult> ActualsSummary(ProcurementMethod? method, string? field)
+    {
+        ViewBag.Method = method; ViewBag.Field = field;
+        return View(await HttpContext.RequestServices.GetRequiredService<PackageActualsService>().SummaryAsync(method, field));
+    }
+
     /// <summary>Theo dõi tiến độ mọi gói: đang ở giai đoạn nào, hạn theo hạn mức, quá hạn bao nhiêu ngày</summary>
     public async Task<IActionResult> Progress(int? stage, string? state, string? tier, string? q, string? field)
     {

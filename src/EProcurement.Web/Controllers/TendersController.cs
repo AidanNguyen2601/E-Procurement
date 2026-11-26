@@ -100,81 +100,14 @@ public class TendersController : ProcControllerBase
         return View(Tuple.Create(t, res));
     }
 
-    // ------------------------------------------------------------------ Giá dự toán – giá trúng thầu / hợp đồng – giá thực tế theo gói thầu
-    /// <summary>Khối lượng thực tế đã thực hiện theo từng dòng hợp đồng: nghiệm thu khối lượng (hợp đồng theo BOQ) hoặc hàng đã nhận đạt qua phiếu nhận hàng (hợp đồng hàng hóa)</summary>
-    private async Task<Dictionary<int, decimal>> ActualQuantitiesAsync(Contract c)
+    // ------------------------------------------------------------------ Dự toán – thực tế: tính theo gói mua sắm (PackagesController.Actuals)
+    public async Task<IActionResult> Actuals(int id)
     {
-        var accs = await Db.BoqAcceptances.AsNoTracking().Include(a => a.Lines).Where(a => a.ContractId == c.Id && a.Status == AcceptanceStatus.Confirmed).ToListAsync();
-        var cum = BoqAcceptances.Cumulative(accs);
-        if (cum.Count > 0 || c.Lines.Any(l => l.BoqCode != null)) return cum;
-        var recv = await Db.GoodsReceiptLines.AsNoTracking().Include(g => g.PurchaseOrderLine).Include(g => g.GoodsReceipt).ThenInclude(g => g!.PurchaseOrder)
-            .Where(g => g.GoodsReceipt!.PurchaseOrder!.ContractId == c.Id && g.GoodsReceipt.PurchaseOrder.Status != PoStatus.Cancelled).ToListAsync();
-        var map = new Dictionary<int, decimal>();
-        foreach (var r in recv)
-        {
-            var pl = r.PurchaseOrderLine!;
-            var cl = c.Lines.FirstOrDefault(l => (pl.ItemId != null && l.ItemId == pl.ItemId) || l.Description == pl.Description);
-            if (cl != null) map[cl.Id] = map.GetValueOrDefault(cl.Id) + r.QuantityAccepted;
-        }
-        return map;
+        var pkg = await Db.Tenders.AsNoTracking().Where(t => t.Id == id).Select(t => t.PackageId).FirstOrDefaultAsync();
+        return pkg.HasValue ? RedirectToAction("Actuals", "Packages", new { id = pkg }) : RedirectToAction(nameof(Details), new { id });
     }
 
-    private async Task<(BoqActualsResult Result, Contract? Contract)> TenderActualsAsync(Tender t)
-    {
-        var contract = await Db.Contracts.AsNoTracking().Include(c => c.Vendor).Include(c => c.Lines).FirstOrDefaultAsync(c => c.TenderId == t.Id);
-        BoqActualsResult res;
-        if (contract != null)
-        {
-            contract.Lines = contract.Lines.OrderBy(l => l.SortOrder).ToList();
-            var pays = await Db.Payments.AsNoTracking().Where(p => p.ContractId == contract.Id).ToListAsync();
-            res = BoqActuals.Build(contract, t.Lines.ToList(), await ActualQuantitiesAsync(contract), pays);
-            // đã đặt hàng theo hợp đồng (hợp đồng khung đặt nhiều đợt): đơn đã duyệt trở đi, không tính đơn nháp / chờ duyệt / hủy
-            res.OrderedTotal = await Db.PurchaseOrders.AsNoTracking().Where(p => p.ContractId == contract.Id && p.Status >= PoStatus.Approved && p.Status != PoStatus.Cancelled).SumAsync(p => (decimal?)p.SubTotal) ?? 0;
-        }
-        else res = BoqActuals.EstimateOnly(t.Lines.ToList());
-        res.PackageBudget = t.Package?.Budget ?? t.PackageBudget; res.AwardPrice = t.AwardPrice ?? 0;
-        return (res, contract);
-    }
-
-    /// <summary>So sánh giá dự toán – giá trúng thầu / hợp đồng – giá thực tế của một gói thầu</summary>
-    [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
-    public async Task<IActionResult> Actuals(int id, bool csv = false)
-    {
-        var t = await Db.Tenders.AsNoTracking().Include(x => x.Package).Include(x => x.Lines).Include(x => x.AwardedVendor).FirstOrDefaultAsync(x => x.Id == id);
-        if (t == null) return NotFound();
-        var (res, contract) = await TenderActualsAsync(t);
-        if (csv)
-        {
-            var sb = new System.Text.StringBuilder("Mã;Hạng mục;ĐVT;KL dự toán;Đơn giá dự toán;Thành tiền dự toán;KL hợp đồng;Đơn giá hợp đồng;Thành tiền hợp đồng;KL thực tế;Thành tiền thực tế;Dự toán phần đã làm\r\n");
-            var inv = System.Globalization.CultureInfo.InvariantCulture;
-            string Q(string? x) => x != null && (x.Contains(';') || x.Contains('"')) ? "\"" + x.Replace("\"", "\"\"") + "\"" : x ?? "";
-            foreach (var r in res.Rows)
-                sb.Append(r.Code).Append(';').Append(Q(r.Name)).Append(';').Append(Q(r.IsGroup ? "" : r.Unit)).Append(';')
-                  .Append(r.IsGroup ? "" : r.EstQuantity.ToString("0.###", inv)).Append(';').Append(r.IsGroup ? "" : r.EstUnitPrice.ToString("0", inv)).Append(';').Append(r.EstAmount.ToString("0", inv)).Append(';')
-                  .Append(r.IsGroup ? "" : r.ContractQuantity.ToString("0.###", inv)).Append(';').Append(r.IsGroup ? "" : r.ContractUnitPrice.ToString("0", inv)).Append(';').Append(r.ContractAmount.ToString("0", inv)).Append(';')
-                  .Append(r.IsGroup ? "" : r.ActualQuantity.ToString("0.###", inv)).Append(';').Append(r.ActualAmount.ToString("0", inv)).Append(';').Append(r.EstForActual.ToString("0", inv)).Append("\r\n");
-            return File(new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(sb.ToString())).ToArray(), "text/csv; charset=utf-8", $"DuToan-ThucTe-{t.Number}.csv");
-        }
-        ViewBag.Contract = contract;
-        return View(Tuple.Create(t, res));
-    }
-
-    /// <summary>Tổng hợp mọi gói thầu đã có kết quả: giá gói, dự toán, giá trúng thầu, hợp đồng, thực tế, thực chi</summary>
-    [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
-    public async Task<IActionResult> ActualsSummary(TenderStatus? status)
-    {
-        var ids = await Db.Tenders.AsNoTracking().Where(t => t.Status >= TenderStatus.Awarded && t.Status != TenderStatus.Cancelled && (status == null || t.Status == status))
-            .OrderByDescending(t => t.OpenedAt).Select(t => t.Id).Take(150).ToListAsync();
-        var list = new List<(Tender T, BoqActualsResult R, Contract? C)>();
-        foreach (var id in ids)
-        {
-            var t = await Db.Tenders.AsNoTracking().Include(x => x.Package).Include(x => x.Lines).Include(x => x.AwardedVendor).FirstAsync(x => x.Id == id);
-            var (res, c) = await TenderActualsAsync(t);
-            list.Add((t, res, c));
-        }
-        ViewBag.Status = status;
-        return View(list);
-    }
+    public IActionResult ActualsSummary() => RedirectToAction("ActualsSummary", "Packages", new { method = ProcurementMethod.OpenTender });
 
     /// <summary>Đàm phán hợp đồng: gói chờ đàm phán + các biên bản đàm phán</summary>
     public async Task<IActionResult> Negotiations() =>

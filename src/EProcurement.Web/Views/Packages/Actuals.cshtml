@@ -1,0 +1,108 @@
+@model PackageActualsView
+@using EProcurement.Web.Infrastructure
+@{
+    var p = Model.Package; var r = Model.Result; var c = Model.Contract;
+    ViewData["Title"] = $"{L["Dự toán – thực tế"]} {p.Number}";
+    var hasCommit = Model.HasCommitment; var hasEst = r.EstTotal > 0;
+    string Cls(decimal v) => v > 0 ? "text-danger" : v < 0 ? "text-success" : "";
+    string Sg(decimal v) => v > 0 ? "+" : "";
+    var sel = r.AwardPrice;
+    var commitVsEst = r.ContractCurrent - r.EstTotal; var commitPct = r.EstTotal > 0 ? Math.Round(commitVsEst * 100 / r.EstTotal, 1) : 0;
+    var done = r.ContractCurrent > 0 ? Math.Min(100, r.ActualTotal * 100 / r.ContractCurrent) : 0;
+    var actVsEst = r.ActualTotal - r.EstForActualTotal;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<style>
+    .act-table td, .act-table th { white-space: nowrap; }
+    .act-table tr.grp > td { background: #f1f5f9; font-weight: 600; }
+    .act-table .bh { border-left: 2px solid #cbd5e1; }
+</style>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-outline-secondary btn-sm">← @p.Number</a>
+    <h5 class="mb-0">@L["Giá dự toán – giá chọn – giá thực tế"] – @p.Title</h5>
+    <span class="badge text-bg-light border">@p.Method.GetDisplayName()</span>@if (!string.IsNullOrEmpty(p.Field)) { <span class="badge text-bg-light border">@p.Field</span> }
+    <span class="ms-auto d-flex gap-1">
+        <a asp-action="ActualsSummary" class="btn btn-outline-secondary btn-sm">@L["Tổng hợp các gói"]</a>
+        <a asp-action="Actuals" asp-route-id="@p.Id" asp-route-csv="true" class="btn btn-outline-success btn-sm">@L["Xuất CSV"]</a>
+    </span>
+</div>
+@if (!Model.HasSelection) { <div class="alert alert-info small py-2">@L["Gói chưa chọn được nhà cung cấp – hiện chỉ có dự toán."]</div> }
+else if (!hasCommit) { <div class="alert alert-info small py-2">@L["Đã chọn nhà cung cấp nhưng chưa ký hợp đồng / đặt hàng – chưa có số liệu thực tế."]</div> }
+
+<div class="row g-3 mb-3">
+    <div class="col-md"><div class="card h-100"><div class="card-body py-2">
+        <div class="small text-muted">@L["Giá dự toán (tổng các dòng, trước VAT)"]</div><div class="fs-5 fw-semibold">@r.EstTotal.ToMoney() đ</div>
+        <div class="small text-muted">@L["Giá gói"] @r.PackageBudget.ToMoney() đ</div>
+    </div></div></div>
+    <div class="col-md"><div class="card h-100"><div class="card-body py-2">
+        <div class="small text-muted">@L[Model.SelectedLabel] @L["(trước VAT)"]</div><div class="fs-5 fw-semibold">@(sel > 0 ? sel.ToMoney() + " đ" : "—")</div>
+        @if (sel > 0 && hasEst) { <div class="small @Cls(Model.SelectedVsEstimate)">@Sg(Model.SelectedVsEstimate)@Model.SelectedVsEstimate.ToMoney() đ (@Sg(Model.SelectedVsEstimatePct ?? 0)@((Model.SelectedVsEstimatePct ?? 0).ToString("0.#", I18n.ViCulture))%) @L["so với dự toán"]</div> }
+        @if (!string.IsNullOrEmpty(Model.Vendor)) { <div class="small text-muted">@Model.Vendor</div> }
+        <div class="small">
+            @if (Model.Tender != null) { <a asp-controller="Tenders" asp-action="Details" asp-route-id="@Model.Tender.Id">@Model.Tender.Number</a> }
+            @if (Model.RfqId != null) { <a asp-controller="Rfqs" asp-action="Details" asp-route-id="@Model.RfqId">@L["Hồ sơ chào giá"]</a> }
+            @if (Model.DirectAwardId != null) { <a asp-controller="DirectAwards" asp-action="Details" asp-route-id="@Model.DirectAwardId">@L["Tờ trình chỉ định"]</a> }
+        </div>
+    </div></div></div>
+    @if (hasCommit)
+    {
+    <div class="col-md"><div class="card h-100"><div class="card-body py-2">
+        <div class="small text-muted">@L[Model.CommitmentLabel] @L["(trước VAT)"]</div><div class="fs-5 fw-semibold">@r.ContractCurrent.ToMoney() đ</div>
+        @if (hasEst) { <div class="small @Cls(commitVsEst)">@Sg(commitVsEst)@commitVsEst.ToMoney() đ (@Sg(commitPct)@commitPct.ToString("0.#", I18n.ViCulture)%) @L["so với dự toán"]</div> }
+        @if (c != null && r.ContractCurrent != r.ContractOriginal) { <div class="small text-muted">@L["Ban đầu"] @r.ContractOriginal.ToMoney() đ · @L["phụ lục"] @Sg(r.ContractCurrent - r.ContractOriginal)@((r.ContractCurrent - r.ContractOriginal).ToMoney()) đ</div> }
+        <div class="small">
+            @if (c != null) { <a asp-controller="Contracts" asp-action="Details" asp-route-id="@c.Id">@c.Number</a> }
+            @foreach (var o in Model.Orders.Take(4)) { <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@o.Id" class="me-1">@o.Number</a> }@if (Model.Orders.Count > 4) { <span class="text-muted">+@(Model.Orders.Count - 4)</span> }
+        </div>
+    </div></div></div>
+    @if (c != null && (c.IsFramework || r.OrderedTotal > 0))
+    {
+    <div class="col-md"><div class="card h-100"><div class="card-body py-2">
+        <div class="small text-muted">@L["Đã đặt hàng theo hợp đồng (trước VAT)"]@if (c.IsFramework) { <span class="badge text-bg-secondary ms-1">@L["hợp đồng khung"]</span> }</div>
+        <div class="fs-5 fw-semibold">@r.OrderedTotal.ToMoney() đ</div>
+        <div class="progress my-1" style="height:6px"><div class="progress-bar bg-primary" style="width:@(r.ContractCurrent > 0 ? Math.Min(100, r.OrderedTotal * 100 / r.ContractCurrent) : 0).ToString("0.#", inv)%"></div></div>
+        <div class="small text-muted">@(r.ContractCurrent > 0 ? Math.Round(r.OrderedTotal * 100 / r.ContractCurrent, 1) : 0)% @L["giá trị hợp đồng"] · @L["còn lại"] @Math.Max(0, r.ContractCurrent - r.OrderedTotal).ToMoney() đ</div>
+    </div></div></div>
+    }
+    <div class="col-md"><div class="card h-100"><div class="card-body py-2">
+        <div class="small text-muted">@L["Giá thực tế đã thực hiện"]</div><div class="fs-5 fw-semibold">@r.ActualTotal.ToMoney() đ</div>
+        <div class="progress my-1" style="height:6px"><div class="progress-bar bg-success" style="width:@done.ToString("0.#", inv)%"></div></div>
+        <div class="small text-muted">@done.ToString("0.#", I18n.ViCulture)% @L["giá trị cam kết"]@if (hasEst && r.EstForActualTotal > 0) { <span class="@Cls(actVsEst)"> · @Sg(actVsEst)@actVsEst.ToMoney() đ @L["so với dự toán phần đã làm"]</span> }</div>
+    </div></div></div>
+    <div class="col-md"><div class="card h-100"><div class="card-body py-2">
+        <div class="small text-muted">@L["Thực chi (đã trừ tạm ứng)"]</div><div class="fs-5 fw-semibold">@r.PaidNet.ToMoney() đ</div>
+        <div class="small text-muted">@L["chờ chi"] @r.RequestedGross.ToMoney() đ</div>
+    </div></div></div>
+    }
+</div>
+@if (hasCommit) { <div class="small text-muted mb-2">@L["Thực tế = khối lượng đã thực hiện × đơn giá cam kết: nghiệm thu khối lượng (hợp đồng theo BOQ) hoặc hàng đã nhận đạt trên phiếu nhận hàng. Dự toán phần đã làm = cùng khối lượng × đơn giá dự toán."]</div> }
+
+<div class="card"><div class="table-responsive">
+<table class="table table-sm table-bordered mb-0 small align-middle act-table" data-grid="off">
+    <thead>
+        <tr><th rowspan="2">@L["Mã"]</th><th rowspan="2">@L["Hạng mục / công việc"]</th><th rowspan="2">@L["ĐVT"]</th><th colspan="3" class="text-center bh">@L["Dự toán"]</th>@if (hasCommit) { <th colspan="4" class="text-center bh">@L[c != null ? "Hợp đồng" : "Đơn hàng"]</th><th colspan="3" class="text-center bh">@L["Thực tế"]</th> }</tr>
+        <tr><th class="text-end bh">@L["KL"]</th><th class="text-end">@L["Đơn giá"]</th><th class="text-end">@L["Thành tiền"]</th>
+            @if (hasCommit) { <th class="text-end bh">@L["KL"]</th><th class="text-end">@L["Đơn giá"]</th><th class="text-end">@L["Thành tiền"]</th><th class="text-end">@L["± dự toán"]</th>
+            <th class="text-end bh">@L["KL đã làm"]</th><th class="text-end">@L["Thành tiền"]</th><th class="text-end">@L["± dự toán phần đã làm"]</th> }</tr>
+    </thead>
+    <tbody>
+    @foreach (var x in r.Rows)
+    {
+        <tr class="@(x.IsGroup ? "grp" : "")">
+            <td>@x.Code</td>
+            <td style="padding-left:@(8 + x.Depth * 16)px">@x.Name@if (x.Added) { <span class="badge text-bg-info ms-1">@L["ngoài dự toán"]</span> }</td>
+            <td>@(x.IsGroup ? "" : x.Unit)</td>
+            <td class="text-end bh">@(x.IsGroup || x.Added ? "" : x.EstQuantity.ToQty())</td><td class="text-end">@(x.IsGroup || x.Added ? "" : x.EstUnitPrice.ToMoney())</td><td class="text-end">@(x.Added ? "" : x.EstAmount.ToMoney())</td>
+            @if (hasCommit)
+            {
+                <td class="text-end bh">@(x.IsGroup ? "" : x.ContractQuantity.ToQty())</td><td class="text-end">@(x.IsGroup ? "" : x.ContractUnitPrice.ToMoney())</td><td class="text-end">@x.ContractAmount.ToMoney()</td>
+                <td class="text-end @Cls(x.ContractVsEstimate)">@if (hasEst && (!x.Added || x.IsGroup)) { <span>@Sg(x.ContractVsEstimate)@x.ContractVsEstimate.ToMoney()@if (x.ContractVsEstimatePct != null) { <span class="text-muted"> (@Sg(x.ContractVsEstimatePct.Value)@x.ContractVsEstimatePct.Value.ToString("0.#", I18n.ViCulture)%)</span> }</span> }</td>
+                <td class="text-end bh">@(x.IsGroup ? "" : x.ActualQuantity.ToQty())</td><td class="text-end">@x.ActualAmount.ToMoney()@if (x.ContractAmount > 0) { <span class="text-muted"> (@x.Progress.ToString("0.#", I18n.ViCulture)%)</span> }</td>
+                <td class="text-end @Cls(x.ActualVsEstimate)">@if (hasEst && x.ActualAmount > 0 && x.EstForActual > 0) { <span>@Sg(x.ActualVsEstimate)@x.ActualVsEstimate.ToMoney()</span> }</td>
+            }
+        </tr>
+    }
+    </tbody>
+    <tfoot><tr class="fw-semibold"><td colspan="5" class="text-end">@L["Tổng cộng (trước VAT)"]</td><td class="text-end">@r.EstTotal.ToMoney()</td>
+        @if (hasCommit) { <td colspan="2" class="bh"></td><td class="text-end">@r.ContractCurrent.ToMoney()</td><td class="text-end @Cls(commitVsEst)">@(hasEst ? Sg(commitVsEst) + commitVsEst.ToMoney() : "")</td><td class="bh"></td><td class="text-end">@r.ActualTotal.ToMoney()</td><td class="text-end @Cls(actVsEst)">@(hasEst ? Sg(actVsEst) + actVsEst.ToMoney() : "")</td> }</tr></tfoot>
+</table></div></div>

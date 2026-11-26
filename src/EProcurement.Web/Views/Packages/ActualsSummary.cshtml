@@ -1,0 +1,59 @@
+@model List<PackageActualsView>
+@using EProcurement.Web.Infrastructure
+@{
+    ViewData["Title"] = L["Dự toán – thực tế theo gói mua sắm"];
+    string Cls(decimal v) => v > 0 ? "text-danger" : v < 0 ? "text-success" : "";
+    string Sg(decimal v) => v > 0 ? "+" : "";
+    var method = ViewBag.Method as ProcurementMethod?; var field = ViewBag.Field as string;
+    string Pct(decimal a, decimal b) => b == 0 ? "" : Math.Round(a * 100 / b, 1).ToString("0.#", I18n.ViCulture) + "%";
+    var byMethod = Model.Where(x => x.Result.AwardPrice > 0 && x.Result.EstTotal > 0).GroupBy(x => x.Package.Method).OrderBy(g => g.Key).ToList();
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h5 class="mb-0">@L["Giá dự toán – giá chọn – giá thực tế theo gói mua sắm"]</h5>
+    <form method="get" class="ms-auto d-flex gap-2">
+        <select name="method" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">@L["Mọi hình thức"]</option>@foreach (var m in Enum.GetValues<ProcurementMethod>()) { <option value="@m" selected="@(method == m)">@m.GetDisplayName()</option> }</select>
+        <select name="field" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">@L["-- Mọi lĩnh vực --"]</option>@foreach (var fl in await Catalog.NamesAsync(CatalogType.ProcurementField)) { <option value="@fl" selected="@(field == fl)">@fl</option> }</select>
+    </form>
+</div>
+
+@if (byMethod.Any())
+{
+    <div class="row g-3 mb-3">
+    @foreach (var g in byMethod)
+    {
+        var est = g.Sum(x => x.Result.EstTotal); var selv = g.Sum(x => x.Result.AwardPrice); var save = est - selv;
+        <div class="col-md-3"><div class="card h-100"><div class="card-body py-2">
+            <div class="small text-muted">@g.Key.GetDisplayName() · @g.Count() @L["gói"]</div>
+            <div class="fw-semibold @(save >= 0 ? "text-success" : "text-danger")">@(save >= 0 ? L["Tiết kiệm"] : L["Vượt"]) @Math.Abs(save).ToMoney() đ (@Pct(Math.Abs(save), est))</div>
+            <div class="small text-muted">@L["dự toán"] @est.ToShortMoney() → @L["giá chọn"] @selv.ToShortMoney()</div>
+        </div></div></div>
+    }
+    </div>
+}
+
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0 align-middle small">
+    <thead><tr><th>@L["Gói mua sắm"]</th><th>@L["Hình thức"]</th><th>@L["Lĩnh vực"]</th><th>@L["Nhà cung cấp"]</th><th class="text-end">@L["Giá gói"]</th><th class="text-end">@L["Dự toán"]</th><th class="text-end">@L["Giá chọn"]</th><th class="text-end">@L["± dự toán"]</th><th class="text-end">@L["Hợp đồng / đơn hàng"]</th><th class="text-end">@L["Thực tế đã làm"]</th><th>@L["Tiến độ"]</th><th class="text-end">@L["Thực chi"]</th></tr></thead>
+    <tbody>
+    @foreach (var v in Model)
+    {
+        var r = v.Result; var d = r.AwardPrice - r.EstTotal;
+        var prog = r.ContractCurrent > 0 ? Math.Round(r.ActualTotal * 100 / r.ContractCurrent, 1) : 0;
+        <tr>
+            <td><a asp-action="Actuals" asp-route-id="@v.Package.Id">@v.Package.Number</a><div class="text-muted">@v.Package.Title</div></td>
+            <td>@v.Package.Method.GetDisplayName()</td><td>@v.Package.Field</td><td>@v.Vendor</td>
+            <td class="text-end">@r.PackageBudget.ToMoney()</td><td class="text-end">@r.EstTotal.ToMoney()</td><td class="text-end">@(r.AwardPrice > 0 ? r.AwardPrice.ToMoney() : "")</td>
+            <td class="text-end @Cls(d)">@(r.AwardPrice > 0 && r.EstTotal > 0 ? Sg(d) + d.ToMoney() + " (" + Sg(d) + Pct(d, r.EstTotal) + ")" : "")</td>
+            <td class="text-end">@(v.HasCommitment ? r.ContractCurrent.ToMoney() : "")</td>
+            <td class="text-end">@(v.HasCommitment ? r.ActualTotal.ToMoney() : "")</td>
+            <td style="min-width:110px">@if (v.HasCommitment) { <div class="progress" style="height:8px"><div class="progress-bar bg-success" style="width:@Math.Min(100, prog).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></div></div><div class="text-muted">@prog.ToString("0.#", I18n.ViCulture)%</div> }</td>
+            <td class="text-end">@(v.HasCommitment ? r.PaidNet.ToMoney() : "")</td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="12" class="text-muted p-3">@L["Chưa có gói nào đã chọn được nhà cung cấp."]</td></tr> }
+    </tbody>
+    @if (Model.Any())
+    {
+        <tfoot><tr class="fw-semibold"><td colspan="4">@L["Tổng cộng"] (@Model.Count @L["gói"])</td><td class="text-end">@Model.Sum(x => x.Result.PackageBudget).ToMoney()</td><td class="text-end">@Model.Sum(x => x.Result.EstTotal).ToMoney()</td><td class="text-end">@Model.Sum(x => x.Result.AwardPrice).ToMoney()</td><td></td>
+            <td class="text-end">@Model.Sum(x => x.Result.ContractCurrent).ToMoney()</td><td class="text-end">@Model.Sum(x => x.Result.ActualTotal).ToMoney()</td><td></td><td class="text-end">@Model.Sum(x => x.Result.PaidNet).ToMoney()</td></tr></tfoot>
+    }
+</table></div></div>
+<div class="small text-muted mt-2">@L["Giá chọn: giá trúng thầu (đấu thầu), giá báo giá được chọn (chào hàng cạnh tranh), giá sau thương thảo (chỉ định thầu), giá trị đơn hàng (mua sắm trực tiếp). Giá trị trước VAT."]</div>

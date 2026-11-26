@@ -8,7 +8,7 @@
 }
 <form method="get" class="toolbar">
     <select name="status" class="form-select form-select-sm" style="width:auto" asp-items="items" onchange="this.form.submit()"><option value="">@L["-- Mọi trạng thái --"]</option></select>
-    <a asp-action="ActualsSummary" class="btn btn-outline-secondary btn-sm ms-auto">@L["Dự toán – hợp đồng – thực tế"]</a>
+    <a asp-controller="Packages" asp-action="ActualsSummary" class="btn btn-outline-secondary btn-sm ms-auto">@L["Dự toán – hợp đồng – thực tế"]</a>
 </form>
 <div class="card"><div class="card-body p-0"><table class="table mb-0">
     <thead><tr><th>@L["Số HĐ"]</th><th>@L["Tên hợp đồng"]</th><th>@L["Nhà cung cấp"]</th><th>@L["Hiệu lực"]</th><th class="money">@L["Giá trị"]</th><th class="money">@L["Đã thực hiện"]</th><th>@L["Bảo lãnh TH"]</th><th>@L["Trạng thái"]</th></tr></thead>

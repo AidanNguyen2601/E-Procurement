@@ -63,6 +63,16 @@
 <div class="col-lg-8">
     <div class="card mb-3"><div class="card-body">
         <h5>@Model.Title</h5>
+        @{ var hasSelection = tenders.Any(t => t.Status >= TenderStatus.Awarded && t.Status != TenderStatus.Cancelled) || rfqs.Any(r => r.Status == RfqStatus.Awarded)
+               || awards.Any(a => a.Status == DirectAwardStatus.Approved) || orders.Any(o => o.Status >= PoStatus.Approved && o.Status != PoStatus.Cancelled); }
+        @if (hasSelection)
+        {
+            <div class="mb-2"><a asp-action="Actuals" asp-route-id="@Model.Id" class="btn btn-sm btn-primary">@Icon.Svg("bar-chart", 14) @L["Dự toán – thực tế"]</a></div>
+        }
+        else if (Model.Status != PackageStatus.Cancelled)
+        {
+            <div class="small text-muted mb-2">@L["Dự toán – thực tế có khi gói đã chọn được nhà cung cấp."]</div>
+        }
         <dl class="row small mb-0 info">
             <dt class="col-sm-4">@L["Giá gói (trước VAT)"]</dt><dd class="col-sm-8 fw-semibold">@Model.Budget.ToMoney() đ <span class="text-muted fw-normal">· @L["tổng dự toán PR"] @Model.PurchaseRequests.Sum(r => r.EstimatedTotal).ToMoney() đ</span></dd>
             <dt class="col-sm-4">@L["Lĩnh vực"]</dt><dd class="col-sm-8">@(string.IsNullOrEmpty(Model.Field) ? "—" : Model.Field)</dd>
