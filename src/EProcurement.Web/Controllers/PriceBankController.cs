@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using EProcurement.Web.Data;
 using EProcurement.Web.Infrastructure;
 using EProcurement.Web.Models.Entities;
@@ -8,6 +9,48 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace EProcurement.Web.Controllers;
+
+/// <summary>Form lịch sử giá (giống màn "Lịch sử giá"): nguồn, NCC, hàng hóa, ĐVT, mã phụ, tiền tệ, đơn giá vật tư / thi công – dịch vụ kèm thuế suất, mốc thời gian, gói thầu / hợp đồng liên quan, vùng, ghi chú</summary>
+public class PriceRecordForm
+{
+    public int Id { get; set; }
+    [Display(Name = "Nguồn giá")] public PriceSource Source { get; set; } = PriceSource.Survey;
+    [Display(Name = "Nhà cung cấp")] public int? VendorId { get; set; }
+    [StringLength(200)][Display(Name = "Đơn vị cung cấp (ngoài danh sách NCC)")] public string? SupplierName { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "Chọn mã hàng hóa dịch vụ.")][Display(Name = "Mã hàng hóa dịch vụ")] public int ItemId { get; set; }
+    [StringLength(30)][Display(Name = "Đơn vị tính")] public string? Unit { get; set; }
+    [StringLength(50)][Display(Name = "Mã phụ")] public string? SubCode { get; set; }
+    [Required(ErrorMessage = "Chọn loại tiền tệ"), StringLength(10)][Display(Name = "Loại tiền tệ")] public string Currency { get; set; } = "VND";
+    [Range(0, 1_000_000_000_000)][Display(Name = "Đơn giá vật tư")] public decimal MaterialPrice { get; set; }
+    [Range(0, 100)][Display(Name = "Thuế suất vật tư %")] public decimal MaterialVatPercent { get; set; }
+    [Range(0, 1_000_000_000_000)][Display(Name = "Đơn giá thi công / dịch vụ")] public decimal ServicePrice { get; set; }
+    [Range(0, 100)][Display(Name = "Thuế suất thi công / dịch vụ %")] public decimal ServiceVatPercent { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Mốc thời gian")] public DateTime PriceDate { get; set; } = DateTime.Today;
+    [Display(Name = "Gói thầu liên quan")] public int? TenderId { get; set; }
+    [Display(Name = "Hợp đồng liên quan")] public int? ContractId { get; set; }
+    [StringLength(100)][Display(Name = "Vùng")] public string? Region { get; set; }
+    [StringLength(300)][Display(Name = "Diễn giải nguồn (số báo giá / đường dẫn)")] public string? SourceNote { get; set; }
+    [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+
+    public decimal UnitPrice => MaterialPrice + ServicePrice;
+    public decimal PriceWithTax => Math.Round(MaterialPrice * (1 + MaterialVatPercent / 100m) + ServicePrice * (1 + ServiceVatPercent / 100m), 2);
+
+    public static PriceRecordForm From(PriceRecord r) => new()
+    {
+        Id = r.Id, Source = r.Source, VendorId = r.VendorId, SupplierName = r.SupplierName, ItemId = r.ItemId, Unit = r.Unit, SubCode = r.SubCode, Currency = string.IsNullOrEmpty(r.Currency) ? "VND" : r.Currency,
+        MaterialPrice = r.MaterialPrice == 0 && r.ServicePrice == 0 ? r.UnitPrice : r.MaterialPrice, MaterialVatPercent = r.MaterialVatPercent, ServicePrice = r.ServicePrice, ServiceVatPercent = r.ServiceVatPercent,
+        PriceDate = r.PriceDate, TenderId = r.TenderId, ContractId = r.ContractId, Region = r.Region, SourceNote = r.SourceNote, Note = r.Note
+    };
+
+    public void ApplyTo(PriceRecord r)
+    {
+        static string? T(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+        r.Source = Source; r.VendorId = VendorId; r.SupplierName = VendorId == null ? T(SupplierName) : null; r.ItemId = ItemId; r.Unit = T(Unit); r.SubCode = T(SubCode);
+        r.Currency = T(Currency)?.ToUpperInvariant() ?? "VND"; r.MaterialPrice = Math.Round(MaterialPrice, 2); r.MaterialVatPercent = MaterialVatPercent;
+        r.ServicePrice = Math.Round(ServicePrice, 2); r.ServiceVatPercent = ServiceVatPercent; r.UnitPrice = r.MaterialPrice + r.ServicePrice;
+        r.PriceDate = PriceDate.Date; r.TenderId = TenderId; r.ContractId = ContractId; r.Region = T(Region); r.SourceNote = T(SourceNote); r.Note = T(Note);
+    }
+}
 
 /// <summary>
 /// Ngân hàng giá: tra cứu đơn giá thực tế theo mặt hàng (đơn hàng, báo giá, HSDT, chào giá chỉ định, hợp đồng)
@@ -54,35 +97,98 @@ public class PriceBankController : ProcControllerBase
         return View(item);
     }
 
-    /// <summary>Ghi nhận giá khảo sát / công bố / website vào ngân hàng giá</summary>
-    [Authorize(Roles = AppRoles.Purchasing)]
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddRecord(int itemId, int? vendorId, string? supplierName, PriceSource source, string? sourceNote, decimal unitPrice, DateTime? priceDate)
+    // ------------------------------------------------------------------ Lịch sử giá (giá ghi nhận tay: khảo sát, công bố, chọn thầu, hợp đồng…)
+    public async Task<IActionResult> Records(string? q, int? vendorId, PriceSource? source, string? region, string? currency, DateTime? from, DateTime? to)
     {
-        if (!await Db.Items.AnyAsync(i => i.Id == itemId)) return NotFound();
-        IActionResult Back(string? err = null) { if (err != null) TempData["Error"] = err; return RedirectToAction(nameof(Item), new { id = itemId }); }
-        if (unitPrice <= 0) return Back(I18n.T("Nhập đơn giá > 0."));
-        if (vendorId == null && string.IsNullOrWhiteSpace(supplierName)) return Back(I18n.T("Chọn nhà cung cấp hoặc nhập tên đơn vị cung cấp."));
-        if (priceDate == null || priceDate > DateTime.Today) return Back(I18n.T("Ngày giá không hợp lệ."));
-        Db.PriceRecords.Add(new PriceRecord
+        var query = Db.PriceRecords.AsNoTracking().Include(r => r.Item).Include(r => r.Vendor).Include(r => r.Tender).Include(r => r.Contract).AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q)) { var k = q.Trim(); query = query.Where(r => r.Item!.Code.Contains(k) || r.Item.Name.Contains(k) || (r.SubCode != null && r.SubCode.Contains(k))); }
+        if (vendorId.HasValue) query = query.Where(r => r.VendorId == vendorId);
+        if (source.HasValue) query = query.Where(r => r.Source == source);
+        if (!string.IsNullOrWhiteSpace(region)) query = query.Where(r => r.Region == region);
+        if (!string.IsNullOrWhiteSpace(currency)) query = query.Where(r => (r.Currency ?? "VND") == currency);
+        if (from.HasValue) query = query.Where(r => r.PriceDate >= from.Value.Date);
+        if (to.HasValue) query = query.Where(r => r.PriceDate < to.Value.Date.AddDays(1));
+        ViewBag.Q = q; ViewBag.VendorId = vendorId; ViewBag.Source = source; ViewBag.Region = region; ViewBag.Currency = currency; ViewBag.From = from; ViewBag.To = to;
+        ViewBag.Vendors = new SelectList(await Db.Vendors.OrderBy(v => v.Name).Select(v => new { v.Id, Name = v.Code + " - " + v.Name }).ToListAsync(), "Id", "Name", vendorId);
+        ViewBag.Regions = await Db.PriceRecords.Where(r => r.Region != null).Select(r => r.Region!).Distinct().OrderBy(x => x).ToListAsync();
+        ViewBag.Currencies = await new CatalogService(Db).EntriesAsync(CatalogType.Currency);
+        return View(await query.OrderByDescending(r => r.PriceDate).ThenByDescending(r => r.Id).Take(500).ToListAsync());
+    }
+
+    private async Task FillRecordFormAsync(PriceRecordForm f)
+    {
+        ViewBag.Items = await Db.Items.AsNoTracking().Where(i => i.IsActive || i.Id == f.ItemId).OrderBy(i => i.Code).Select(i => new { i.Id, i.Code, i.Name, i.Unit }).ToListAsync();
+        ViewBag.Vendors = new SelectList(await Db.Vendors.Where(v => v.Status != VendorStatus.Blacklisted || v.Id == f.VendorId).OrderBy(v => v.Code).Select(v => new { v.Id, Name = v.Code + " - " + v.Name }).ToListAsync(), "Id", "Name", f.VendorId);
+        ViewBag.Currencies = await new CatalogService(Db).EntriesAsync(CatalogType.Currency);
+        ViewBag.Units = await new CatalogService(Db).NamesAsync(CatalogType.Unit);
+        ViewBag.Tenders = new SelectList(await Db.Tenders.Where(t => t.Status != TenderStatus.Cancelled || t.Id == f.TenderId).OrderByDescending(t => t.Id).Take(300).Select(t => new { t.Id, Name = t.Number + " – " + t.Title }).ToListAsync(), "Id", "Name", f.TenderId);
+        ViewBag.Contracts = new SelectList(await Db.Contracts.OrderByDescending(c => c.Id).Take(300).Select(c => new { c.Id, Name = c.Number + " – " + c.Title }).ToListAsync(), "Id", "Name", f.ContractId);
+        ViewBag.SubCodes = await Db.PriceRecords.Where(r => r.SubCode != null && (f.ItemId == 0 || r.ItemId == f.ItemId)).Select(r => r.SubCode!).Distinct().Take(100).ToListAsync();
+        ViewBag.Regions = await Db.PriceRecords.Where(r => r.Region != null).Select(r => r.Region!).Distinct().OrderBy(x => x).Take(100).ToListAsync();
+    }
+
+    /// <summary>Xem / thêm / sửa một bản ghi lịch sử giá. edit=false: chỉ xem (mọi trường khóa).</summary>
+    public async Task<IActionResult> Record(int? id, int? itemId, bool edit = false)
+    {
+        PriceRecordForm f;
+        if (id.HasValue)
         {
-            ItemId = itemId, VendorId = vendorId, SupplierName = vendorId == null ? supplierName?.Trim() : null, Source = source, SourceNote = sourceNote?.Trim(),
-            UnitPrice = Math.Round(unitPrice, 0), PriceDate = priceDate.Value, CreatedById = Me, CreatedAt = DateTime.Now
-        });
-        await Db.SaveChangesAsync();
-        TempData["Success"] = I18n.T("Đã ghi nhận giá vào ngân hàng giá.");
-        return Back();
+            var r = await Db.PriceRecords.AsNoTracking().Include(x => x.CreatedBy).FirstOrDefaultAsync(x => x.Id == id);
+            if (r == null) return NotFound();
+            f = PriceRecordForm.From(r);
+            ViewBag.Record = r;
+        }
+        else
+        {
+            var item = itemId.HasValue ? await Db.Items.AsNoTracking().FirstOrDefaultAsync(i => i.Id == itemId) : null;
+            f = new PriceRecordForm { ItemId = item?.Id ?? 0, Unit = item?.Unit, Currency = "VND", PriceDate = DateTime.Today, MaterialVatPercent = 10, ServiceVatPercent = 10 };
+            edit = true;
+        }
+        ViewBag.Edit = edit && User.IsPurchasing();
+        await FillRecordFormAsync(f);
+        return View(f);
     }
 
     [Authorize(Roles = AppRoles.Purchasing)]
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteRecord(int id)
+    public async Task<IActionResult> SaveRecord(PriceRecordForm f)
+    {
+        var item = await Db.Items.AsNoTracking().FirstOrDefaultAsync(i => i.Id == f.ItemId);
+        if (item == null) ModelState.AddModelError(nameof(f.ItemId), I18n.T("Chọn mã hàng hóa dịch vụ."));
+        if (f.VendorId == null && string.IsNullOrWhiteSpace(f.SupplierName)) ModelState.AddModelError(nameof(f.VendorId), I18n.T("Chọn nhà cung cấp hoặc nhập tên đơn vị cung cấp."));
+        if (f.VendorId != null && !await Db.Vendors.AnyAsync(v => v.Id == f.VendorId)) ModelState.AddModelError(nameof(f.VendorId), I18n.T("Nhà cung cấp không hợp lệ."));
+        if (f.MaterialPrice + f.ServicePrice <= 0) ModelState.AddModelError(nameof(f.MaterialPrice), I18n.T("Nhập đơn giá vật tư và / hoặc đơn giá thi công / dịch vụ lớn hơn 0."));
+        if (f.PriceDate > DateTime.Today) ModelState.AddModelError(nameof(f.PriceDate), I18n.T("Mốc thời gian không được ở tương lai."));
+        if (f.TenderId != null && !await Db.Tenders.AnyAsync(t => t.Id == f.TenderId)) ModelState.AddModelError(nameof(f.TenderId), I18n.T("Gói thầu không hợp lệ."));
+        if (f.ContractId != null && !await Db.Contracts.AnyAsync(c => c.Id == f.ContractId)) ModelState.AddModelError(nameof(f.ContractId), I18n.T("Hợp đồng không hợp lệ."));
+        var currencies = await new CatalogService(Db).EntriesAsync(CatalogType.Currency);
+        if (!string.Equals(f.Currency, "VND", StringComparison.OrdinalIgnoreCase) && !currencies.Any(c => string.Equals(c.Code ?? c.Name, f.Currency, StringComparison.OrdinalIgnoreCase)))
+            ModelState.AddModelError(nameof(f.Currency), I18n.T("Chọn loại tiền tệ trong danh mục."));
+        if (!ModelState.IsValid) { ViewBag.Edit = true; await FillRecordFormAsync(f); return View("Record", f); }
+
+        PriceRecord r;
+        if (f.Id > 0)
+        {
+            r = (await Db.PriceRecords.FindAsync(f.Id))!;
+            if (r == null) return NotFound();
+            r.UpdatedAt = DateTime.Now;
+        }
+        else { r = new PriceRecord { CreatedById = Me, CreatedAt = DateTime.Now }; Db.PriceRecords.Add(r); }
+        f.ApplyTo(r);
+        await Db.SaveChangesAsync();
+        TempData["Success"] = I18n.T("Đã lưu lịch sử giá.");
+        return RedirectToAction(nameof(Record), new { id = r.Id });
+    }
+
+    [Authorize(Roles = AppRoles.Purchasing)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteRecord(int id, string? back)
     {
         var r = await Db.PriceRecords.FindAsync(id);
         if (r == null) return NotFound();
         Db.PriceRecords.Remove(r);
         await Db.SaveChangesAsync();
         TempData["Success"] = I18n.T("Đã xóa giá khảo sát.");
-        return RedirectToAction(nameof(Item), new { id = r.ItemId });
+        return back == "records" ? RedirectToAction(nameof(Records)) : RedirectToAction(nameof(Item), new { id = r.ItemId });
     }
 }

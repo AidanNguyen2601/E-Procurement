@@ -294,6 +294,8 @@ public enum PriceSource
     [Display(Name = "Khảo sát / báo giá tham khảo")] Survey = 1,
     [Display(Name = "Website / sàn thương mại")] Website = 2,
     [Display(Name = "Công bố giá / thông báo giá")] Published = 3,
+    [Display(Name = "Giá chọn thầu")] Awarded = 4,
+    [Display(Name = "Giá hợp đồng")] Contract = 5,
     [Display(Name = "Khác")] Other = 9
 }
 

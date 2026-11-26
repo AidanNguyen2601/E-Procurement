@@ -1,0 +1,111 @@
+@model EProcurement.Web.Controllers.PriceRecordForm
+@using EProcurement.Web.Infrastructure
+@{
+    bool edit = ViewBag.Edit; var rec = ViewBag.Record as PriceRecord;
+    var mode = Model.Id == 0 ? L["Thêm"] : edit ? L["Sửa"] : L["Xem"];
+    ViewData["Title"] = $"[{mode}] {L["Lịch sử giá"]}";
+    var items = (System.Collections.IEnumerable)ViewBag.Items;
+    var currencies = (List<CatalogEntry>)ViewBag.Currencies;
+    var units = (List<string>)ViewBag.Units; var subCodes = (List<string>)ViewBag.SubCodes; var regions = (List<string>)ViewBag.Regions;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    string Req() => edit ? "*" : "*";
+}
+<style>
+    .pr-form .form-label { font-size: .88rem; margin-bottom: .25rem; }
+    .pr-form .req { color: #dc2626; margin-right: 2px; }
+    .pr-form fieldset:disabled .form-control, .pr-form fieldset:disabled .form-select { background-color: #e9ecef; }
+</style>
+<div class="card pr-form" style="max-width:1000px">
+    <div class="card-header d-flex align-items-center">
+        <h5 class="mb-0">@ViewData["Title"]</h5>
+        <a asp-action="Records" class="btn-close ms-auto" aria-label="@L["Đóng"]"></a>
+    </div>
+    <div class="card-body">
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+    <form asp-action="SaveRecord" method="post" id="prf">
+    <input type="hidden" asp-for="Id" />
+    <fieldset disabled="@(!edit)">
+    <div class="row g-3">
+        <div class="col-md-6"><label class="form-label"><span class="req">*</span>@L["Nguồn giá"]</label>
+            <select asp-for="Source" asp-items="Html.GetEnumSelectList<PriceSource>()" class="form-select"></select></div>
+        <div class="col-md-6"><label class="form-label"><span class="req">*</span>@L["Nhà cung cấp"]</label>
+            <select asp-for="VendorId" asp-items="ViewBag.Vendors" class="form-select"><option value="">@L["-- Chọn nhà cung cấp --"]</option></select>
+            <input asp-for="SupplierName" class="form-control form-control-sm mt-1" placeholder="@L["hoặc tên đơn vị ngoài danh sách NCC"]" />
+            <span asp-validation-for="VendorId" class="text-danger small"></span></div>
+
+        <div class="col-md-6"><label class="form-label"><span class="req">*</span>@L["Mã hàng hóa dịch vụ"]</label>
+            <select asp-for="ItemId" class="form-select" id="itemSel"><option value="0">@L["-- Chọn hàng hóa / dịch vụ --"]</option>
+                @foreach (dynamic it in items) { <option value="@it.Id" data-unit="@it.Unit" selected="@(it.Id == Model.ItemId)">@it.Code – @it.Name</option> }</select>
+            <span asp-validation-for="ItemId" class="text-danger small"></span></div>
+        <div class="col-md-6"><label class="form-label">@L["Đơn vị tính"]</label>
+            <input asp-for="Unit" class="form-control" list="units" id="unitInp" /><datalist id="units">@foreach (var u in units) { <option value="@u"></option> }</datalist></div>
+
+        <div class="col-md-6"><label class="form-label">@L["Mã phụ"]</label>
+            <input asp-for="SubCode" class="form-control" list="subcodes" placeholder="@L["Mã phụ"]" /><datalist id="subcodes">@foreach (var s in subCodes) { <option value="@s"></option> }</datalist></div>
+        <div class="col-md-6"><label class="form-label"><span class="req">*</span>@L["Loại tiền tệ"]</label>
+            <select asp-for="Currency" class="form-select" id="curSel">
+                @foreach (var c in currencies) { var code = c.Code ?? c.Name; <option value="@code" selected="@string.Equals(code, Model.Currency, StringComparison.OrdinalIgnoreCase)">@c.Name</option> }
+                @if (!currencies.Any(c => string.Equals(c.Code ?? c.Name, Model.Currency, StringComparison.OrdinalIgnoreCase))) { <option value="@Model.Currency" selected>@Model.Currency</option> }
+            </select><span asp-validation-for="Currency" class="text-danger small"></span></div>
+
+        <div class="col-md-6"><label class="form-label">@L["Đơn giá vật tư"]</label>
+            <input name="MaterialPrice" data-money="decimal" value="@Model.MaterialPrice.ToString("0.##", inv)" class="form-control text-end pr-calc" id="mp" />
+            <span asp-validation-for="MaterialPrice" class="text-danger small"></span></div>
+        <div class="col-md-6"><label class="form-label">@L["Thuế suất vật tư %"]</label>
+            <input asp-for="MaterialVatPercent" type="number" min="0" max="100" step="0.01" class="form-control text-end pr-calc" id="mv" /></div>
+
+        <div class="col-md-6"><label class="form-label">@L["Đơn giá thi công / dịch vụ"]</label>
+            <input name="ServicePrice" data-money="decimal" value="@Model.ServicePrice.ToString("0.##", inv)" class="form-control text-end pr-calc" id="sp" /></div>
+        <div class="col-md-6"><label class="form-label">@L["Thuế suất thi công / dịch vụ %"]</label>
+            <input asp-for="ServiceVatPercent" type="number" min="0" max="100" step="0.01" class="form-control text-end pr-calc" id="sv" /></div>
+
+        <div class="col-md-6"><label class="form-label">@L["Mốc thời gian"]</label>
+            <input asp-for="PriceDate" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control" /><span asp-validation-for="PriceDate" class="text-danger small"></span></div>
+        <div class="col-md-6"><label class="form-label">@L["Gói thầu liên quan"]</label>
+            <select asp-for="TenderId" asp-items="ViewBag.Tenders" class="form-select"><option value="">@L["Gói thầu liên quan"]</option></select></div>
+
+        <div class="col-md-6"><label class="form-label">@L["Hợp đồng liên quan"]</label>
+            <select asp-for="ContractId" asp-items="ViewBag.Contracts" class="form-select"><option value="">@L["Hợp đồng liên quan"]</option></select></div>
+        <div class="col-md-6"><label class="form-label">@L["Vùng"]</label>
+            <input asp-for="Region" class="form-control" list="regions" /><datalist id="regions">@foreach (var r in regions) { <option value="@r"></option> }</datalist></div>
+
+        <div class="col-md-6"><label class="form-label">@L["Diễn giải nguồn (số báo giá / đường dẫn)"]</label><input asp-for="SourceNote" class="form-control" /></div>
+        <div class="col-md-6"><div class="border rounded p-2 small bg-light h-100">
+            <div class="d-flex justify-content-between"><span>@L["Đơn giá trước thuế"]</span><b id="tPre">@Model.UnitPrice.ToString("#,##0.##", I18n.ViCulture)</b></div>
+            <div class="d-flex justify-content-between"><span>@L["Đơn giá gồm thuế"]</span><b id="tTax">@Model.PriceWithTax.ToString("#,##0.##", I18n.ViCulture)</b></div>
+            <div class="text-muted" id="tCur">@Model.Currency</div>
+        </div></div>
+
+        <div class="col-12"><label class="form-label">@L["Ghi chú"]</label><textarea asp-for="Note" rows="3" class="form-control"></textarea></div>
+    </div>
+    </fieldset>
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        @if (edit) { <button class="btn btn-primary">@L["Lưu"]</button> }
+        @if (!edit && User.IsPurchasing() && Model.Id > 0) { <a asp-action="Record" asp-route-id="@Model.Id" asp-route-edit="true" class="btn btn-primary">@L["Sửa"]</a> }
+        @if (Model.ItemId > 0) { <a asp-action="Item" asp-route-id="@Model.ItemId" class="btn btn-outline-secondary">@L["Ngân hàng giá của mặt hàng"]</a> }
+        <a asp-action="Records" class="btn btn-outline-secondary">@L["Đóng"]</a>
+        @if (rec != null) { <span class="small text-muted ms-auto align-self-center">@L["Ghi nhận"]: @rec.CreatedBy?.FullName @rec.CreatedAt.ToDateTime()@(rec.UpdatedAt != null ? " · " + L["sửa"] + " " + rec.UpdatedAt.ToDateTime() : "")</span> }
+    </div>
+    </form>
+    @if (!edit && User.IsPurchasing() && Model.Id > 0)
+    {
+        <form asp-action="DeleteRecord" asp-route-id="@Model.Id" asp-route-back="records" method="post" class="mt-2" data-confirm="@L["Xóa bản ghi lịch sử giá này?"]"><button class="btn btn-link text-danger btn-sm p-0">@L["Xóa bản ghi"]</button></form>
+    }
+    </div>
+</div>
+<script>
+(function () {
+    function num(v) { return parseFloat(String(v || '').replace(/\./g, '').replace(',', '.')) || 0; }
+    function f(n) { return n.toLocaleString('vi-VN', { maximumFractionDigits: 2 }); }
+    function calc() {
+        var m = num(document.getElementById('mp').value), s = num(document.getElementById('sp').value);
+        var mv = parseFloat(document.getElementById('mv').value) || 0, sv = parseFloat(document.getElementById('sv').value) || 0;
+        document.getElementById('tPre').textContent = f(m + s);
+        document.getElementById('tTax').textContent = f(m * (1 + mv / 100) + s * (1 + sv / 100));
+    }
+    document.querySelectorAll('.pr-calc').forEach(function (i) { i.addEventListener('input', calc); });
+    var cur = document.getElementById('curSel'); if (cur) cur.addEventListener('change', function () { document.getElementById('tCur').textContent = cur.value; });
+    var item = document.getElementById('itemSel'), unit = document.getElementById('unitInp');
+    if (item) item.addEventListener('change', function () { var o = item.options[item.selectedIndex]; if (o && o.dataset.unit && !unit.value) unit.value = o.dataset.unit; });
+})();
+</script>

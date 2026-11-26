@@ -37,6 +37,7 @@ public static class NavMenu
         var req = vc.HttpContext.Request;
         return (ctrl, act) switch
         {
+            ("PriceBank", "Records" or "Record" or "SaveRecord") => "pb-records",
             ("Packages", "Progress") => "pkg-progress",
             ("Packages", "Actuals" or "ActualsSummary") => "pkg-actual",
             ("Tenders", "Evaluations" or "Screen" or "Score") => "td-eval",
@@ -119,6 +120,7 @@ public static class NavMenu
                 L("Prequalifications", "Sơ tuyển nhà cung cấp", "clipboard", "Prequalifications"),
                 L("SupplierEvaluations", "Đánh giá nhà cung cấp", "users", "SupplierEvaluations"),
                 L("PriceBank", "Ngân hàng giá", "database", "PriceBank"),
+                pd ? L("pb-records", "Lịch sử giá", "clock", "PriceBank", "Records") : null,
                 L("StandardPrices", "Bảng giá tiêu chuẩn", "tag", "StandardPrices"),
                 L("src-report", "Báo cáo nguồn cung", "bar-chart", "Reports", route: new { group = "sourcing" })) : null,
 

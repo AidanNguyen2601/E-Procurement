@@ -64,9 +64,12 @@ public static class PriceBank
             .Select(l => new { l.ItemId, l.Contract!.SignedDate, l.UnitPrice, l.Quantity, V = l.Contract.Vendor!.Name, l.Contract.Number, l.ContractId }).ToListAsync();
         list.AddRange(contracts.Select(x => new PriceObservation(x.ItemId!.Value, x.SignedDate, x.UnitPrice, x.Quantity, x.V, "Hợp đồng", x.Number, $"/Contracts/Details/{x.ContractId}")));
 
-        var manual = await db.PriceRecords.AsNoTracking().Where(r => r.PriceDate >= from && r.PriceDate < end && (itemIds == null || itemIds.Contains(r.ItemId)))
-            .Select(r => new { r.ItemId, r.PriceDate, r.UnitPrice, V = r.Vendor != null ? r.Vendor.Name : r.SupplierName, r.Source, r.SourceNote }).ToListAsync();
-        list.AddRange(manual.Select(x => new PriceObservation(x.ItemId, x.PriceDate, x.UnitPrice, 0, x.V, x.Source.GetDisplayName(), x.SourceNote, null)));
+        // lịch sử giá nhập tay: chỉ giá bằng tiền Việt mới đưa vào thống kê (ngoại tệ xem ở trang Lịch sử giá)
+        var manual = await db.PriceRecords.AsNoTracking().Where(r => r.PriceDate >= from && r.PriceDate < end && (itemIds == null || itemIds.Contains(r.ItemId))
+                && (r.Currency == null || r.Currency == "VND"))
+            .Select(r => new { r.Id, r.ItemId, r.PriceDate, r.UnitPrice, V = r.Vendor != null ? r.Vendor.Name : r.SupplierName, r.Source, r.SourceNote, r.Region }).ToListAsync();
+        list.AddRange(manual.Select(x => new PriceObservation(x.ItemId, x.PriceDate, Math.Round(x.UnitPrice, 0), 0, x.V, x.Source.GetDisplayName(),
+            string.Join(" · ", new[] { x.SourceNote, x.Region }.Where(t => !string.IsNullOrWhiteSpace(t))), $"/PriceBank/Record/{x.Id}")));
 
         return list.Where(o => In(o.ItemId)).OrderByDescending(o => o.Date).ToList();
     }

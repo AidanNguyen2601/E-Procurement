@@ -1,0 +1,46 @@
+@model List<PriceRecord>
+@using EProcurement.Web.Infrastructure
+@{
+    ViewData["Title"] = L["Lịch sử giá"];
+    var regions = (List<string>)ViewBag.Regions; var currencies = (List<CatalogEntry>)ViewBag.Currencies;
+    var src = ViewBag.Source as PriceSource?;
+    string D(DateTime? d) => d?.ToString("yyyy-MM-dd") ?? "";
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h5 class="mb-0">@L["Lịch sử giá"]</h5>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">@L["Ngân hàng giá theo mặt hàng"]</a>
+    @if (User.IsPurchasing()) { <a asp-action="Record" class="btn btn-primary btn-sm ms-auto">@Icon.Svg("plus", 14) @L["Thêm lịch sử giá"]</a> }
+</div>
+<form method="get" class="row g-2 mb-3 small">
+    <div class="col-md-3"><input name="q" value="@ViewBag.Q" class="form-control form-control-sm" placeholder="@L["Mã / tên hàng hóa, mã phụ"]" /></div>
+    <div class="col-md-3"><select name="vendorId" asp-items="ViewBag.Vendors" class="form-select form-select-sm"><option value="">@L["-- Mọi nhà cung cấp --"]</option></select></div>
+    <div class="col-md-2"><select name="source" class="form-select form-select-sm"><option value="">@L["-- Mọi nguồn giá --"]</option>@foreach (var s in Enum.GetValues<PriceSource>()) { <option value="@s" selected="@(src == s)">@s.GetDisplayName()</option> }</select></div>
+    <div class="col-md-2"><select name="region" class="form-select form-select-sm"><option value="">@L["-- Mọi vùng --"]</option>@foreach (var r in regions) { <option value="@r" selected="@((string?)ViewBag.Region == r)">@r</option> }</select></div>
+    <div class="col-md-2"><select name="currency" class="form-select form-select-sm"><option value="">@L["-- Mọi loại tiền --"]</option>@foreach (var c in currencies) { var code = c.Code ?? c.Name; <option value="@code" selected="@((string?)ViewBag.Currency == code)">@code</option> }</select></div>
+    <div class="col-md-2"><input type="date" name="from" value="@D(ViewBag.From)" class="form-control form-control-sm" title="@L["Từ ngày"]" /></div>
+    <div class="col-md-2"><input type="date" name="to" value="@D(ViewBag.To)" class="form-control form-control-sm" title="@L["Đến ngày"]" /></div>
+    <div class="col-md-2"><button class="btn btn-outline-secondary btn-sm">@L["Lọc"]</button></div>
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0 align-middle small">
+    <thead><tr><th>@L["Mốc thời gian"]</th><th>@L["Nguồn giá"]</th><th>@L["Nhà cung cấp"]</th><th>@L["Mã hàng hóa dịch vụ"]</th><th>@L["ĐVT"]</th><th>@L["Mã phụ"]</th><th>@L["Tiền tệ"]</th><th class="text-end">@L["Đơn giá vật tư"]</th><th class="text-end">@L["Đơn giá thi công / dịch vụ"]</th><th class="text-end">@L["Đơn giá gồm thuế"]</th><th>@L["Vùng"]</th><th>@L["Gói thầu / hợp đồng"]</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        var mat = r.MaterialPrice == 0 && r.ServicePrice == 0 ? r.UnitPrice : r.MaterialPrice;
+        <tr>
+            <td>@r.PriceDate.ToDate()</td><td>@r.Source.GetDisplayName()</td>
+            <td>@(r.Vendor != null ? r.Vendor.Code + " - " + r.Vendor.Name : r.SupplierName)</td>
+            <td><a asp-action="Item" asp-route-id="@r.ItemId">@r.Item?.Code</a><div class="text-muted">@r.Item?.Name</div></td>
+            <td>@(r.Unit ?? r.Item?.Unit)</td><td>@r.SubCode</td><td>@(r.Currency ?? "VND")</td>
+            <td class="text-end">@mat.ToString("#,##0.##", I18n.ViCulture)@if (r.MaterialVatPercent > 0) { <div class="text-muted">VAT @r.MaterialVatPercent.ToString("0.##")%</div> }</td>
+            <td class="text-end">@r.ServicePrice.ToString("#,##0.##", I18n.ViCulture)@if (r.ServiceVatPercent > 0) { <div class="text-muted">VAT @r.ServiceVatPercent.ToString("0.##")%</div> }</td>
+            <td class="text-end fw-semibold">@(r.MaterialPrice == 0 && r.ServicePrice == 0 ? r.UnitPrice.ToString("#,##0.##", I18n.ViCulture) : r.PriceWithTax.ToString("#,##0.##", I18n.ViCulture))</td>
+            <td>@r.Region</td>
+            <td>@if (r.Tender != null) { <a asp-controller="Tenders" asp-action="Details" asp-route-id="@r.TenderId">@r.Tender.Number</a> }@if (r.Contract != null) { <div><a asp-controller="Contracts" asp-action="Details" asp-route-id="@r.ContractId">@r.Contract.Number</a></div> }</td>
+            <td class="text-nowrap"><a asp-action="Record" asp-route-id="@r.Id" class="btn btn-outline-secondary btn-sm py-0">@L["Xem"]</a>@if (User.IsPurchasing()) { <a asp-action="Record" asp-route-id="@r.Id" asp-route-edit="true" class="btn btn-outline-primary btn-sm py-0 ms-1">@L["Sửa"]</a> }</td>
+        </tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="13" class="text-muted p-3">@L["Chưa có lịch sử giá phù hợp."]</td></tr> }
+    </tbody>
+</table></div></div>
+<div class="small text-muted mt-2">@L["Giá bằng tiền Việt được đưa vào thống kê ngân hàng giá theo mặt hàng (đơn giá trước thuế = vật tư + thi công / dịch vụ); giá ngoại tệ chỉ lưu tại đây."]</div>

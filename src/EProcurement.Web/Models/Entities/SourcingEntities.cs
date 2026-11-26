@@ -108,8 +108,28 @@ public class PriceRecord
     [StringLength(200)][Display(Name = "Đơn vị cung cấp (ngoài danh sách NCC)")] public string? SupplierName { get; set; }
     [Display(Name = "Nguồn giá")] public PriceSource Source { get; set; } = PriceSource.Survey;
     [StringLength(300)][Display(Name = "Diễn giải nguồn")] public string? SourceNote { get; set; }
-    [Column(TypeName = "decimal(18,0)")][Display(Name = "Đơn giá (trước VAT)")] public decimal UnitPrice { get; set; }
-    [DataType(DataType.Date)][Display(Name = "Ngày giá")] public DateTime PriceDate { get; set; } = DateTime.Today;
+    /// <summary>Đơn giá trước thuế = đơn giá vật tư + đơn giá thi công / dịch vụ</summary>
+    [Column(TypeName = "decimal(18,2)")][Display(Name = "Đơn giá (trước VAT)")] public decimal UnitPrice { get; set; }
+    [DataType(DataType.Date)][Display(Name = "Mốc thời gian")] public DateTime PriceDate { get; set; } = DateTime.Today;
+    [StringLength(30)][Display(Name = "Đơn vị tính")] public string? Unit { get; set; }
+    [StringLength(50)][Display(Name = "Mã phụ")] public string? SubCode { get; set; }
+    /// <summary>Mã tiền tệ (danh mục Đơn vị tiền tệ); null / VND = Việt Nam đồng</summary>
+    [StringLength(10)][Display(Name = "Loại tiền tệ")] public string? Currency { get; set; } = "VND";
+    [Column(TypeName = "decimal(18,2)")][Display(Name = "Đơn giá vật tư")] public decimal MaterialPrice { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Display(Name = "Thuế suất vật tư %")] public decimal MaterialVatPercent { get; set; }
+    [Column(TypeName = "decimal(18,2)")][Display(Name = "Đơn giá thi công / dịch vụ")] public decimal ServicePrice { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Display(Name = "Thuế suất thi công / dịch vụ %")] public decimal ServiceVatPercent { get; set; }
+    [Display(Name = "Gói thầu liên quan")] public int? TenderId { get; set; }
+    public Tender? Tender { get; set; }
+    [Display(Name = "Hợp đồng liên quan")] public int? ContractId { get; set; }
+    public Contract? Contract { get; set; }
+    [StringLength(100)][Display(Name = "Vùng")] public string? Region { get; set; }
+    [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>Đơn giá gồm thuế = vật tư × (1 + thuế vật tư) + thi công / dịch vụ × (1 + thuế thi công / dịch vụ)</summary>
+    [NotMapped] public decimal PriceWithTax => Math.Round(MaterialPrice * (1 + MaterialVatPercent / 100m) + ServicePrice * (1 + ServiceVatPercent / 100m), 2);
+    [NotMapped] public bool IsVnd => string.IsNullOrEmpty(Currency) || Currency.Equals("VND", StringComparison.OrdinalIgnoreCase);
     public int CreatedById { get; set; }
     public AppUser? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;

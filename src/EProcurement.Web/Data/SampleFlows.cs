@@ -238,10 +238,12 @@ public static class SampleFlows
                         ItemId = it.Id, VendorId = useVendor ? vendors[rnd.Next(vendors.Count)].Id : null, SupplierName = useVendor ? null : shops[rnd.Next(shops.Length)],
                         Source = src, SourceNote = $"{Tag} {srcName} tháng {today.AddMonths(-m):MM/yyyy}",
                         UnitPrice = Math.Round(it.ReferencePrice * (decimal)(0.88 + rnd.NextDouble() * 0.27) * (1 + m * 0.004m) / 1000m) * 1000m,
-                        PriceDate = today.AddMonths(-m).AddDays(-rnd.Next(0, 25)), CreatedById = rnd.Next(2) == 0 ? buyer.Id : buyer2.Id, CreatedAt = now.AddMonths(-m)
+                        PriceDate = today.AddMonths(-m).AddDays(-rnd.Next(0, 25)), CreatedById = rnd.Next(2) == 0 ? buyer.Id : buyer2.Id, CreatedAt = now.AddMonths(-m),
+                        Unit = it.Unit, Currency = "VND", MaterialVatPercent = 10, Region = new[] { "Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng" }[cnt % 3]
                     });
                     cnt++;
                 }
+            foreach (var r in db.PriceRecords.Local.Where(r => r.MaterialPrice == 0 && r.ServicePrice == 0)) r.MaterialPrice = r.UnitPrice; // giá mẫu là giá hàng hóa (vật tư)
             await db.SaveChangesAsync();
             done.Add($"{cnt} giá tham khảo trong ngân hàng giá");
         }

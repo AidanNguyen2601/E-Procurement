@@ -334,6 +334,23 @@ public static class DbSeeder
             "IF COL_LENGTH('ContractLines','OriginalQuantity') IS NULL ALTER TABLE ContractLines ADD OriginalQuantity decimal(18,3) NULL",
             "IF COL_LENGTH('ContractLines','AddedByAmendment') IS NULL ALTER TABLE ContractLines ADD AddedByAmendment nvarchar(30) NULL",
             "IF COL_LENGTH('ProcurementPackages','Field') IS NULL ALTER TABLE ProcurementPackages ADD Field nvarchar(100) NULL",
+            // Ngân hàng giá: lịch sử giá chi tiết (vật tư / thi công – dịch vụ, thuế suất, tiền tệ, gói thầu / hợp đồng liên quan, vùng)
+            "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('PriceRecords') AND name = 'UnitPrice' AND scale <> 2) ALTER TABLE PriceRecords ALTER COLUMN UnitPrice decimal(18,2) NOT NULL",
+            "IF COL_LENGTH('PriceRecords','Unit') IS NULL ALTER TABLE PriceRecords ADD Unit nvarchar(30) NULL",
+            "IF COL_LENGTH('PriceRecords','SubCode') IS NULL ALTER TABLE PriceRecords ADD SubCode nvarchar(50) NULL",
+            "IF COL_LENGTH('PriceRecords','Currency') IS NULL ALTER TABLE PriceRecords ADD Currency nvarchar(10) NULL",
+            "IF COL_LENGTH('PriceRecords','MaterialPrice') IS NULL ALTER TABLE PriceRecords ADD MaterialPrice decimal(18,2) NOT NULL CONSTRAINT DF_PriceRecords_Mat DEFAULT 0",
+            "IF COL_LENGTH('PriceRecords','MaterialVatPercent') IS NULL ALTER TABLE PriceRecords ADD MaterialVatPercent decimal(5,2) NOT NULL CONSTRAINT DF_PriceRecords_MatVat DEFAULT 0",
+            "IF COL_LENGTH('PriceRecords','ServicePrice') IS NULL ALTER TABLE PriceRecords ADD ServicePrice decimal(18,2) NOT NULL CONSTRAINT DF_PriceRecords_Svc DEFAULT 0",
+            "IF COL_LENGTH('PriceRecords','ServiceVatPercent') IS NULL ALTER TABLE PriceRecords ADD ServiceVatPercent decimal(5,2) NOT NULL CONSTRAINT DF_PriceRecords_SvcVat DEFAULT 0",
+            "IF COL_LENGTH('PriceRecords','TenderId') IS NULL ALTER TABLE PriceRecords ADD TenderId int NULL CONSTRAINT FK_PriceRecords_Tenders_TenderId REFERENCES Tenders(Id)",
+            "IF COL_LENGTH('PriceRecords','ContractId') IS NULL ALTER TABLE PriceRecords ADD ContractId int NULL CONSTRAINT FK_PriceRecords_Contracts_ContractId REFERENCES Contracts(Id)",
+            "IF COL_LENGTH('PriceRecords','Region') IS NULL ALTER TABLE PriceRecords ADD Region nvarchar(100) NULL",
+            "IF COL_LENGTH('PriceRecords','Note') IS NULL ALTER TABLE PriceRecords ADD Note nvarchar(1000) NULL",
+            "IF COL_LENGTH('PriceRecords','UpdatedAt') IS NULL ALTER TABLE PriceRecords ADD UpdatedAt datetime2 NULL",
+            // giá cũ chỉ có một đơn giá: coi là đơn giá vật tư, tiền Việt
+            "UPDATE PriceRecords SET MaterialPrice = UnitPrice WHERE MaterialPrice = 0 AND ServicePrice = 0 AND UnitPrice > 0",
+            "UPDATE PriceRecords SET Currency = 'VND' WHERE Currency IS NULL",
             // BOQ: cơ cấu đơn giá (vật liệu / nhân công / máy) và cơ cấu chi phí của gói
             "IF COL_LENGTH('BoqItems','MaterialPrice') IS NULL ALTER TABLE BoqItems ADD MaterialPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Mat DEFAULT 0",
             "IF COL_LENGTH('BoqItems','LaborPrice') IS NULL ALTER TABLE BoqItems ADD LaborPrice decimal(18,0) NOT NULL CONSTRAINT DF_BoqItems_Lab DEFAULT 0",
