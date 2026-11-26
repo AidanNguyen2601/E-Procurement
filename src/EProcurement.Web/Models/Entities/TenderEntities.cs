@@ -31,6 +31,11 @@ public class Tender
     [Display(Name = "Hợp đồng khung (đặt hàng nhiều đợt)")] public bool IsFramework { get; set; }
     /// <summary>Đấu thầu quốc tế (áp mốc thời gian tối thiểu dài hơn)</summary>
     [Display(Name = "Đấu thầu quốc tế")] public bool IsInternational { get; set; }
+    [Display(Name = "Cho phép liên danh")] public bool AllowJointVenture { get; set; } = true;
+    /// <summary>Giá trị công việc giao thầu phụ tối đa (% giá dự thầu); null = không giới hạn</summary>
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Thầu phụ tối đa (%)")] public decimal? MaxSubcontractPercent { get; set; }
+    /// <summary>Ưu đãi: cộng thêm % vào giá xếp hạng của nhà thầu không thuộc đối tượng ưu đãi (0 = không áp dụng)</summary>
+    [Column(TypeName = "decimal(5,2)")][Range(0, 50)][Display(Name = "Ưu đãi trong nước (%)")] public decimal DomesticPreferencePercent { get; set; }
 
     // ----- Hồ sơ mời thầu -----
     [Required(ErrorMessage = "Nhập yêu cầu kỹ thuật"), StringLength(4000)][Display(Name = "Yêu cầu kỹ thuật")] public string TechnicalRequirements { get; set; } = string.Empty;
@@ -68,6 +73,7 @@ public class Tender
     public ICollection<TenderQuestion> Questions { get; set; } = new List<TenderQuestion>();
     public ICollection<TenderNegotiation> Negotiations { get; set; } = new List<TenderNegotiation>();
     public ICollection<TenderAppraisal> Appraisals { get; set; } = new List<TenderAppraisal>();
+    public ICollection<TenderRequirement> Requirements { get; set; } = new List<TenderRequirement>();
 }
 
 public class TenderLine
@@ -115,6 +121,11 @@ public class TenderBidder
     [StringLength(500)] public string? ValidNote { get; set; }
     [Display(Name = "Đạt năng lực, kinh nghiệm")] public bool? Qualified { get; set; }
     [StringLength(500)] public string? QualifiedNote { get; set; }
+    /// <summary>Thuộc đối tượng được hưởng ưu đãi (hàng hóa sản xuất trong nước / nhà thầu trong nước…)</summary>
+    [Display(Name = "Được hưởng ưu đãi")] public bool DomesticPreferred { get; set; }
+    [StringLength(300)][Display(Name = "Căn cứ ưu đãi")] public string? PreferenceNote { get; set; }
+    public ICollection<TenderBidderPartner> Partners { get; set; } = new List<TenderBidderPartner>();
+    public ICollection<TenderBidderCapability> Capabilities { get; set; } = new List<TenderBidderCapability>();
 
     public ICollection<TenderBidLine> Lines { get; set; } = new List<TenderBidLine>();
     public ICollection<TenderScore> Scores { get; set; } = new List<TenderScore>();

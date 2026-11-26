@@ -270,6 +270,9 @@ public class TenderFormViewModel
     [Range(1, 3650)][Display(Name = "Thời gian thực hiện HĐ (ngày)")] public int ContractDurationDays { get; set; } = 30;
     [Display(Name = "Hợp đồng khung (đặt hàng nhiều đợt)")] public bool IsFramework { get; set; }
     [Display(Name = "Đấu thầu quốc tế")] public bool IsInternational { get; set; }
+    [Display(Name = "Cho phép liên danh")] public bool AllowJointVenture { get; set; } = true;
+    [Range(0, 100)][Display(Name = "Thầu phụ tối đa (%)")] public decimal? MaxSubcontractPercent { get; set; }
+    [Range(0, 50)][Display(Name = "Ưu đãi trong nước (%)")] public decimal DomesticPreferencePercent { get; set; }
     [Required(ErrorMessage = "Nhập yêu cầu kỹ thuật"), StringLength(4000)][Display(Name = "Yêu cầu kỹ thuật")] public string TechnicalRequirements { get; set; } = string.Empty;
     [Required(ErrorMessage = "Nhập tiêu chí năng lực, kinh nghiệm"), StringLength(4000)][Display(Name = "Tiêu chí năng lực, kinh nghiệm")] public string QualificationCriteria { get; set; } = string.Empty;
     [StringLength(4000)][Display(Name = "Điều kiện hợp đồng")] public string? ContractTerms { get; set; }

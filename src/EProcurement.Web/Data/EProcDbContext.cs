@@ -80,6 +80,9 @@ public class EProcDbContext : DbContext
     public DbSet<ContractSettlement> ContractSettlements => Set<ContractSettlement>();
     public DbSet<ContractPriceIndex> ContractPriceIndices => Set<ContractPriceIndex>();
     public DbSet<ContractPriceAdjustment> ContractPriceAdjustments => Set<ContractPriceAdjustment>();
+    public DbSet<TenderBidderPartner> TenderBidderPartners => Set<TenderBidderPartner>();
+    public DbSet<TenderRequirement> TenderRequirements => Set<TenderRequirement>();
+    public DbSet<TenderBidderCapability> TenderBidderCapabilities => Set<TenderBidderCapability>();
     public DbSet<ApiClient> ApiClients => Set<ApiClient>();
     public DbSet<ProcurementPlan> ProcurementPlans => Set<ProcurementPlan>();
     public DbSet<ProcurementPlanLine> ProcurementPlanLines => Set<ProcurementPlanLine>();

@@ -1,0 +1,96 @@
+@model TenderBidder
+@{
+    var t = (Tender)ViewBag.Tender;
+    var banned = (ICollection<int>)ViewBag.Banned;
+    var edit = (bool)ViewBag.CanEdit;
+    var issues = BidderProfile.PartnerProblems(t, Model, banned);
+    var quals = BidderProfile.Check(t, Model); var sug = BidderProfile.Suggest(quals);
+    string Who(int? pid) => pid == null ? (Model.Vendor?.Name ?? "") : Model.Partners.FirstOrDefault(p => p.Id == pid)?.Name ?? "";
+}
+<div class="toolbar"><a asp-action="Details" asp-route-id="@t.Id" class="btn btn-outline-secondary">← @L["Gói thầu"] @t.Number</a></div>
+<h5>@Model.Vendor?.Name <span class="text-muted small">MST @Model.Vendor?.TaxCode</span></h5>
+<div class="small text-muted mb-3">@L["Kê khai theo HSDT: liên danh / thầu phụ, năng lực – kinh nghiệm theo từng yêu cầu của HSMT, ưu đãi. Tổ chuyên gia dùng kết quả kiểm tra tự động khi đánh giá năng lực (bước 2)."]</div>
+
+<div class="row g-3">
+<div class="col-lg-7">
+    @* ---- năng lực theo yêu cầu ---- *@
+    <div class="card mb-3"><div class="card-header d-flex align-items-center">@L["Năng lực, kinh nghiệm theo yêu cầu HSMT"]
+        @if (quals.Any()) { <span class="ms-auto badge @(sug == false ? "bg-danger" : sug == true ? "bg-success" : "bg-secondary")">@(sug == false ? L["Không đạt"] : sug == true ? L["Đạt"] : L["Cần đánh giá"]) · @quals.Count(q => q.Pass == true)/@quals.Count</span> }</div>
+        <div class="card-body small">
+        @if (!t.Requirements.Any()) { <div class="text-muted">@L["Gói thầu chưa thiết lập yêu cầu năng lực có cấu trúc."] <a asp-action="Requirements" asp-route-id="@t.Id">@L["Xem"]</a></div> }
+        @foreach (var q in quals)
+        {
+            var r = q.Requirement;
+            <div class="border rounded p-2 mb-2 @(q.Pass == false ? "border-danger" : q.Pass == true ? "border-success" : "")">
+                <div class="d-flex"><b>@r.Kind.GetDisplayName(): @r.Name</b><span class="ms-auto @(q.Pass == false ? "text-danger" : q.Pass == true ? "text-success" : "text-muted")">@(q.Pass == false ? "✗" : q.Pass == true ? "✓" : "•") @q.Detail</span></div>
+                <table class="table table-sm mb-1" data-grid="off"><tbody>
+                @foreach (var c in Model.Capabilities.Where(c => c.RequirementId == r.Id))
+                {
+                    <tr><td>@Who(c.PartnerId)</td><td>@c.Detail</td>
+                        <td class="money text-nowrap">@(r.Kind == QualificationKind.Equipment ? L["{0} chiếc", c.Count] : r.Kind == QualificationKind.KeyPersonnel ? L["{0} năm", c.Years] : c.Value > 0 ? c.Value.ToMoney() + " đ" : "")</td>
+                        <td class="text-end">@if (edit) { <form asp-action="DeleteCapability" asp-route-id="@Model.Id" method="post"><input type="hidden" name="capabilityId" value="@c.Id" /><button class="btn btn-sm btn-link text-danger p-0">@L["Xóa"]</button></form> }</td></tr>
+                }
+                </tbody></table>
+                @if (edit)
+                {
+                    <form asp-action="AddCapability" asp-route-id="@Model.Id" method="post" class="row g-1 align-items-center"><input type="hidden" name="requirementId" value="@r.Id" />
+                        <div class="col-md-3"><select name="partnerId" class="form-select form-select-sm"><option value="">@Model.Vendor?.Name</option>@foreach (var p in Model.Partners.Where(p => p.Role == BidPartnerRole.Member || p.Role == BidPartnerRole.SpecialSubcontractor)) { <option value="@p.Id">@p.Name</option> }</select></div>
+                        <div class="col-md-4"><input name="detail" maxlength="1000" class="form-control form-control-sm" placeholder="@(r.Kind switch { QualificationKind.SimilarContracts => L["Tên / số hợp đồng, chủ đầu tư, năm"], QualificationKind.KeyPersonnel => L["Họ tên, vị trí, chứng chỉ"], QualificationKind.Equipment => L["Loại thiết bị, sở hữu / thuê"], _ => L["Mô tả, tài liệu chứng minh"] })" /></div>
+                        @if (r.Kind is QualificationKind.Equipment) { <input type="hidden" name="value" value="0" /><input type="hidden" name="years" value="0" /><div class="col-md-3"><input name="count" type="number" min="0" value="1" class="form-control form-control-sm" title="@L["Số lượng"]" /></div> }
+                        else if (r.Kind is QualificationKind.KeyPersonnel) { <input type="hidden" name="value" value="0" /><input type="hidden" name="count" value="1" /><div class="col-md-3"><input name="years" type="number" min="0" class="form-control form-control-sm" placeholder="@L["Số năm kinh nghiệm"]" /></div> }
+                        else { <input type="hidden" name="count" value="1" /><input type="hidden" name="years" value="0" /><div class="col-md-3"><input name="value" data-money class="form-control form-control-sm text-end" placeholder="@L["Giá trị (đ)"]" /></div> }
+                        <div class="col-md-2"><button class="btn btn-sm btn-outline-primary w-100">@L["Kê khai"]</button></div>
+                    </form>
+                }
+            </div>
+        }
+    </div></div>
+</div>
+
+<div class="col-lg-5">
+    @* ---- liên danh / thầu phụ ---- *@
+    <div class="card mb-3"><div class="card-header">@L["Liên danh / nhà thầu phụ"] @if (!t.AllowJointVenture) { <span class="small text-muted">(@L["HSMT không cho phép liên danh"])</span> }</div><div class="card-body small">
+        @if (issues.Any()) { <div class="alert alert-danger py-1 px-2">@foreach (var i in issues) { <div>@i</div> }</div> }
+        <table class="table table-sm" data-grid="off"><thead><tr><th>@L["Đối tác"]</th><th>@L["Vai trò"]</th><th class="money">%</th><th></th></tr></thead><tbody>
+        @foreach (var p in Model.Partners.OrderBy(x => x.Role).ThenBy(x => x.SortOrder))
+        {
+            <tr class="@(p.VendorId.HasValue && banned.Contains(p.VendorId.Value) ? "table-danger" : "")"><td>@p.Name @if (!string.IsNullOrEmpty(p.TaxCode)) { <span class="text-muted">· @p.TaxCode</span> }@if (!string.IsNullOrEmpty(p.WorkScope)) { <div class="text-muted">@p.WorkScope</div> }</td>
+                <td>@p.Role.GetDisplayName()</td><td class="money">@p.SharePercent.ToString("0.##")</td>
+                <td class="text-end">@if (edit) { <form asp-action="DeletePartner" asp-route-id="@Model.Id" method="post"><input type="hidden" name="partnerId" value="@p.Id" /><button class="btn btn-sm btn-link text-danger p-0">@L["Xóa"]</button></form> }</td></tr>
+        }
+        @if (!Model.Partners.Any()) { <tr><td colspan="4" class="text-muted">@L["Nhà thầu độc lập, không có thầu phụ."]</td></tr> }
+        </tbody></table>
+        @if (edit)
+        {
+            <form asp-action="AddPartner" asp-route-id="@Model.Id" method="post" class="row g-1">
+                <div class="col-6"><select name="role" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<BidPartnerRole>()"></select></div>
+                <div class="col-6"><select name="vendorId" class="form-select form-select-sm" asp-items="ViewBag.Vendors"><option value="">@L["-- NCC trong hệ thống / nhập tên --"]</option></select></div>
+                <div class="col-8"><input name="name" maxlength="200" class="form-control form-control-sm" placeholder="@L["Tên đối tác (nếu chưa có trong hệ thống)"]" /></div>
+                <div class="col-4"><input name="taxCode" maxlength="20" class="form-control form-control-sm" placeholder="@L["Mã số thuế"]" /></div>
+                <div class="col-3"><input name="sharePercent" type="number" min="0" max="100" step="0.01" class="form-control form-control-sm" placeholder="%" required /></div>
+                <div class="col-6"><input name="workScope" maxlength="500" class="form-control form-control-sm" placeholder="@L["Phạm vi công việc"]" /></div>
+                <div class="col-3"><button class="btn btn-sm btn-outline-primary w-100">@L["Thêm"]</button></div>
+                <div class="col-12 text-muted">@L["Liên danh: thêm thành viên đứng đầu (chính nhà thầu nộp HSDT) và các thành viên, tổng tỷ lệ = 100%. Thầu phụ: tỷ lệ = giá trị thầu phụ / giá dự thầu."]</div>
+            </form>
+        }
+    </div></div>
+
+    @* ---- ưu đãi ---- *@
+    <div class="card mb-3"><div class="card-header">@L["Ưu đãi trong lựa chọn nhà thầu"]</div><div class="card-body small">
+        @if (t.DomesticPreferencePercent <= 0) { <div class="text-muted">@L["Gói thầu không áp dụng ưu đãi."]</div> }
+        else
+        {
+            <div class="mb-2">@L["Nhà thầu không thuộc đối tượng ưu đãi bị cộng {0}% vào giá xếp hạng.", t.DomesticPreferencePercent.ToString("0.#")]</div>
+            @if (edit)
+            {
+                <form asp-action="SetPreference" asp-route-id="@Model.Id" method="post" class="d-flex flex-wrap gap-2 align-items-center">
+                    <div class="form-check"><input type="checkbox" name="preferred" value="true" class="form-check-input" id="pf" checked="@Model.DomesticPreferred" /><input type="hidden" name="preferred" value="false" /><label for="pf" class="form-check-label">@L["Được hưởng ưu đãi"]</label></div>
+                    <input name="note" value="@Model.PreferenceNote" maxlength="300" class="form-control form-control-sm" placeholder="@L["Căn cứ: hàng hóa sản xuất trong nước, tỷ lệ chi phí trong nước…"]" />
+                    <button class="btn btn-sm btn-outline-primary">@L["Lưu"]</button>
+                </form>
+            }
+            else { <div>@(Model.DomesticPreferred ? L["Được hưởng ưu đãi: {0}", Model.PreferenceNote ?? ""] : L["Không hưởng ưu đãi"])</div> }
+        }
+    </div></div>
+</div>
+</div>

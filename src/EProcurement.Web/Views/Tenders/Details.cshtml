@@ -118,6 +118,8 @@
             <dt class="col-sm-3">@L["Bảo đảm"]</dt><dd class="col-sm-9">@L["Dự thầu"] @Model.BidSecurityAmount.ToMoney() @L["đ · hiệu lực HSDT"] @Model.BidValidityDays @L["ngày · thực hiện HĐ"] @Model.PerformanceSecurityPercent.ToString("0.##")%</dd>
             <dt class="col-sm-3">@L["Yêu cầu kỹ thuật"]</dt><dd class="col-sm-9 pre">@Model.TechnicalRequirements</dd>
             <dt class="col-sm-3">@L["Năng lực, kinh nghiệm"]</dt><dd class="col-sm-9 pre">@Model.QualificationCriteria</dd>
+            <dt class="col-sm-3">@L["Yêu cầu năng lực có cấu trúc"]</dt><dd class="col-sm-9">@if (Model.Requirements.Any()) { <ul class="mb-1 ps-3 small">@foreach (var rq in Model.Requirements.OrderBy(x => x.SortOrder)) { <li>@rq.Kind.GetDisplayName(): @rq.Name</li> }</ul> } else { <span class="text-muted small">@L["Chưa thiết lập – hệ thống không tự kiểm tra kê khai năng lực."]</span> } <a asp-action="Requirements" asp-route-id="@Model.Id" class="small">@(buyer && Model.Status == TenderStatus.Draft ? L["Thiết lập"] : L["Xem"])</a>
+                @if (Model.AllowJointVenture == false || Model.MaxSubcontractPercent.HasValue || Model.DomesticPreferencePercent > 0) { <div class="small text-muted">@(Model.AllowJointVenture ? L["Cho phép liên danh"] : L["Không cho phép liên danh"])@(Model.MaxSubcontractPercent.HasValue ? L[" · thầu phụ tối đa {0}%", Model.MaxSubcontractPercent.Value.ToString("0.#")] : "")@(Model.DomesticPreferencePercent > 0 ? L[" · ưu đãi trong nước {0}%", Model.DomesticPreferencePercent.ToString("0.#")] : "")</div> }</dd>
             @if (!string.IsNullOrEmpty(Model.ContractTerms)) { <dt class="col-sm-3">@L["Điều kiện HĐ"]</dt><dd class="col-sm-9 pre">@Model.ContractTerms</dd> }
         </dl>
     </div></div>
@@ -146,7 +148,7 @@
             {
                 var sec = b.Submitted ? TenderEvaluation.SecurityProblems(Model, b) : new List<string>();
                 <tr class="@(Model.AwardedVendorId == b.VendorId && s >= TenderStatus.Awarded ? "table-success" : "")">
-                    <td>@b.Vendor?.Name <span class="badge bg-light text-dark border">@b.Vendor?.Status.GetDisplayName()</span><br /><small class="text-muted">@L["nhận HSMT"] @b.RegisteredAt.ToDateTime()</small></td>
+                    <td>@b.Vendor?.Name <span class="badge bg-light text-dark border">@b.Vendor?.Status.GetDisplayName()</span>@if (b.Partners.Any(p => p.Role == BidPartnerRole.Member)) { <span class="badge bg-info-subtle text-info-emphasis">@L["Liên danh"]</span> }@if (b.DomesticPreferred) { <span class="badge bg-success-subtle text-success" title="@b.PreferenceNote">@L["Ưu đãi"]</span> }<br /><small class="text-muted">@L["nhận HSMT"] @b.RegisteredAt.ToDateTime()</small></td>
                     <td>@(b.Submitted ? L["Nộp {0}", b.SubmittedAt.ToDateTime()] : closed ? L["Không nộp"] : L["Chưa nộp"])</td>
                     <td class="money">@(b.Submitted ? (Model.OpenedAt.HasValue && (pricesVisible || Model.EnvelopeMethod == EnvelopeMethod.OneEnvelope) ? $"{b.BidPrice.ToMoney()}" + (b.DiscountPercent > 0 ? $" (−{b.DiscountPercent:0.##}%)" : "") : "🔒") : "")</td>
                     <td class="money">@(b.Submitted && pricesVisible ? b.EvaluatedPrice.ToMoney() : "")</td>
@@ -154,6 +156,7 @@
                     <td class="text-end text-nowrap">
                         @if (((Dictionary<int, string>)ViewBag.Online).TryGetValue(b.Id, out var onl)) { <span class="badge bg-success-subtle text-success" title="@onl">Online</span><div class="small text-muted">@onl</div> }
                         else if (buyer && s == TenderStatus.Published && !closed) { <a class="btn btn-sm btn-outline-primary" asp-action="EnterBid" asp-route-bidderId="@b.Id">@(b.Submitted ? L["Nộp HSDT thay thế"] : L["Tiếp nhận HSDT"])</a> }
+                        @if (b.Submitted || (buyer && s == TenderStatus.Published)) { <a class="btn btn-sm btn-outline-secondary" asp-action="Bidder" asp-route-id="@b.Id">@L["Năng lực"]</a> }
                         @if (s is TenderStatus.Awarded or TenderStatus.Contracted && b.Submitted) { <a class="btn btn-sm btn-outline-success" asp-action="ResultNotice" asp-route-id="@Model.Id" asp-route-vendorId="@b.VendorId" target="_blank">@L["Thông báo KQ"]</a> }
                     </td>
                 </tr>
@@ -185,7 +188,7 @@
                     <td title="@r.Bid.ValidNote">@Mark(r.Bid.Valid)</td>
                     <td title="@r.Bid.QualifiedNote">@Mark(r.Bid.Qualified)</td>
                     <td class="money">@(scoringDone && r.TechnicalAverage.HasValue ? r.TechnicalAverage.Value.ToString("0.##") : r.Responsive ? L["{0}/{1} đã chấm", r.ScoreCount, Model.Committee.Count] : "")</td>
-                    <td class="money">@(pricesVisible && r.TechnicalPass ? r.Bid.EvaluatedPrice.ToMoney() : "")</td>
+                    <td class="money">@(pricesVisible && r.TechnicalPass ? r.Bid.EvaluatedPrice.ToMoney() : "")@if (pricesVisible && r.PreferenceApplied) { <div class="small text-muted">@L["xếp hạng"] @r.RankingPrice.ToMoney() (+@Model.DomesticPreferencePercent.ToString("0.#")% @L["không ưu đãi"])</div> }</td>
                     @if (Model.EvaluationMethod == TenderEvaluationMethod.Combined) { <td class="money">@(pricesVisible && r.TechnicalPass ? r.Total.ToString("0.##") : "")</td> }
                     <td>@(pricesVisible && r.Rank.HasValue ? L["Hạng {0}", r.Rank] : r.Responsive ? "" : L["Loại"])</td>
                 </tr>

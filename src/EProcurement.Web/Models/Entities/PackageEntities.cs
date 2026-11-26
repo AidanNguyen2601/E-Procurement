@@ -136,6 +136,8 @@ public class BoqItem
     [Column(TypeName = "decimal(18,0)")][Range(0, 1_000_000_000_000)][Display(Name = "Máy thi công")] public decimal MachinePrice { get; set; }
     [Display(Name = "Thứ tự")] public int SortOrder { get; set; }
     [StringLength(500)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    /// <summary>Phân tích đơn giá theo định mức: JSON danh sách hao phí vật liệu / nhân công / máy (xem BoqNorms)</summary>
+    public string? Norms { get; set; }
 }
 
 /// <summary>Phiên bản (ảnh chụp) của BOQ gói mua sắm: lưu trước khi thay thế / khôi phục / mời thầu để so sánh và quay lại</summary>

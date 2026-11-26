@@ -71,7 +71,7 @@
             <tbody>@foreach (var r in results.Where(r => r.TechnicalPass))
             {
                 <tr class="@(r.Rank == 1 ? "table-success" : "")"><td>@r.Rank</td><td>@r.Bid.Vendor?.Name</td><td class="money">@r.Bid.BidPrice.ToMoney()</td><td class="money">@r.Bid.DiscountPercent.ToString("0.##")%</td>
-                    <td class="money">@r.Bid.EvaluatedPrice.ToMoney()</td>@if (combined) { <td class="money">@r.PriceScore.ToString("0.##")</td><td class="money">@r.Total.ToString("0.##")</td> }</tr>
+                    <td class="money">@r.Bid.EvaluatedPrice.ToMoney()@if (r.PreferenceApplied) { <div class="small">@L["xếp hạng"] @r.RankingPrice.ToMoney()</div> }</td>@if (combined) { <td class="money">@r.PriceScore.ToString("0.##")</td><td class="money">@r.Total.ToString("0.##")</td> }</tr>
             }</tbody>
         </table>
     }

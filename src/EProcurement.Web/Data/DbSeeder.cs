@@ -378,6 +378,12 @@ public static class DbSeeder
             "IF COL_LENGTH('Payments','RetentionAmount') IS NULL ALTER TABLE Payments ADD RetentionAmount decimal(18,0) NOT NULL CONSTRAINT DF_Payments_RetentionAmount DEFAULT 0",
             "IF COL_LENGTH('Payments','SettlementId') IS NULL ALTER TABLE Payments ADD SettlementId int NULL CONSTRAINT FK_Payments_ContractSettlements_SettlementId REFERENCES ContractSettlements(Id)",
             "IF COL_LENGTH('Payments','PriceAdjustmentId') IS NULL ALTER TABLE Payments ADD PriceAdjustmentId int NULL CONSTRAINT FK_Payments_ContractPriceAdjustments_PriceAdjustmentId REFERENCES ContractPriceAdjustments(Id)",
+            "IF COL_LENGTH('Tenders','AllowJointVenture') IS NULL ALTER TABLE Tenders ADD AllowJointVenture bit NOT NULL CONSTRAINT DF_Tenders_AllowJV DEFAULT 1",
+            "IF COL_LENGTH('Tenders','MaxSubcontractPercent') IS NULL ALTER TABLE Tenders ADD MaxSubcontractPercent decimal(5,2) NULL",
+            "IF COL_LENGTH('Tenders','DomesticPreferencePercent') IS NULL ALTER TABLE Tenders ADD DomesticPreferencePercent decimal(5,2) NOT NULL CONSTRAINT DF_Tenders_DomPref DEFAULT 0",
+            "IF COL_LENGTH('TenderBidders','DomesticPreferred') IS NULL ALTER TABLE TenderBidders ADD DomesticPreferred bit NOT NULL CONSTRAINT DF_TenderBidders_DomPref DEFAULT 0",
+            "IF COL_LENGTH('TenderBidders','PreferenceNote') IS NULL ALTER TABLE TenderBidders ADD PreferenceNote nvarchar(300) NULL",
+            "IF COL_LENGTH('BoqItems','Norms') IS NULL ALTER TABLE BoqItems ADD Norms nvarchar(max) NULL",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"

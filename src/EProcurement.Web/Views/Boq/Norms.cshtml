@@ -1,0 +1,47 @@
+@model BoqItem
+@{
+    var edit = (bool)ViewBag.CanEdit;
+    var lines = BoqNorms.Parse(Model.Norms);
+    var (mat, lab, mac) = BoqNorms.Components(lines);
+    var rows = lines.ToList();
+    if (edit) { var add = Math.Max(3, 8 - rows.Count); for (var k = 0; k < add; k++) rows.Add(new BoqNormLine { Kind = rows.Count == 0 ? 1 : rows[^1].Kind }); }
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<div class="toolbar"><a asp-action="Index" asp-route-packageId="@Model.PackageId" class="btn btn-outline-secondary">← @L["BOQ gói"] @Model.Package?.Number</a></div>
+<h5>@L["Phân tích đơn giá"] @Model.Code – @Model.Name <span class="text-muted small">(@Model.Unit)</span></h5>
+<div class="small text-muted mb-3">@L["Đơn giá chi tiết = Σ (hao phí định mức × đơn giá tài nguyên) theo vật liệu, nhân công, máy thi công cho một đơn vị khối lượng công việc. Định mức theo định mức dự toán do cơ quan có thẩm quyền ban hành hoặc định mức của doanh nghiệp; đơn giá tài nguyên theo công bố giá / báo giá / ngân hàng giá (mã tài nguyên trùng mã hàng hóa sẽ lấy được giá từ ngân hàng giá)."]</div>
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Vật liệu"]</div><div class="value">@mat.ToMoney()</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Nhân công"]</div><div class="value">@lab.ToMoney()</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Máy thi công"]</div><div class="value">@mac.ToMoney()</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Đơn giá theo phân tích"]</div><div class="value">@((mat + lab + mac).ToMoney())</div>
+        <div class="small text-muted">@L["đơn giá BOQ hiện tại"] @Model.UnitPrice.ToMoney()</div></div></div>
+</div>
+<form asp-action="SaveNorms" asp-route-id="@Model.Id" method="post">
+<div class="card mb-3"><div class="table-responsive"><table class="table table-sm mb-0 small align-middle" data-grid="off">
+    <thead><tr><th style="width:130px">@L["Loại"]</th><th style="width:120px">@L["Mã tài nguyên"]</th><th>@L["Tên vật liệu / nhân công / máy"]</th><th style="width:80px">@L["ĐVT"]</th><th class="money" style="width:120px">@L["Hao phí"]</th><th class="money" style="width:150px">@L["Đơn giá"]</th><th class="money" style="width:140px">@L["Thành tiền"]</th></tr></thead><tbody>
+    @foreach (var l in rows)
+    {
+        <tr>
+            <td><select name="kind" class="form-select form-select-sm" disabled="@(!edit)">@for (var k = 1; k <= 3; k++) { <option value="@k" selected="@(l.Kind == k)">@L[BoqNorms.KindNames[k]]</option> }</select></td>
+            <td><input name="code" value="@l.Code" maxlength="30" class="form-control form-control-sm" readonly="@(!edit)" /></td>
+            <td><input name="name" value="@l.Name" maxlength="200" class="form-control form-control-sm" readonly="@(!edit)" /></td>
+            <td><input name="unit" value="@l.Unit" maxlength="30" class="form-control form-control-sm" readonly="@(!edit)" /></td>
+            <td><input name="norm" type="number" min="0" step="0.0001" value="@(l.Norm == 0 ? "" : l.Norm.ToString("0.####", inv))" class="form-control form-control-sm text-end" readonly="@(!edit)" /></td>
+            <td><input name="price" data-money value="@(l.Price == 0 ? "" : l.Price.ToString("0", inv))" class="form-control form-control-sm text-end" readonly="@(!edit)" /></td>
+            <td class="money">@(l.Amount > 0 ? l.Amount.ToMoney() : "")</td>
+        </tr>
+    }
+    @if (!rows.Any()) { <tr><td colspan="7" class="text-muted">@L["Chưa có phân tích đơn giá cho dòng này."]</td></tr> }
+    </tbody></table></div></div>
+    @if (edit)
+    {
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-secondary btn-sm">@L["Lưu phân tích"]</button>
+            <button name="fillPrices" value="true" class="btn btn-outline-secondary btn-sm">@L["Lấy giá từ ngân hàng giá & lưu"]</button>
+            <button name="apply" value="true" class="btn btn-primary btn-sm" data-confirm="@L["Cập nhật đơn giá (vật liệu, nhân công, máy) của dòng BOQ theo phân tích?"]">@L["Lưu & áp dụng vào đơn giá BOQ"]</button>
+            <span class="small text-muted align-self-center">@L["Bỏ trống tên để xóa dòng. Lưu để thêm dòng trống."]</span>
+        </div>
+    }
+    else { <div class="small text-muted">@L["Chỉ xem: BOQ chỉ sửa khi gói ở trạng thái Nháp."]</div> }
+</form>

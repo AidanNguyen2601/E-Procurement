@@ -1,0 +1,36 @@
+@model Tender
+@{
+    var edit = User.IsPurchasing() && Model.Status == TenderStatus.Draft;
+}
+<div class="toolbar"><a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">← @L["Gói thầu"] @Model.Number</a></div>
+<h5>@L["Yêu cầu năng lực, kinh nghiệm có cấu trúc"] – @Model.Title</h5>
+<div class="small text-muted mb-3">@L["Mỗi yêu cầu có ngưỡng đo được để hệ thống tự đối chiếu với kê khai của nhà thầu khi đánh giá năng lực (liên danh: cộng gộp năng lực các thành viên). Yêu cầu loại \"Yêu cầu khác\" do tổ chuyên gia đánh giá."]</div>
+<div class="card mb-3"><div class="table-responsive"><table class="table table-sm mb-0 small">
+    <thead><tr><th>#</th><th>@L["Loại yêu cầu"]</th><th>@L["Nội dung yêu cầu"]</th><th class="money">@L["Số lượng tối thiểu"]</th><th class="money">@L["Giá trị tối thiểu"]</th><th class="money">@L["Số năm kinh nghiệm tối thiểu"]</th><th></th></tr></thead><tbody>
+    @foreach (var r in Model.Requirements.OrderBy(x => x.SortOrder))
+    {
+        <tr><td>@r.SortOrder</td><td>@r.Kind.GetDisplayName()</td><td>@r.Name</td><td class="money">@(r.MinCount > 0 ? r.MinCount : "")</td><td class="money">@(r.MinValue > 0 ? r.MinValue.ToMoney() : "")</td><td class="money">@(r.MinYears > 0 ? r.MinYears : "")</td>
+            <td class="text-end">@if (edit) { <form asp-action="DeleteRequirement" asp-route-id="@Model.Id" method="post" data-confirm="@L["Xóa yêu cầu này?"]"><input type="hidden" name="requirementId" value="@r.Id" /><button class="btn btn-sm btn-link text-danger p-0">@L["Xóa"]</button></form> }</td></tr>
+    }
+    @if (!Model.Requirements.Any()) { <tr><td colspan="7" class="text-muted">@L["Chưa có yêu cầu."]</td></tr> }
+</tbody></table></div></div>
+@if (edit)
+{
+    <div class="card"><div class="card-header">@L["Thêm yêu cầu"]</div><div class="card-body small">
+        <form asp-action="AddRequirement" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
+            <div class="col-md-3"><label class="form-label">@L["Loại yêu cầu"]</label><select name="kind" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<QualificationKind>()"></select></div>
+            <div class="col-md-4"><label class="form-label">@L["Nội dung yêu cầu"]</label><input name="name" maxlength="300" class="form-control form-control-sm" required placeholder="@L["VD: Hợp đồng thi công nhà xưởng tương tự trong 5 năm gần đây"]" /></div>
+            <div class="col-md-1"><label class="form-label">@L["Số lượng"]</label><input name="minCount" type="number" min="0" value="0" class="form-control form-control-sm" /></div>
+            <div class="col-md-2"><label class="form-label">@L["Giá trị (đ)"]</label><input name="minValue" data-money value="0" class="form-control form-control-sm text-end" /></div>
+            <div class="col-md-1"><label class="form-label">@L["Số năm"]</label><input name="minYears" type="number" min="0" value="0" class="form-control form-control-sm" /></div>
+            <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">@L["Thêm"]</button></div>
+        </form>
+        <ul class="text-muted mt-2 mb-0">
+            <li>@L["Hợp đồng tương tự: số hợp đồng tối thiểu, mỗi hợp đồng có giá trị ≥ giá trị tối thiểu."]</li>
+            <li>@L["Doanh thu bình quân / nguồn lực tài chính: giá trị tối thiểu."]</li>
+            <li>@L["Nhân sự chủ chốt: số người tối thiểu, mỗi người có số năm kinh nghiệm ≥ số năm."]</li>
+            <li>@L["Thiết bị chủ yếu: số lượng tối thiểu."]</li>
+        </ul>
+    </div></div>
+}
+else if (User.IsPurchasing()) { <div class="small text-muted">@L["HSMT đã trình / phát hành – yêu cầu không thay đổi được (sửa đổi HSMT nếu cần)."]</div> }

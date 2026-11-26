@@ -16,6 +16,9 @@ public class BidResult
     public decimal Total { get; set; }
     public int? Rank { get; set; }
     public List<string> Issues { get; set; } = new();
+    /// <summary>Giá dùng để xếp hạng: giá đánh giá, cộng % ưu đãi nếu nhà thầu không được hưởng ưu đãi</summary>
+    public decimal RankingPrice { get; set; }
+    public bool PreferenceApplied { get; set; }
 }
 
 /// <summary>
@@ -45,19 +48,26 @@ public static class TenderEvaluation
         }).ToList();
 
         var passed = results.Where(r => r.TechnicalPass).ToList();
+        // Ưu đãi: khi có nhà thầu thuộc đối tượng ưu đãi, cộng % vào giá xếp hạng của các nhà thầu không được ưu đãi
+        var pref = t.DomesticPreferencePercent > 0 && passed.Any(r => r.Bid.DomesticPreferred) && passed.Any(r => !r.Bid.DomesticPreferred) ? t.DomesticPreferencePercent : 0;
+        foreach (var r in results)
+        {
+            r.PreferenceApplied = pref > 0 && r.TechnicalPass && !r.Bid.DomesticPreferred;
+            r.RankingPrice = r.PreferenceApplied ? Math.Round(r.Bid.EvaluatedPrice * (1 + pref / 100m), 0) : r.Bid.EvaluatedPrice;
+        }
         if (passed.Count > 0)
         {
-            var min = passed.Min(r => r.Bid.EvaluatedPrice);
+            var min = passed.Min(r => r.RankingPrice);
             foreach (var r in passed)
             {
-                r.PriceScore = r.Bid.EvaluatedPrice <= 0 ? 0 : Math.Round(min * 100m / r.Bid.EvaluatedPrice, 2);
+                r.PriceScore = r.RankingPrice <= 0 ? 0 : Math.Round(min * 100m / r.RankingPrice, 2);
                 r.Total = t.EvaluationMethod == TenderEvaluationMethod.Combined
                     ? Math.Round((r.TechnicalAverage!.Value * t.TechnicalWeight + r.PriceScore * t.PriceWeight) / 100m, 2)
                     : r.PriceScore;
             }
             var ordered = t.EvaluationMethod == TenderEvaluationMethod.Combined
-                ? passed.OrderByDescending(r => r.Total).ThenBy(r => r.Bid.EvaluatedPrice)
-                : passed.OrderBy(r => r.Bid.EvaluatedPrice).ThenByDescending(r => r.TechnicalAverage);
+                ? passed.OrderByDescending(r => r.Total).ThenBy(r => r.RankingPrice)
+                : passed.OrderBy(r => r.RankingPrice).ThenByDescending(r => r.TechnicalAverage);
             var rank = 1;
             foreach (var r in ordered) r.Rank = rank++;
         }

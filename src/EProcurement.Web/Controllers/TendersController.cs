@@ -18,7 +18,7 @@ namespace EProcurement.Web.Controllers;
 /// → Mở thầu → Đánh giá hợp lệ, năng lực → Tổ chuyên gia chấm kỹ thuật độc lập → (2 túi: mở hồ sơ tài chính)
 /// → Xếp hạng → Giám đốc duyệt kết quả → Thông báo, thời gian kiến nghị → Ký hợp đồng (ContractsController).
 /// </summary>
-public class TendersController : ProcControllerBase
+public partial class TendersController : ProcControllerBase
 {
     public TendersController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }
 
@@ -176,7 +176,7 @@ public class TendersController : ProcControllerBase
         {
             Id = t.Id, Number = t.Number, PurchaseRequestId = t.PurchaseRequestId, PackageId = t.PackageId, PurchaseRequest = t.PurchaseRequest, Title = t.Title,
             PackageBudget = t.PackageBudget, EnvelopeMethod = t.EnvelopeMethod, ContractType = t.ContractType, ContractDurationDays = t.ContractDurationDays,
-            IsFramework = t.IsFramework, IsInternational = t.IsInternational, TechnicalRequirements = t.TechnicalRequirements, QualificationCriteria = t.QualificationCriteria,
+            IsFramework = t.IsFramework, IsInternational = t.IsInternational, AllowJointVenture = t.AllowJointVenture, MaxSubcontractPercent = t.MaxSubcontractPercent, DomesticPreferencePercent = t.DomesticPreferencePercent, TechnicalRequirements = t.TechnicalRequirements, QualificationCriteria = t.QualificationCriteria,
             ContractTerms = t.ContractTerms, EvaluationMethod = t.EvaluationMethod, MinTechnicalScore = t.MinTechnicalScore,
             TechnicalWeight = t.TechnicalWeight, PriceWeight = t.PriceWeight, BidSecurityAmount = t.BidSecurityAmount,
             BidValidityDays = t.BidValidityDays, PerformanceSecurityPercent = t.PerformanceSecurityPercent, ClosingAt = t.ClosingAt
@@ -229,7 +229,7 @@ public class TendersController : ProcControllerBase
             Db.Tenders.Add(t);
         }
         t.Title = vm.Title; t.PackageBudget = vm.PackageBudget; t.EnvelopeMethod = vm.EnvelopeMethod; t.ContractType = vm.ContractType;
-        t.ContractDurationDays = vm.ContractDurationDays; t.IsFramework = vm.IsFramework; t.IsInternational = vm.IsInternational; t.TechnicalRequirements = vm.TechnicalRequirements;
+        t.ContractDurationDays = vm.ContractDurationDays; t.IsFramework = vm.IsFramework; t.IsInternational = vm.IsInternational; t.AllowJointVenture = vm.AllowJointVenture; t.MaxSubcontractPercent = vm.MaxSubcontractPercent; t.DomesticPreferencePercent = vm.DomesticPreferencePercent; t.TechnicalRequirements = vm.TechnicalRequirements;
         t.QualificationCriteria = vm.QualificationCriteria; t.ContractTerms = vm.ContractTerms; t.EvaluationMethod = vm.EvaluationMethod;
         t.MinTechnicalScore = vm.MinTechnicalScore; t.TechnicalWeight = vm.TechnicalWeight; t.PriceWeight = vm.PriceWeight;
         t.BidSecurityAmount = vm.BidSecurityAmount; t.BidValidityDays = vm.BidValidityDays; t.PerformanceSecurityPercent = vm.PerformanceSecurityPercent;
@@ -494,6 +494,7 @@ public class TendersController : ProcControllerBase
         if (t == null) return NotFound();
         if (!IsLeaderOrBuyer(t)) return Forbid();
         if (t.Status != TenderStatus.Opened) return RedirectToAction(nameof(Details), new { id });
+        ViewBag.Banned = await BannedVendorIdsAsync();
         return View(new BidScreeningViewModel
         {
             TenderId = id, Tender = t,
@@ -515,14 +516,20 @@ public class TendersController : ProcControllerBase
             ? new BidScreeningLine { TenderBidderId = b.Id, VendorName = b.Vendor!.Name, Valid = p.Valid, ValidNote = p.ValidNote, Qualified = p.Qualified, QualifiedNote = p.QualifiedNote }
             : new BidScreeningLine { TenderBidderId = b.Id, VendorName = b.Vendor!.Name }).ToList();
         ModelState.Clear();
+        var banned = await BannedVendorIdsAsync();
         foreach (var l in vm.Lines)
         {
             if (l.Valid == null) ModelState.AddModelError(string.Empty, I18n.T("{0}: chọn Hợp lệ / Không hợp lệ.", l.VendorName));
             if (l.Valid == false && string.IsNullOrWhiteSpace(l.ValidNote)) ModelState.AddModelError(string.Empty, I18n.T("{0}: ghi lý do không hợp lệ.", l.VendorName));
             if (l.Valid == true && l.Qualified == null) ModelState.AddModelError(string.Empty, I18n.T("{0}: chọn Đạt / Không đạt năng lực.", l.VendorName));
             if (l.Valid == true && l.Qualified == false && string.IsNullOrWhiteSpace(l.QualifiedNote)) ModelState.AddModelError(string.Empty, I18n.T("{0}: ghi lý do không đạt năng lực.", l.VendorName));
+            var bb = t.Bidders.FirstOrDefault(x => x.Id == l.TenderBidderId);
+            if (bb != null && l.Valid == true && l.Qualified == true && BidderProfile.Suggest(BidderProfile.Check(t, bb)) == false && string.IsNullOrWhiteSpace(l.QualifiedNote))
+                ModelState.AddModelError(string.Empty, I18n.T("{0}: kê khai năng lực không đạt yêu cầu của HSMT – ghi giải trình nếu kết luận Đạt.", l.VendorName));
+            if (bb != null && l.Valid == true && BidderProfile.PartnerProblems(t, bb, banned).Count > 0 && string.IsNullOrWhiteSpace(l.ValidNote))
+                ModelState.AddModelError(string.Empty, I18n.T("{0}: cơ cấu liên danh / thầu phụ có vấn đề – ghi giải trình nếu kết luận Hợp lệ.", l.VendorName));
         }
-        if (!ModelState.IsValid) { vm.Tender = t; return View(vm); }
+        if (!ModelState.IsValid) { vm.Tender = t; ViewBag.Banned = banned; return View(vm); }
         foreach (var l in vm.Lines)
         {
             var b = t.Bidders.FirstOrDefault(x => x.Id == l.TenderBidderId && x.Submitted);
@@ -978,6 +985,9 @@ public class TendersController : ProcControllerBase
             .Include(t => t.Questions).ThenInclude(q => q.Vendor)
             .Include(t => t.Negotiations)
             .Include(t => t.Appraisals).ThenInclude(a => a.Appraiser)
+            .Include(t => t.Requirements)
+            .Include(t => t.Bidders).ThenInclude(b => b.Partners)
+            .Include(t => t.Bidders).ThenInclude(b => b.Capabilities)
             .AsSplitQuery();
         var t = track ? await q.FirstOrDefaultAsync(x => x.Id == id) : await q.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (t != null) t.Lines = t.Lines.OrderBy(l => l.SortOrder).ToList();

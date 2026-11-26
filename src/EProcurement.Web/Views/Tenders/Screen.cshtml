@@ -1,6 +1,7 @@
 @model BidScreeningViewModel
 @{
     var t = Model.Tender!;
+    var banned = (ICollection<int>)ViewBag.Banned;
     ViewData["Title"] = $"Đánh giá hợp lệ & năng lực – {t.Number}";
 }
 <div class="alert alert-info py-2 small">
@@ -19,10 +20,17 @@
             var l = Model.Lines[i];
             var b = t.Bidders.FirstOrDefault(x => x.Id == l.TenderBidderId); if (b == null) { continue; }
             var auto = TenderEvaluation.SecurityProblems(t, b);
+            var partnerIssues = BidderProfile.PartnerProblems(t, b, banned);
+            var quals = BidderProfile.Check(t, b); var sug = BidderProfile.Suggest(quals);
             <tr>
                 <td>@l.VendorName<input type="hidden" asp-for="Lines[i].TenderBidderId" /><input type="hidden" asp-for="Lines[i].VendorName" />
                     <div class="small text-muted">@L["BĐDT"] @b.BidSecurityAmount.ToMoney() · @b.BidSecurityRef @L["· đến"] @b.BidSecurityExpiry.ToDate() @L["· hiệu lực"] @b.ValidityDays @L["ngày"]</div></td>
-                <td class="small">@if (auto.Any()) { <span class="text-danger">@string.Join("; ", auto)</span> } else { <span class="text-success">@L["Bảo đảm & hiệu lực đạt"]</span> }</td>
+                <td class="small">@if (auto.Any()) { <span class="text-danger">@string.Join("; ", auto)</span> } else { <span class="text-success">@L["Bảo đảm & hiệu lực đạt"]</span> }
+                    @if (b.Partners.Any()) { <div>@(BidderProfile.IsJointVenture(b) ? L["Liên danh"] : L["Có thầu phụ"]): @string.Join(", ", b.Partners.Select(p => p.Name + " " + p.SharePercent.ToString("0.#") + "%"))</div> }
+                    @if (partnerIssues.Any()) { <div class="text-danger">@string.Join("; ", partnerIssues)</div> }
+                    @if (quals.Any()) { <div class="@(sug == false ? "text-danger" : sug == true ? "text-success" : "text-muted")">@L["Năng lực theo kê khai:"] @(sug == false ? L["không đạt"] : sug == true ? L["đạt"] : L["cần đánh giá"]) (@quals.Count(q => q.Pass == true)/@quals.Count)</div>
+                        <ul class="mb-0 ps-3">@foreach (var q in quals) { <li class="@(q.Pass == false ? "text-danger" : "")">@q.Requirement.Name: @q.Detail</li> }</ul> }
+                    <a asp-action="Bidder" asp-route-id="@b.Id" target="_blank">@L["Hồ sơ năng lực / liên danh"]</a></td>
                 <td class="text-nowrap">
                     <label class="me-2"><input type="radio" name="Lines[@i].Valid" value="true" class="form-check-input" checked="@(l.Valid == true)" /> @L["Hợp lệ"]</label>
                     <label><input type="radio" name="Lines[@i].Valid" value="false" class="form-check-input" checked="@(l.Valid == false)" /> @L["Không"]</label></td>

@@ -49,7 +49,7 @@ public class BoqCompareModel
 
 /// <summary>BOQ phân cấp của gói mua sắm: hạng mục → công việc → chi tiết; cơ cấu giá, chi phí chung / lợi nhuận / dự phòng / VAT; nhập (văn bản, CSV, xlsx) / xuất; phiên bản</summary>
 [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
-public class BoqController : ProcControllerBase
+public partial class BoqController : ProcControllerBase
 {
     public BoqController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }
 

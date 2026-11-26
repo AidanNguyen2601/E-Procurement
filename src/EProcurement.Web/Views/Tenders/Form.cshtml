@@ -26,6 +26,9 @@
         <div class="col-md-2"><label asp-for="ContractDurationDays" class="form-label"></label><input asp-for="ContractDurationDays" class="form-control" /></div>
         <div class="col-md-2 d-flex align-items-end flex-column align-items-start justify-content-end"><div class="form-check"><input asp-for="IsFramework" class="form-check-input" /><label asp-for="IsFramework" class="form-check-label"></label></div>
             <div class="form-check"><input asp-for="IsInternational" class="form-check-input" /><label asp-for="IsInternational" class="form-check-label"></label></div></div>
+        <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input asp-for="AllowJointVenture" class="form-check-input" /><label asp-for="AllowJointVenture" class="form-check-label"></label></div></div>
+        <div class="col-md-2"><label asp-for="MaxSubcontractPercent" class="form-label"></label><input asp-for="MaxSubcontractPercent" type="number" min="0" max="100" step="0.5" class="form-control" placeholder="@L["Không giới hạn"]" /></div>
+        <div class="col-md-2"><label asp-for="DomesticPreferencePercent" class="form-label"></label><input asp-for="DomesticPreferencePercent" type="number" min="0" max="50" step="0.1" class="form-control" title="@L["Cộng thêm vào giá xếp hạng của nhà thầu không thuộc đối tượng ưu đãi – theo tỷ lệ quy định hiện hành"]" /></div>
         <div class="col-md-4"><label asp-for="ClosingAt" class="form-label"></label><input asp-for="ClosingAt" type="datetime-local" class="form-control" />
             @if (ViewBag.LegalMin is LegalMin lm) { <div class="small text-muted">@L["Tối thiểu"] @lm.Text @L["từ ngày phát hành HSMT"] (@lm.Basis). @L["Đấu thầu quốc tế / gói vượt ngưỡng quy mô nhỏ có thời gian dài hơn – hệ thống kiểm tra khi trình duyệt."]</div> }</div>
     </div></div>
