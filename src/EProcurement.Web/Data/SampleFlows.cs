@@ -439,6 +439,7 @@ public static class SampleFlows
         }
 
         done.AddRange(await SampleConstruction.LoadAsync(db)); // gói / hợp đồng xây dựng theo BOQ
+        done.AddRange(await SampleAdvanced.LoadAsync(db)); // tính năng nâng cao: quyết toán, liên danh, năng lực, rủi ro, lưu trữ, ESG
 
         db.ApprovalHistories.AddRange(logs);
         await db.SaveChangesAsync();
@@ -448,6 +449,7 @@ public static class SampleFlows
     /// <summary>Gỡ phần bổ sung (gọi trong giao dịch của SampleDataSeeder.RemoveAsync, trước khi xóa chứng từ mẫu)</summary>
     public static async Task RemoveAsync(EProcDbContext db)
     {
+        await SampleAdvanced.RemoveAsync(db); // dữ liệu tính năng nâng cao gắn với chứng từ mẫu
         await SampleConstruction.RemoveAsync(db); // dữ liệu xây dựng mẫu phải gỡ trước (khóa ngoại tới gói / hợp đồng)
         var vuIds = await db.VendorUsers.Where(x => x.Email.EndsWith(VendorDomain)).Select(x => x.Id).ToListAsync();
         var pqIds = await db.Prequalifications.Where(x => x.Number.StartsWith(P)).Select(x => x.Id).ToListAsync();
