@@ -1,0 +1,45 @@
+@model LegalTimelineSettings
+@{
+    ViewData["Title"] = L["Mốc thời gian theo luật"];
+    var errors = ViewBag.Errors as List<string>;
+    string N(int v) => v.ToString();
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← @L["Thiết lập"]</a>
+    <h5 class="mb-0">@L["Mốc thời gian theo luật"]</h5>
+</div>
+<div class="small text-muted mb-3">
+    @L["Thời gian tối thiểu trong lựa chọn nhà thầu, mặc định theo Điều 45 Luật Đấu thầu số 22/2023/QH15. Khi văn bản pháp luật được sửa đổi, cập nhật tại đây – hệ thống áp dụng ngay cho các gói thầu trình duyệt, phát hành, sửa đổi HSMT và chào hàng cạnh tranh sau đó."]
+    @L["Ngày làm việc không tính thứ Bảy, Chủ nhật; ngày nghỉ lễ cần tự cân nhắc."]
+</div>
+@if (errors != null) { <div class="alert alert-danger small"><ul class="mb-0">@foreach (var e in errors) { <li>@e</li> }</ul></div> }
+<form method="post" class="card"><div class="card-body">
+    <div class="row g-3 small">
+        <div class="col-md-8"><label class="form-label">@L["Căn cứ pháp lý"]</label><input name="LegalBasis" value="@Model.LegalBasis" maxlength="300" class="form-control form-control-sm" /></div>
+        <div class="col-md-4 d-flex align-items-end"><div class="form-check"><input type="checkbox" name="Enforce" value="true" class="form-check-input" id="enf" checked="@Model.Enforce" /><input type="hidden" name="Enforce" value="false" />
+            <label class="form-check-label" for="enf">@L["Chặn thao tác vi phạm (bỏ chọn: chỉ cảnh báo)"]</label></div></div>
+
+        <div class="col-12"><h6 class="mb-0 mt-2">@L["Đấu thầu rộng rãi / hạn chế – thời gian chuẩn bị HSDT tối thiểu (ngày)"]</h6><div class="text-muted">@L["Tính từ ngày đầu tiên phát hành HSMT đến ngày đóng thầu."]</div></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Trong nước"]</label><input name="OpenDomesticDays" type="number" min="0" max="365" value="@N(Model.OpenDomesticDays)" class="form-control form-control-sm" /></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Quốc tế"]</label><input name="OpenInternationalDays" type="number" min="0" max="365" value="@N(Model.OpenInternationalDays)" class="form-control form-control-sm" /></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Gói quy mô nhỏ – trong nước"]</label><input name="SmallDomesticDays" type="number" min="0" max="365" value="@N(Model.SmallDomesticDays)" class="form-control form-control-sm" /></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Gói quy mô nhỏ – quốc tế"]</label><input name="SmallInternationalDays" type="number" min="0" max="365" value="@N(Model.SmallInternationalDays)" class="form-control form-control-sm" /></div>
+
+        <div class="col-12"><h6 class="mb-0 mt-2">@L["Ngưỡng gói quy mô nhỏ (giá gói thầu, đồng)"]</h6></div>
+        <div class="col-md-4"><label class="form-label">@L["Xây lắp, hỗn hợp – không quá"]</label><input name="SmallConstructionMax" data-money value="@Model.SmallConstructionMax.ToString("0")" class="form-control form-control-sm text-end" /></div>
+        <div class="col-md-4"><label class="form-label">@L["Hàng hóa, phi tư vấn – không quá"]</label><input name="SmallGoodsMax" data-money value="@Model.SmallGoodsMax.ToString("0")" class="form-control form-control-sm text-end" /></div>
+
+        <div class="col-12"><h6 class="mb-0 mt-2">@L["Sửa đổi HSMT và chào hàng cạnh tranh"]</h6></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Sửa đổi HSMT trước đóng thầu (ngày)"]</label><input name="AmendmentDays" type="number" min="0" max="365" value="@N(Model.AmendmentDays)" class="form-control form-control-sm" /></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Gói nhỏ (ngày làm việc)"]</label><input name="AmendmentSmallWorkingDays" type="number" min="0" max="365" value="@N(Model.AmendmentSmallWorkingDays)" class="form-control form-control-sm" /></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Chào hàng cạnh tranh (ngày làm việc)"]</label><input name="CompetitiveQuotationWorkingDays" type="number" min="0" max="365" value="@N(Model.CompetitiveQuotationWorkingDays)" class="form-control form-control-sm" /></div>
+
+        <div class="col-12"><h6 class="mb-0 mt-2">@L["Nhận biết lĩnh vực của gói"]</h6><div class="text-muted">@L["Từ khóa (cách nhau dấu phẩy) so với Lĩnh vực của gói mua sắm. Không khớp → hàng hóa, phi tư vấn."]</div></div>
+        <div class="col-md-6"><label class="form-label">@L["Xây lắp, hỗn hợp"]</label><input name="ConstructionKeywords" value="@Model.ConstructionKeywords" class="form-control form-control-sm" /></div>
+        <div class="col-md-6"><label class="form-label">@L["Tư vấn"]</label><input name="ConsultingKeywords" value="@Model.ConsultingKeywords" class="form-control form-control-sm" /></div>
+    </div>
+</div>
+<div class="card-footer d-flex gap-2">
+    <button class="btn btn-primary btn-sm">@L["Lưu"]</button>
+    <button name="reset" value="true" class="btn btn-outline-secondary btn-sm" data-confirm="@L["Khôi phục giá trị mặc định theo luật?"]">@L["Khôi phục mặc định"]</button>
+</div></form>

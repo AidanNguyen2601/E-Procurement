@@ -128,6 +128,19 @@ public class RfqsController : ProcControllerBase
             TempData["Error"] = I18n.T("Hạn nộp báo giá đã qua. Gia hạn trước khi phát hành.");
             return RedirectToAction(nameof(Details), new { id });
         }
+        // Chào hàng cạnh tranh: thời gian chuẩn bị báo giá tối thiểu theo luật (ngày làm việc)
+        var method = r.PackageId.HasValue ? await Db.ProcurementPackages.Where(p => p.Id == r.PackageId).Select(p => (ProcurementMethod?)p.Method).FirstOrDefaultAsync() : null;
+        if (method == ProcurementMethod.CompetitiveQuotation)
+        {
+            var legal = await HttpContext.RequestServices.GetRequiredService<SettingsStore>().LegalAsync();
+            var min = LegalTimelines.MinQuotation(legal);
+            var earliest = min.EarliestFrom(DateTime.Today);
+            if (legal.Enforce && r.Deadline.Date < earliest)
+            {
+                TempData["Error"] = I18n.T("Chào hàng cạnh tranh cần tối thiểu {0} từ ngày phát hành ({1}): phát hành hôm nay thì hạn nộp báo giá sớm nhất {2}. Gia hạn trước khi phát hành.", min.Text, min.Basis, earliest.ToDate());
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
         r.Status = RfqStatus.Open;
         r.IssueDate = DateTime.Today;
         Log(DocType.RFQ, id, "Phát hành RFQ", $"Hạn nộp báo giá {r.Deadline.ToDate()}");

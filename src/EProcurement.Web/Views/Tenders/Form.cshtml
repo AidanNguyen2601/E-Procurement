@@ -24,9 +24,10 @@
         <div class="col-md-6"><label asp-for="EnvelopeMethod" class="form-label"></label><select asp-for="EnvelopeMethod" class="form-select" asp-items="Html.GetEnumSelectList<EnvelopeMethod>()"></select></div>
         <div class="col-md-2"><label asp-for="ContractType" class="form-label"></label><select asp-for="ContractType" class="form-select" asp-items="@(await Catalog.SelectAsync(CatalogType.ContractType, Model.ContractType))"></select></div>
         <div class="col-md-2"><label asp-for="ContractDurationDays" class="form-label"></label><input asp-for="ContractDurationDays" class="form-control" /></div>
-        <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input asp-for="IsFramework" class="form-check-input" /><label asp-for="IsFramework" class="form-check-label"></label></div></div>
+        <div class="col-md-2 d-flex align-items-end flex-column align-items-start justify-content-end"><div class="form-check"><input asp-for="IsFramework" class="form-check-input" /><label asp-for="IsFramework" class="form-check-label"></label></div>
+            <div class="form-check"><input asp-for="IsInternational" class="form-check-input" /><label asp-for="IsInternational" class="form-check-label"></label></div></div>
         <div class="col-md-4"><label asp-for="ClosingAt" class="form-label"></label><input asp-for="ClosingAt" type="datetime-local" class="form-control" />
-            <div class="small text-muted">@L["Tối thiểu"] @(((ProcurementSettings?)ViewBag.Settings)?.TenderMinBiddingDays.ToString() ?? "N") @L["ngày sau khi phát hành HSMT."]</div></div>
+            @if (ViewBag.LegalMin is LegalMin lm) { <div class="small text-muted">@L["Tối thiểu"] @lm.Text @L["từ ngày phát hành HSMT"] (@lm.Basis). @L["Đấu thầu quốc tế / gói vượt ngưỡng quy mô nhỏ có thời gian dài hơn – hệ thống kiểm tra khi trình duyệt."]</div> }</div>
     </div></div>
 
     <div class="card mb-3"><div class="card-header">@L["2. Hồ sơ mời thầu"]</div><div class="card-body row g-3">

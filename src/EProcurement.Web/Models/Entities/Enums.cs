@@ -130,7 +130,8 @@ public enum ContractStatus
 {
     [Display(Name = "Đang thực hiện")] Active = 1,
     [Display(Name = "Đã hoàn thành")] Completed = 2,
-    [Display(Name = "Đã chấm dứt")] Terminated = 3
+    [Display(Name = "Đã chấm dứt")] Terminated = 3,
+    [Display(Name = "Đã thanh lý")] Liquidated = 4
 }
 
 /// <summary>Các danh mục dùng chung (dữ liệu tham chiếu được chọn trên chứng từ)</summary>
@@ -220,7 +221,10 @@ public enum PaymentType
     [Display(Name = "Tạm ứng hợp đồng")] Advance = 1,
     [Display(Name = "Thanh toán theo hóa đơn")] Invoice = 2,
     [Display(Name = "Thanh toán theo đợt hợp đồng")] Milestone = 3,
-    [Display(Name = "Thanh toán theo khối lượng nghiệm thu")] Acceptance = 4
+    [Display(Name = "Thanh toán theo khối lượng nghiệm thu")] Acceptance = 4,
+    [Display(Name = "Hoàn trả tiền giữ lại")] RetentionRelease = 5,
+    [Display(Name = "Thanh toán quyết toán")] FinalSettlement = 6,
+    [Display(Name = "Thanh toán điều chỉnh giá")] PriceAdjustment = 7
 }
 
 public enum PaymentStatus

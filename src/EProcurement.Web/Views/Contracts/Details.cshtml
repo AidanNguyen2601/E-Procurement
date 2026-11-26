@@ -13,11 +13,13 @@
 <div class="toolbar">
     @if (buyer && Model.Status == ContractStatus.Active && Model.IsFramework) { <a class="btn btn-primary" asp-action="CreatePo" asp-route-id="@Model.Id">@L["Đặt hàng đợt mới"]</a> }
     @if (Model.TenderId.HasValue) { <a class="btn btn-outline-secondary" asp-controller="Tenders" asp-action="Details" asp-route-id="@Model.TenderId">@L["Gói thầu"] @Model.Tender?.Number</a> }
+    <a class="btn btn-outline-secondary" asp-action="Settlement" asp-route-id="@Model.Id">@L["Quyết toán & thanh lý"]</a>
+    <a class="btn btn-outline-secondary" asp-action="PriceAdjustment" asp-route-id="@Model.Id">@L["Điều chỉnh giá"]</a>
     @if (buyer && Model.Status == ContractStatus.Active)
     {
         <form asp-action="Close" asp-route-id="@Model.Id" method="post" class="ms-auto d-flex gap-1">
-            <input name="reason" class="form-control form-control-sm" placeholder="@L["Nội dung thanh lý / lý do chấm dứt"]" />
-            <button name="terminate" value="false" class="btn btn-sm btn-outline-success text-nowrap" data-confirm="@L["Thanh lý – hoàn thành hợp đồng?"]">@L["Thanh lý"]</button>
+            <input name="reason" class="form-control form-control-sm" placeholder="@L["Nội dung hoàn thành / lý do chấm dứt"]" />
+            <button name="terminate" value="false" class="btn btn-sm btn-outline-success text-nowrap" data-confirm="@L["Xác nhận hoàn thành hợp đồng (nghiệm thu bàn giao)? Sau đó quyết toán và thanh lý tại trang Quyết toán."]">@L["Hoàn thành"]</button>
             <button name="terminate" value="true" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="@L["Chấm dứt hợp đồng trước hạn?"]">@L["Chấm dứt"]</button>
         </form>
     }

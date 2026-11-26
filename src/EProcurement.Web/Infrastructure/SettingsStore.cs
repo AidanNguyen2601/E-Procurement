@@ -14,7 +14,7 @@ public class SettingsStore
     public SettingsStore(EProcDbContext db, IMemoryCache cache) { _db = db; _cache = cache; }
 
     public const string Alerts = "alerts", Email = "email", Templates = "notify.templates", Numbering = "numbering",
-        Permissions = "permissions", SupplierCriteria = "supplier.criteria", Print = "print", PackageTiers = "package.tiers";
+        Permissions = "permissions", SupplierCriteria = "supplier.criteria", Print = "print", PackageTiers = "package.tiers", LegalTimelines = "legal.timelines";
 
     /// <summary>Đọc cấu hình; chưa lưu → giá trị mặc định do <paramref name="fallback"/> tạo</summary>
     public async Task<T> GetAsync<T>(string key, Func<T> fallback) where T : class
@@ -36,6 +36,8 @@ public class SettingsStore
         await _db.SaveChangesAsync();
         _cache.Remove("set:" + key);
     }
+
+    public Task<LegalTimelineSettings> LegalAsync() => GetAsync(LegalTimelines, () => new LegalTimelineSettings());
 
     public async Task<bool> ExistsAsync(string key) => await _db.AppSettings.AnyAsync(s => s.Key == key);
 }

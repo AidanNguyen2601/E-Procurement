@@ -1,0 +1,145 @@
+@model Contract
+@{
+    var l = (ContractLedger)ViewBag.Ledger;
+    var pays = (List<Payment>)ViewBag.Payments;
+    var sets = (List<ContractSettlement>)ViewBag.Settlements;
+    var cur = ViewBag.Current as ContractSettlement;
+    var draft = ViewBag.Draft as ContractSettlement;
+    var checks = (List<LiquidationCheck>)ViewBag.Checks;
+    var retProblem = ViewBag.RetentionProblem as string;
+    var adjs = (List<ContractPriceAdjustment>)ViewBag.Adjustments;
+    var purchasing = User.IsPurchasing(); var finance = User.IsAdmin() || User.IsInRole(AppRoles.Accountant); var director = User.IsAdmin() || User.IsInRole(AppRoles.Director);
+    var open = Model.Status is ContractStatus.Active or ContractStatus.Completed;
+    string P(decimal v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}
+<div class="toolbar">
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">← @L["Hợp đồng"] @Model.Number</a>
+    <a asp-action="PriceAdjustment" asp-route-id="@Model.Id" class="btn btn-outline-secondary">@L["Điều chỉnh giá"]@if (adjs.Any()) { <span class="badge text-bg-secondary ms-1">@adjs.Count</span> }</a>
+    <span class="ms-auto"><partial name="_Badge" model="Model.Status" /></span>
+</div>
+<h5 class="mb-3">@L["Quyết toán & thanh lý hợp đồng"] – @Model.Title <span class="text-muted small">(@Model.Vendor?.Name)</span></h5>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Giá trị HĐ (gồm VAT)"]</div><div class="value">@l.ContractGross.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Khối lượng đã đề nghị TT"]</div><div class="value">@l.WorkGross.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Đã chi (tiền mặt)"]</div><div class="value">@l.PaidCash.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Tạm ứng chưa thu hồi"]</div><div class="value @(l.AdvanceOutstanding > 0 ? "text-warning" : "")">@l.AdvanceOutstanding.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Tiền giữ lại chưa hoàn trả"]</div><div class="value">@l.RetentionOutstanding.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-2"><div class="card stat"><div class="label">@L["Phạt đã trừ"]</div><div class="value">@l.Penalties.ToShortMoney()</div></div></div>
+</div>
+
+<div class="row g-3">
+<div class="col-lg-8">
+    @* ---- điều khoản giữ lại & thu hồi tạm ứng ---- *@
+    <div class="card mb-3"><div class="card-header">@L["Giữ lại bảo hành & lộ trình thu hồi tạm ứng"]</div><div class="card-body small">
+        <form asp-action="MoneyTerms" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end"><input type="hidden" name="back" value="settlement" />
+            <div class="col-6 col-md-2"><label class="form-label">@L["Giữ lại mỗi đợt (%)"]</label><input name="retentionPercent" type="number" min="0" max="100" step="0.1" value="@P(Model.RetentionPercent)" class="form-control form-control-sm" /></div>
+            <div class="col-6 col-md-2"><label class="form-label">@L["Tối đa (% HĐ)"]</label><input name="retentionCap" type="number" min="0" max="100" step="0.1" value="@P(Model.RetentionCapPercent)" class="form-control form-control-sm" /></div>
+            <div class="col-6 col-md-2"><label class="form-label">@L["Thu hồi TƯ từ (% lũy kế)"]</label><input name="advanceStart" type="number" min="0" max="100" step="0.1" value="@P(Model.AdvanceRecoveryStartPercent)" class="form-control form-control-sm" /></div>
+            <div class="col-6 col-md-2"><label class="form-label">@L["Thu hồi hết khi (% lũy kế)"]</label><input name="advanceEnd" type="number" min="0" max="100" step="0.1" value="@P(Model.AdvanceRecoveryEndPercent)" class="form-control form-control-sm" /></div>
+            <div class="col-6 col-md-2"><label class="form-label">@L["Hết hạn bảo hành"]</label><input name="warrantyEnd" type="date" value="@Model.WarrantyEndDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+            <div class="col-6 col-md-2">@if ((purchasing || finance) && open) { <button class="btn btn-sm btn-outline-primary w-100">@L["Lưu"]</button> }</div>
+        </form>
+        <div class="text-muted mt-2">@L["Mỗi đợt thanh toán khối lượng (hóa đơn, đợt hợp đồng, nghiệm thu) tự giữ lại % số tiền đợt đến mức tối đa, và thu hồi tạm ứng tuyến tính khi giá trị thanh toán lũy kế đi từ mức bắt đầu đến mức thu hồi hết (0% → 100%: theo tỷ lệ tạm ứng mỗi đợt; thông lệ xây dựng: thu hồi hết khi đạt 80%). Tiền giữ lại được hoàn trả khi hết bảo hành, hoặc sớm hơn nếu nhà thầu nộp bảo lãnh bảo hành đủ giá trị."]</div>
+    </div></div>
+
+    @* ---- quyết toán ---- *@
+    <div class="card mb-3"><div class="card-header">@L["Quyết toán hợp đồng"]</div><div class="card-body">
+        @{ var s = cur ?? draft; }
+        @if (cur == null && l.HasPending) { <div class="alert alert-warning py-2 small">@L["Đang có đề nghị thanh toán chưa chi ({0} đ) – số liệu dưới đây chưa tính khoản này. Chi / từ chối các đề nghị trước khi trình quyết toán.", l.PendingCash.ToMoney()]</div> }
+        @if (s != null)
+        {
+            <table class="table table-sm small mb-2" data-grid="off">
+                <tr><td>@L["Giá trị hợp đồng hiện hành (trước VAT, gồm phụ lục)"]</td><td class="money">@s.ContractValue.ToMoney()</td></tr>
+                <tr><td>@L["Giá trị quyết toán (trước VAT)"]</td><td class="money fw-semibold">@s.FinalValue.ToMoney()</td></tr>
+                <tr><td>@L["Giá trị quyết toán (gồm VAT"] @s.VatPercent.ToString("0.#")%)</td><td class="money fw-semibold">@s.FinalGross.ToMoney()</td></tr>
+                <tr><td>@L["+ Điều chỉnh giá đã duyệt (gồm VAT)"]</td><td class="money">@s.PriceAdjustment.ToMoney()</td></tr>
+                <tr><td>@L["− Phạt hợp đồng đã trừ"]</td><td class="money">@s.PenaltyTotal.ToMoney()</td></tr>
+                <tr><td>@L["− Giảm trừ khác"] @if (!string.IsNullOrEmpty(s.OtherDeductionNote)) { <span class="text-muted">(@s.OtherDeductionNote)</span> }</td><td class="money">@s.OtherDeduction.ToMoney()</td></tr>
+                <tr><td>@L["− Đã thanh toán (gồm tạm ứng)"]</td><td class="money">@s.PaidTotal.ToMoney()</td></tr>
+                <tr class="fw-bold"><td>@(s.Balance >= 0 ? L["Còn phải thanh toán cho nhà thầu"] : L["Nhà thầu phải hoàn trả"])</td><td class="money @(s.Balance < 0 ? "text-danger" : "")">@Math.Abs(s.Balance).ToMoney()</td></tr>
+                @if (s.RetentionHeld > 0) {
+                    <tr><td class="ps-4">@L["trong đó: tiền giữ lại – trả khi hết bảo hành"] @(s.WarrantyEndDate.HasValue ? "(" + s.WarrantyEndDate.ToDate() + ")" : "")</td><td class="money">@s.RetentionHeld.ToMoney()</td></tr>
+                    <tr><td class="ps-4">@L["thanh toán ngay khi quyết toán"]</td><td class="money">@s.PayNow.ToMoney()</td></tr>
+                }
+                @if (s.AdvanceOutstanding > 0) { <tr class="table-warning"><td colspan="2">@L["Tạm ứng chưa thu hồi {0} đ – đã nằm trong số đã thanh toán, được bù trừ khi quyết toán.", s.AdvanceOutstanding.ToMoney()]</td></tr> }
+            </table>
+        }
+        @if (cur != null)
+        {
+            <div class="small mb-2"><b>@cur.Number</b> · <span class="badge @(cur.Status == SettlementStatus.Approved ? "bg-success" : "bg-warning text-dark")">@cur.Status.GetDisplayName()</span>
+                · @L["lập"] @cur.CreatedAt.ToDateTime() @L["bởi"] @cur.CreatedBy?.FullName
+                @if (cur.DecidedAt.HasValue) { <span>· @L["duyệt"] @cur.DecidedAt.ToDateTime() @cur.DecidedBy?.FullName</span> }
+                · <a asp-action="SettlementMinutes" asp-route-id="@Model.Id" asp-route-settlementId="@cur.Id">@L["In biên bản"]</a>
+                @if (!string.IsNullOrEmpty(cur.Note)) { <div class="text-muted">@cur.Note</div> }</div>
+            @if (cur.Status == SettlementStatus.Pending && director)
+            {
+                <form asp-action="DecideSettlement" asp-route-id="@Model.Id" method="post" class="d-flex gap-2"><input type="hidden" name="settlementId" value="@cur.Id" />
+                    <input name="comment" class="form-control form-control-sm" placeholder="@L["Ý kiến"]" />
+                    <button name="approve" value="true" class="btn btn-sm btn-success text-nowrap">@L["Duyệt quyết toán"]</button><button name="approve" value="false" class="btn btn-sm btn-outline-danger text-nowrap">@L["Trả lại"]</button></form>
+            }
+        }
+        else if ((purchasing || finance) && open)
+        {
+            <form asp-action="CreateSettlement" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end small border-top pt-2">
+                <div class="col-md-3"><label class="form-label">@L["Giá trị quyết toán (trước VAT)"]</label><input name="finalValue" data-money value="@draft!.FinalValue.ToString("0")" class="form-control form-control-sm text-end" /></div>
+                <div class="col-md-2"><label class="form-label">@L["Giảm trừ khác (gồm VAT)"]</label><input name="otherDeduction" data-money value="0" class="form-control form-control-sm text-end" /></div>
+                <div class="col-md-3"><label class="form-label">@L["Nội dung giảm trừ"]</label><input name="otherNote" maxlength="500" class="form-control form-control-sm" /></div>
+                <div class="col-md-2"><label class="form-label">@L["Hết hạn bảo hành"]</label><input name="warrantyEnd" type="date" value="@Model.WarrantyEndDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+                <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">@L["Trình quyết toán"]</button></div>
+                <div class="col-12"><input name="note" maxlength="2000" class="form-control form-control-sm" placeholder="@L["Căn cứ quyết toán: biên bản nghiệm thu hoàn thành, hồ sơ hoàn công, phụ lục…"]" /></div>
+                <div class="col-12 text-muted">@L["Mặc định giá trị quyết toán = khối lượng đã nghiệm thu × đơn giá hợp đồng (hợp đồng có BOQ), hoặc giá trị hợp đồng hiện hành. Hoàn tất các đề nghị thanh toán đang chờ và điều chỉnh giá trước khi quyết toán."]</div>
+            </form>
+        }
+        @foreach (var r in sets.Where(x => x.Status == SettlementStatus.Rejected))
+        {
+            <div class="small text-muted mt-2">@r.Number · @L["trả lại"] @r.DecidedAt.ToDate(): @r.DecisionNote</div>
+        }
+    </div></div>
+
+    @* ---- thanh toán của hợp đồng ---- *@
+    <div class="card mb-3"><div class="card-header">@L["Các lần thanh toán"]</div><div class="table-responsive"><table class="table table-sm small mb-0">
+        <thead><tr><th>@L["Số"]</th><th>@L["Loại"]</th><th>@L["Trạng thái"]</th><th class="money">@L["Số tiền"]</th><th class="money">@L["Phạt"]</th><th class="money">@L["Thu hồi TƯ"]</th><th class="money">@L["Giữ lại"]</th><th class="money">@L["Thực chi"]</th></tr></thead><tbody>
+        @foreach (var p in pays)
+        {
+            <tr class="@(p.Status == PaymentStatus.Rejected ? "text-muted text-decoration-line-through" : "")"><td><a asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">@p.Number</a></td><td>@p.Type.GetDisplayName()</td><td>@p.Status.GetDisplayName()</td>
+                <td class="money">@p.Amount.ToMoney()</td><td class="money">@(p.PenaltyAmount > 0 ? p.PenaltyAmount.ToMoney() : "")</td><td class="money">@(p.AdvanceDeduction > 0 ? p.AdvanceDeduction.ToMoney() : "")</td>
+                <td class="money">@(p.RetentionAmount > 0 ? p.RetentionAmount.ToMoney() : "")</td><td class="money fw-semibold">@p.NetAmount.ToMoney()</td></tr>
+        }
+        @if (!pays.Any()) { <tr><td colspan="8" class="text-muted">@L["Chưa có thanh toán."]</td></tr> }
+    </tbody></table></div></div>
+</div>
+
+<div class="col-lg-4">
+    <div class="card mb-3"><div class="card-header">@L["Hoàn trả tiền giữ lại"]</div><div class="card-body small">
+        <div>@L["Đã giữ lại"] <b>@l.Retained.ToMoney()</b> · @L["đã hoàn trả"] <b>@l.RetentionReleased.ToMoney()</b> · @L["còn"] <b>@l.RetentionOutstanding.ToMoney()</b> đ</div>
+        @if (l.RetentionOutstanding > 0)
+        {
+            @if (retProblem != null) { <div class="text-muted mt-1">@retProblem</div> }
+            else if (finance) { <form asp-action="RequestRetentionRelease" asp-route-id="@Model.Id" method="post" class="mt-2"><button class="btn btn-sm btn-outline-primary">@L["Đề nghị hoàn trả"] @l.RetentionOutstanding.ToMoney() đ</button></form> }
+            else { <div class="text-success mt-1">@L["Đủ điều kiện hoàn trả – Kế toán lập đề nghị."]</div> }
+        }
+    </div></div>
+
+    <div class="card mb-3"><div class="card-header">@L["Thanh lý hợp đồng"]</div><div class="card-body small">
+        @if (Model.Status == ContractStatus.Liquidated)
+        {
+            <div class="text-success fw-semibold">@L["Đã thanh lý"] @cur?.LiquidatedAt.ToDateTime()</div>
+            @if (!string.IsNullOrEmpty(cur?.LiquidationNote)) { <div class="text-muted">@cur!.LiquidationNote</div> }
+        }
+        else
+        {
+            <ul class="list-unstyled mb-2">
+                @foreach (var c in checks) { <li><span class="@(c.Ok ? "text-success" : "text-danger")">@(c.Ok ? "✓" : "✗")</span> @c.Text</li> }
+            </ul>
+            @if (purchasing && open)
+            {
+                <form asp-action="Liquidate" asp-route-id="@Model.Id" method="post" class="d-flex gap-1">
+                    <input name="note" maxlength="1000" class="form-control form-control-sm" placeholder="@L["Nội dung thanh lý"]" />
+                    <button class="btn btn-sm btn-success text-nowrap" @(checks.All(x => x.Ok) ? "" : "disabled") data-confirm="@L["Thanh lý hợp đồng? Sau khi thanh lý không phát sinh thêm thanh toán."]">@L["Thanh lý"]</button>
+                </form>
+            }
+        }
+    </div></div>
+</div>
+</div>

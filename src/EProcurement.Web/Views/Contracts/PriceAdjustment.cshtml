@@ -1,0 +1,87 @@
+@model Contract
+@{
+    var adjs = (List<ContractPriceAdjustment>)ViewBag.Adjustments;
+    var accs = (List<BoqAcceptance>)ViewBag.Acceptances;
+    var paid = (Dictionary<int, (int Id, string Number)>)ViewBag.AdjPaid;
+    var purchasing = User.IsPurchasing(); var finance = User.IsAdmin() || User.IsInRole(AppRoles.Accountant); var director = User.IsAdmin() || User.IsInRole(AppRoles.Director);
+    var open = Model.Status is ContractStatus.Active or ContractStatus.Completed;
+    var locked = adjs.Any(a => a.Status != SettlementStatus.Rejected);
+    var fixedShare = ContractClose.FixedShare(Model.PriceIndices);
+    var usedAcc = adjs.Where(a => a.Status != SettlementStatus.Rejected && a.AcceptanceId != null).Select(a => a.AcceptanceId!.Value).ToHashSet();
+    string P(decimal v) => v.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+    var rows = Model.PriceIndices.ToList();
+    if (!locked && purchasing) while (rows.Count < Math.Max(4, Model.PriceIndices.Count + 2)) rows.Add(new ContractPriceIndex());
+}
+<div class="toolbar">
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">← @L["Hợp đồng"] @Model.Number</a>
+    <a asp-action="Settlement" asp-route-id="@Model.Id" class="btn btn-outline-secondary">@L["Quyết toán & thanh lý"]</a>
+</div>
+<h5>@L["Điều chỉnh giá theo chỉ số"] – @Model.Title</h5>
+<div class="small text-muted mb-3">@L["Áp dụng cho hợp đồng đơn giá điều chỉnh. Công thức: Pn = P0 × (a + Σ bi × Iᵢ/I₀ᵢ), trong đó a là phần cố định (= 1 − Σ tỷ trọng), bi là tỷ trọng của thành phần (vật liệu, nhân công, máy…), I₀ là chỉ số giá tại thời điểm gốc, Iᵢ là chỉ số kỳ điều chỉnh (do cơ quan có thẩm quyền công bố). Số tiền điều chỉnh = giá trị khối lượng của kỳ × (hệ số − 1)."]
+    @L["Loại hợp đồng:"] <b>@Model.Tender?.ContractType</b></div>
+
+<div class="row g-3">
+<div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header">@L["Công thức điều chỉnh"]</div><div class="card-body small">
+        <form asp-action="SaveIndices" asp-route-id="@Model.Id" method="post">
+            <table class="table table-sm mb-2" data-grid="off"><thead><tr><th>@L["Thành phần"]</th><th class="money">@L["Tỷ trọng (b)"]</th><th class="money">@L["Chỉ số gốc (I₀)"]</th></tr></thead><tbody>
+            @foreach (var r in rows)
+            {
+                <tr><td><input name="name" value="@r.Name" maxlength="100" class="form-control form-control-sm" @(locked || !purchasing ? "readonly" : "") placeholder="@L["VD: Thép xây dựng"]" /></td>
+                    <td><input name="weight" type="number" min="0" max="1" step="0.0001" value="@(r.Weight == 0 ? "" : P(r.Weight))" class="form-control form-control-sm text-end" @(locked || !purchasing ? "readonly" : "") /></td>
+                    <td><input name="baseIndex" type="number" min="0" step="0.0001" value="@(r.BaseIndex == 0 ? "" : P(r.BaseIndex))" class="form-control form-control-sm text-end" @(locked || !purchasing ? "readonly" : "") /></td></tr>
+            }
+            </tbody></table>
+            <div class="d-flex align-items-center gap-2">
+                <span>@L["Phần cố định a ="] <b>@P(fixedShare)</b></span>
+                @if (!locked && purchasing && open) { <button class="btn btn-sm btn-outline-primary ms-auto">@L["Lưu công thức"]</button> }
+            </div>
+            @if (locked) { <div class="text-muted mt-1">@L["Đã có điều chỉnh giá – công thức bị khóa."]</div> }
+        </form>
+    </div></div>
+</div>
+<div class="col-lg-7">
+    @if (Model.PriceIndices.Any() && (purchasing || finance) && open)
+    {
+        <div class="card mb-3"><div class="card-header">@L["Lập điều chỉnh giá một kỳ"]</div><div class="card-body small">
+            <form asp-action="AddPriceAdjustment" asp-route-id="@Model.Id" method="post" class="row g-2">
+                <div class="col-md-4"><label class="form-label">@L["Kỳ điều chỉnh"]</label><input name="period" maxlength="100" class="form-control form-control-sm" placeholder="@L["VD: Quý III/2026"]" required /></div>
+                <div class="col-md-4"><label class="form-label">@L["Theo biên bản nghiệm thu"]</label><select name="acceptanceId" class="form-select form-select-sm"><option value="">@L["-- nhập giá trị --"]</option>
+                    @foreach (var a in accs.Where(a => !usedAcc.Contains(a.Id))) { <option value="@a.Id">@a.Number (@L["đợt"] @a.Period) – @a.SubTotal.ToMoney()</option> }</select></div>
+                <div class="col-md-4"><label class="form-label">@L["hoặc giá trị kỳ (trước VAT)"]</label><input name="baseAmount" data-money class="form-control form-control-sm text-end" /></div>
+                @foreach (var i in Model.PriceIndices)
+                {
+                    <div class="col-6 col-md-3"><label class="form-label">@i.Name <span class="text-muted">(I₀ @P(i.BaseIndex))</span></label><input name="idx[@i.Id]" type="number" min="0" step="0.0001" class="form-control form-control-sm text-end" required /></div>
+                }
+                <div class="col-md-9"><input name="note" maxlength="1000" class="form-control form-control-sm" placeholder="@L["Nguồn chỉ số (công bố của Sở Xây dựng / Tổng cục Thống kê…)"]" /></div>
+                <div class="col-md-3"><button class="btn btn-sm btn-primary w-100">@L["Trình duyệt"]</button></div>
+            </form>
+        </div></div>
+    }
+    <div class="card mb-3"><div class="card-header">@L["Các kỳ điều chỉnh"]</div><div class="table-responsive"><table class="table table-sm small mb-0">
+        <thead><tr><th>@L["Số"]</th><th>@L["Kỳ"]</th><th class="money">@L["Giá trị kỳ"]</th><th class="money">@L["Hệ số"]</th><th class="money">@L["Điều chỉnh (trước VAT)"]</th><th>@L["Trạng thái"]</th><th></th></tr></thead><tbody>
+        @foreach (var a in adjs)
+        {
+            <tr><td>@a.Number</td><td>@a.Period @if (a.Acceptance != null) { <div class="text-muted">@a.Acceptance.Number</div> }<div class="text-muted">@a.Indices</div></td>
+                <td class="money">@a.BaseAmount.ToMoney()</td><td class="money">@a.Factor.ToString("0.######")</td>
+                <td class="money @(a.Amount < 0 ? "text-danger" : "text-success")">@((a.Amount > 0 ? "+" : "") + a.Amount.ToMoney())</td>
+                <td>@a.Status.GetDisplayName() @if (!string.IsNullOrEmpty(a.DecisionNote)) { <div class="text-muted">@a.DecisionNote</div> }</td>
+                <td class="text-end text-nowrap">
+                    @if (a.Status == SettlementStatus.Pending && director)
+                    {
+                        <form asp-action="DecidePriceAdjustment" asp-route-id="@Model.Id" method="post" class="d-flex gap-1"><input type="hidden" name="adjustmentId" value="@a.Id" />
+                            <input name="comment" class="form-control form-control-sm" style="width:110px" placeholder="@L["Ý kiến"]" />
+                            <button name="approve" value="true" class="btn btn-sm btn-success">@L["Duyệt"]</button><button name="approve" value="false" class="btn btn-sm btn-outline-danger">@L["Trả lại"]</button></form>
+                    }
+                    else if (paid.TryGetValue(a.Id, out var p)) { <a asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">@p.Number</a> }
+                    else if (a.Status == SettlementStatus.Approved && a.Amount > 0 && finance && open)
+                    {
+                        <form asp-action="RequestAdjustmentPayment" asp-route-id="@Model.Id" method="post"><input type="hidden" name="adjustmentId" value="@a.Id" /><button class="btn btn-sm btn-outline-primary">@L["Đề nghị TT"]</button></form>
+                    }
+                    else if (a.Status == SettlementStatus.Approved && a.Amount < 0) { <span class="text-muted">@L["trừ khi quyết toán"]</span> }
+                </td></tr>
+        }
+        @if (!adjs.Any()) { <tr><td colspan="7" class="text-muted">@L["Chưa có điều chỉnh giá."]</td></tr> }
+    </tbody></table></div></div>
+</div>
+</div>

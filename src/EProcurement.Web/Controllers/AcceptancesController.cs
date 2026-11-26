@@ -193,16 +193,17 @@ public class AcceptancesController : ProcControllerBase
         var gross = BoqAcceptances.Gross(a.SubTotal, c.VatPercent);
         var contractGross = Math.Round(c.Value * (1 + c.VatPercent / 100m), 0);
         // Không thanh toán vượt giá trị hợp đồng (tính cả hóa đơn / đợt đã đề nghị): tránh trả trùng giữa luồng hóa đơn và nghiệm thu
-        var committed = await Db.Payments.Where(p => p.ContractId == c.Id && p.Type != PaymentType.Advance && p.Status != PaymentStatus.Rejected).SumAsync(p => (decimal?)p.Amount) ?? 0;
+        var ledger = await ContractClose.LedgerAsync(Db, c);
+        var committed = ledger.WorkGross;
         if (committed + gross > contractGross)
             return Back(I18n.T("Thanh toán vượt giá trị hợp đồng: đã đề nghị {0} đ, đợt này {1} đ, giá trị HĐ {2} đ.", committed.ToMoney(), gross.ToMoney(), contractGross.ToMoney()));
-        var (_, _, advPaid, advRecovered) = await _fin.ContractPaymentsAsync(a.ContractId);
-        var advance = BoqAcceptances.AdvanceDeduction(gross, contractGross, advPaid, advRecovered);
+        var ded = ContractClose.Deductions(c, gross, ledger);
+        var advance = ded.Advance;
         var pay = new Payment
         {
             Number = await DocNumbers.NextAsync(Db.Payments.Select(x => x.Number), "TT"), Type = PaymentType.Acceptance, VendorId = c.VendorId, ContractId = c.Id, AcceptanceId = a.Id,
-            Amount = gross, AdvanceDeduction = advance, NetAmount = gross - advance,
-            Note = I18n.T("Thanh toán theo khối lượng nghiệm thu {0} (đợt {1}) – HĐ {2}", a.Number, a.Period, c.Number) + (advance > 0 ? " · " + I18n.T("khấu trừ tạm ứng {0} đ", advance.ToMoney()) : ""),
+            Amount = gross, AdvanceDeduction = advance, RetentionAmount = ded.Retention, NetAmount = gross - advance - ded.Retention,
+            Note = I18n.T("Thanh toán theo khối lượng nghiệm thu {0} (đợt {1}) – HĐ {2}", a.Number, a.Period, c.Number) + (string.IsNullOrEmpty(ded.Note) ? "" : " · " + ded.Note),
             RequestedById = Me, RequestedAt = DateTime.Now
         };
         Db.Payments.Add(pay);

@@ -379,6 +379,20 @@
 </div>
 
 <div class="col-lg-4">
+    @if (ViewBag.LegalChecks is List<LegalCheck> lcs)
+    {
+        var bad = lcs.Count(c => c.Ok == false);
+        <div class="card mb-3 @(bad > 0 ? "border-danger" : "")"><div class="card-header d-flex align-items-center">@L["Mốc thời gian theo luật"]
+            <span class="ms-auto badge @(bad > 0 ? "bg-danger" : "bg-success")">@(bad > 0 ? L["{0} vi phạm", bad] : L["Đạt"])</span></div>
+            <ul class="list-group list-group-flush small">
+            @foreach (var c in lcs)
+            {
+                <li class="list-group-item"><span class="@(c.Ok == false ? "text-danger fw-semibold" : c.Ok == true ? "text-success" : "text-muted")">@(c.Ok == false ? "✗" : c.Ok == true ? "✓" : "•")</span> <b>@c.Rule</b><div class="text-muted">@c.Detail</div></li>
+            }
+            </ul>
+            <div class="card-footer small text-muted">@(ViewBag.LegalEnforce == true ? L["Hệ thống chặn trình / phát hành / sửa đổi vi phạm mốc tối thiểu."] : L["Chế độ chỉ cảnh báo."]) @if (User.IsAdmin()) { <a asp-controller="Settings" asp-action="LegalTimelines">@L["Thiết lập"]</a> }</div>
+        </div>
+    }
     <div class="card mb-3"><div class="card-header">@L["Tổ chuyên gia ("]@Model.Committee.Count/@settings.TenderMinCommittee @L["tối thiểu)"]</div>
     <ul class="list-group list-group-flush">
         @foreach (var m in Model.Committee.OrderByDescending(m => m.IsLeader).ThenBy(m => m.User?.FullName))

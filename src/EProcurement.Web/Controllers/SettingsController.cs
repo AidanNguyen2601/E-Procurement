@@ -48,6 +48,7 @@ public class SettingsController : Controller
         ViewBag.Email = await _notify.EmailConfigAsync();
         ViewBag.Numbering = await _store.ExistsAsync(SettingsStore.Numbering);
         ViewBag.TierCount = (await _store.GetAsync(SettingsStore.PackageTiers, () => new PackageTierSettings())).Tiers.Count;
+        ViewBag.LegalEnforce = (await _store.LegalAsync()).Enforce;
         ViewData["Title"] = "Thiết lập";
         return View();
     }
@@ -164,6 +165,26 @@ public class SettingsController : Controller
         if (items.Sum(i => i.Weight) == 0) { TempData["Error"] = I18n.T("Tổng trọng số phải lớn hơn 0."); return RedirectToAction(nameof(SupplierCriteria)); }
         await _store.SaveAsync(SettingsStore.SupplierCriteria, new SupplierCriteriaSettings { Items = items });
         return Saved("Đã lưu tiêu chí đánh giá NCC. Điểm tổng hợp và xếp loại tính lại theo trọng số mới.", nameof(SupplierCriteria));
+    }
+
+    // ------------------------------------------------------------------ mốc thời gian theo luật
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> LegalTimelines()
+    {
+        ViewData["Title"] = "Mốc thời gian theo luật";
+        return View(await _store.LegalAsync());
+    }
+
+    [Authorize(Roles = AppRoles.Admin)]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> LegalTimelines(LegalTimelineSettings m, bool reset = false)
+    {
+        if (reset) { await _store.SaveAsync(SettingsStore.LegalTimelines, new LegalTimelineSettings()); return Saved(I18n.T("Đã khôi phục mốc thời gian mặc định theo luật."), nameof(LegalTimelines)); }
+        var errors = m.Validate();
+        if (errors.Count > 0) { ViewData["Title"] = "Mốc thời gian theo luật"; ViewBag.Errors = errors; return View(m); }
+        m.LegalBasis = string.IsNullOrWhiteSpace(m.LegalBasis) ? new LegalTimelineSettings().LegalBasis : m.LegalBasis.Trim();
+        await _store.SaveAsync(SettingsStore.LegalTimelines, m);
+        return Saved(I18n.T("Đã lưu mốc thời gian theo luật."), nameof(LegalTimelines));
     }
 
     // ------------------------------------------------------------------ hạn mức & thời gian thực hiện của gói

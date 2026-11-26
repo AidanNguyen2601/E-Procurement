@@ -369,6 +369,15 @@ public static class DbSeeder
             "IF COL_LENGTH('Categories','SortOrder') IS NULL ALTER TABLE Categories ADD SortOrder int NOT NULL CONSTRAINT DF_Categories_SortOrder DEFAULT 0",
             "IF COL_LENGTH('Categories','Description') IS NULL ALTER TABLE Categories ADD Description nvarchar(500) NULL",
             "IF COL_LENGTH('Categories','IsActive') IS NULL ALTER TABLE Categories ADD IsActive bit NOT NULL CONSTRAINT DF_Categories_IsActive DEFAULT 1",
+            "IF COL_LENGTH('Tenders','IsInternational') IS NULL ALTER TABLE Tenders ADD IsInternational bit NOT NULL CONSTRAINT DF_Tenders_IsInternational DEFAULT 0",
+            "IF COL_LENGTH('Contracts','RetentionPercent') IS NULL ALTER TABLE Contracts ADD RetentionPercent decimal(5,2) NOT NULL CONSTRAINT DF_Contracts_RetentionPercent DEFAULT 0",
+            "IF COL_LENGTH('Contracts','RetentionCapPercent') IS NULL ALTER TABLE Contracts ADD RetentionCapPercent decimal(5,2) NOT NULL CONSTRAINT DF_Contracts_RetentionCapPercent DEFAULT 5",
+            "IF COL_LENGTH('Contracts','AdvanceRecoveryStartPercent') IS NULL ALTER TABLE Contracts ADD AdvanceRecoveryStartPercent decimal(5,2) NOT NULL CONSTRAINT DF_Contracts_AdvRecStart DEFAULT 0",
+            "IF COL_LENGTH('Contracts','AdvanceRecoveryEndPercent') IS NULL ALTER TABLE Contracts ADD AdvanceRecoveryEndPercent decimal(5,2) NOT NULL CONSTRAINT DF_Contracts_AdvRecEnd DEFAULT 100",
+            "IF COL_LENGTH('Contracts','WarrantyEndDate') IS NULL ALTER TABLE Contracts ADD WarrantyEndDate datetime2 NULL",
+            "IF COL_LENGTH('Payments','RetentionAmount') IS NULL ALTER TABLE Payments ADD RetentionAmount decimal(18,0) NOT NULL CONSTRAINT DF_Payments_RetentionAmount DEFAULT 0",
+            "IF COL_LENGTH('Payments','SettlementId') IS NULL ALTER TABLE Payments ADD SettlementId int NULL CONSTRAINT FK_Payments_ContractSettlements_SettlementId REFERENCES ContractSettlements(Id)",
+            "IF COL_LENGTH('Payments','PriceAdjustmentId') IS NULL ALTER TABLE Payments ADD PriceAdjustmentId int NULL CONSTRAINT FK_Payments_ContractPriceAdjustments_PriceAdjustmentId REFERENCES ContractPriceAdjustments(Id)",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"

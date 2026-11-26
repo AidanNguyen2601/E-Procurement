@@ -29,6 +29,8 @@ public class Tender
     [StringLength(100)][Display(Name = "Loại hợp đồng")] public string? ContractType { get; set; } = "Trọn gói";
     [Range(1, 3650)][Display(Name = "Thời gian thực hiện HĐ (ngày)")] public int ContractDurationDays { get; set; } = 30;
     [Display(Name = "Hợp đồng khung (đặt hàng nhiều đợt)")] public bool IsFramework { get; set; }
+    /// <summary>Đấu thầu quốc tế (áp mốc thời gian tối thiểu dài hơn)</summary>
+    [Display(Name = "Đấu thầu quốc tế")] public bool IsInternational { get; set; }
 
     // ----- Hồ sơ mời thầu -----
     [Required(ErrorMessage = "Nhập yêu cầu kỹ thuật"), StringLength(4000)][Display(Name = "Yêu cầu kỹ thuật")] public string TechnicalRequirements { get; set; } = string.Empty;
@@ -236,6 +238,14 @@ public class Contract
     [Display(Name = "Trạng thái")] public ContractStatus Status { get; set; } = ContractStatus.Active;
     [Column(TypeName = "decimal(5,3)")][Range(0, 5)][Display(Name = "Phạt chậm giao (%/ngày)")] public decimal LatePenaltyPercentPerDay { get; set; } = 0.1m;
     [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Mức phạt tối đa (%)")] public decimal LatePenaltyCapPercent { get; set; } = 8;
+    /// <summary>Giữ lại mỗi lần thanh toán khối lượng (% số tiền đợt) để bảo đảm bảo hành; hoàn trả khi hết bảo hành hoặc có bảo lãnh bảo hành thay thế</summary>
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Giữ lại mỗi đợt (%)")] public decimal RetentionPercent { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Giữ lại tối đa (% giá trị HĐ)")] public decimal RetentionCapPercent { get; set; } = 5;
+    /// <summary>Thu hồi tạm ứng: bắt đầu khi giá trị thanh toán lũy kế đạt X% và thu hồi hết khi đạt Y% giá trị hợp đồng (0 / 100 = theo tỷ lệ mỗi đợt)</summary>
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Bắt đầu thu hồi tạm ứng (% lũy kế)")] public decimal AdvanceRecoveryStartPercent { get; set; }
+    [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "Thu hồi hết tạm ứng (% lũy kế)")] public decimal AdvanceRecoveryEndPercent { get; set; } = 100;
+    [DataType(DataType.Date)][Display(Name = "Hết hạn bảo hành")] public DateTime? WarrantyEndDate { get; set; }
+    public ICollection<ContractPriceIndex> PriceIndices { get; set; } = new List<ContractPriceIndex>();
     public ICollection<ContractAmendment> Amendments { get; set; } = new List<ContractAmendment>();
     public ICollection<ContractMilestone> Milestones { get; set; } = new List<ContractMilestone>();
     public ICollection<ContractGuarantee> Guarantees { get; set; } = new List<ContractGuarantee>();

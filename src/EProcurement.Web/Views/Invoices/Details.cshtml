@@ -58,6 +58,7 @@
                 <tr><td>@L["Số tiền theo hóa đơn"]</td><td class="money">@prop.Amount.ToMoney()</td></tr>
                 @if (prop.Penalty > 0) { <tr><td>@L["Phạt chậm giao ("]@prop.LateDays @L["ngày)"]</td><td class="money text-danger">−@prop.Penalty.ToMoney()</td></tr> }
                 @if (prop.AdvanceDeduction > 0) { <tr><td>@L["Khấu trừ tạm ứng"]</td><td class="money">−@prop.AdvanceDeduction.ToMoney()</td></tr> }
+                @if (prop.Retention > 0) { <tr><td>@L["Giữ lại bảo hành"]</td><td class="money">−@prop.Retention.ToMoney()</td></tr> }
                 <tr class="fw-semibold"><td>@L["Thực chi"]</td><td class="money">@prop.Net.ToMoney()</td></tr>
             </table>
             @if (!string.IsNullOrEmpty(prop.Note)) { <div class="small text-muted mb-2">@prop.Note</div> }

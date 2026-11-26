@@ -6,7 +6,7 @@
         PrStatus.Submitted or PrStatus.PendingDirector or PoStatus.PendingApproval or RfqStatus.PendingApproval or DirectAwardStatus.PendingApproval or TenderStatus.PendingPlanApproval or TenderStatus.PendingResultApproval or VendorStatus.Pending or PackageStatus.InPlan or SelectionPlanStatus.Submitted => "bg-warning text-dark",
         PrStatus.Approved or PoStatus.Approved or RfqStatus.Open or TenderStatus.Published or TenderStatus.Awarded or PackageStatus.Approved => "bg-info text-dark",
         PrStatus.Processing or PoStatus.Issued or PoStatus.PartiallyReceived or RfqStatus.Opened or TenderStatus.Opened or ContractStatus.Active or PackageStatus.Executing => "bg-primary",
-        PrStatus.Completed or PoStatus.Received or RfqStatus.Awarded or DirectAwardStatus.Approved or TenderStatus.Contracted or ContractStatus.Completed or VendorStatus.Approved or PackageStatus.Completed or SelectionPlanStatus.Approved => "bg-success",
+        PrStatus.Completed or PoStatus.Received or RfqStatus.Awarded or DirectAwardStatus.Approved or TenderStatus.Contracted or ContractStatus.Completed or ContractStatus.Liquidated or VendorStatus.Approved or PackageStatus.Completed or SelectionPlanStatus.Approved => "bg-success",
         PrStatus.Rejected or VendorStatus.Blacklisted or SelectionPlanStatus.Returned => "bg-danger",
         AcceptanceStatus.Draft => "bg-secondary", AcceptanceStatus.Confirmed => "bg-success", AcceptanceStatus.Cancelled => "bg-dark",
         PrStatus.Cancelled or RfqStatus.Cancelled or PoStatus.Cancelled or DirectAwardStatus.Cancelled or TenderStatus.Cancelled or ContractStatus.Terminated or VendorStatus.Suspended or PackageStatus.Cancelled => "bg-dark",

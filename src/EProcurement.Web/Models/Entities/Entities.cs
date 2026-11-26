@@ -934,6 +934,11 @@ public class Payment
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Số tiền đề nghị")] public decimal Amount { get; set; }
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Phạt chậm giao")] public decimal PenaltyAmount { get; set; }
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Khấu trừ tạm ứng")] public decimal AdvanceDeduction { get; set; }
+    [Column(TypeName = "decimal(18,0)")][Display(Name = "Giữ lại bảo hành")] public decimal RetentionAmount { get; set; }
+    public int? SettlementId { get; set; }
+    public ContractSettlement? Settlement { get; set; }
+    public int? PriceAdjustmentId { get; set; }
+    public ContractPriceAdjustment? PriceAdjustment { get; set; }
     [Column(TypeName = "decimal(18,0)")][Display(Name = "Thực chi")] public decimal NetAmount { get; set; }
     [StringLength(1000)][Display(Name = "Diễn giải")] public string? Note { get; set; }
     [Display(Name = "Trạng thái")] public PaymentStatus Status { get; set; } = PaymentStatus.Requested;

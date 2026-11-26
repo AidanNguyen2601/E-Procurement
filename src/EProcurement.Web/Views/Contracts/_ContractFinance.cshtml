@@ -13,6 +13,7 @@
         <div class="col-6 col-md-3">@L["Đang đề nghị / chờ chi"]<div class="fw-semibold">@sum.Requested.ToMoney()</div></div>
         <div class="col-6 col-md-3">@L["Tạm ứng còn phải thu hồi"]<div class="fw-semibold">@Math.Max(0, sum.AdvancePaid - sum.AdvanceRecovered).ToMoney()</div></div>
     </div>
+    <div class="small text-muted mb-2">@L["Giữ lại bảo hành"] <b>@Model.RetentionPercent.ToString("0.#")%</b> @L["mỗi đợt (tối đa"] @Model.RetentionCapPercent.ToString("0.#")% @L["HĐ) · thu hồi tạm ứng từ"] @Model.AdvanceRecoveryStartPercent.ToString("0.#")% @L["đến"] @Model.AdvanceRecoveryEndPercent.ToString("0.#")% @L["giá trị lũy kế"]@(Model.WarrantyEndDate.HasValue ? L[" · bảo hành đến {0}", Model.WarrantyEndDate.ToDate()] : "") · <a asp-action="Settlement" asp-route-id="@Model.Id">@L["Điều khoản, quyết toán & thanh lý"]</a></div>
     <table class="table table-sm small mb-2">
         <thead><tr><th>@L["Đợt"]</th><th>@L["Loại"]</th><th class="money">%</th><th class="money">@L["Số tiền"]</th><th>@L["Dự kiến"]</th><th>@L["Điều kiện"]</th><th></th></tr></thead><tbody>
         @foreach (var m in Model.Milestones.OrderBy(x => x.SortOrder))

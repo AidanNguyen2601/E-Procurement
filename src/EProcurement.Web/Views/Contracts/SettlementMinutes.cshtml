@@ -1,0 +1,43 @@
+@model Contract
+@{
+    var s = (ContractSettlement)ViewBag.Settlement;
+    var amends = (List<ContractAmendment>)ViewBag.Amendments;
+}
+<div class="toolbar no-print"><a asp-action="Settlement" asp-route-id="@Model.Id" class="btn btn-outline-secondary">← @L["Quyết toán & thanh lý"]</a><button class="btn btn-outline-secondary" onclick="window.print()">@L["In / Lưu PDF"]</button></div>
+<div class="card paper mb-4"><div class="card-body p-4">
+    <div class="text-center mb-3"><h4 class="mb-0">@(s.LiquidatedAt.HasValue ? L["BIÊN BẢN QUYẾT TOÁN VÀ THANH LÝ HỢP ĐỒNG"] : L["BIÊN BẢN QUYẾT TOÁN HỢP ĐỒNG"])</h4>
+        <div>@L["Số:"] @s.Number · @L["Hợp đồng"] @Model.Number @L["ký ngày"] @Model.SignedDate.ToDate()</div>
+        <div class="text-muted">@L["Ngày"] @s.SettlementDate.ToDate()</div></div>
+    <p><b>@L["Tên hợp đồng:"]</b> @Model.Title @if (Model.Tender != null) { <span>– @L["gói thầu"] @Model.Tender.Number</span> }</p>
+    <p><b>@L["Nhà thầu:"]</b> @Model.Vendor?.Name – MST @Model.Vendor?.TaxCode</p>
+    @if (amends.Any())
+    {
+        <p class="mb-1"><b>@L["Phụ lục hợp đồng đã duyệt:"]</b></p>
+        <ul class="small">@foreach (var a in amends) { <li>@a.Number: @a.Description @(a.ValueChange != 0 ? "(" + (a.ValueChange > 0 ? "+" : "") + a.ValueChange.ToMoney() + " đ)" : "")</li> }</ul>
+    }
+    <table class="table table-bordered table-sm" data-grid="off">
+        <tr><th style="width:60%">@L["Giá trị hợp đồng hiện hành (trước VAT)"]</th><td class="money">@s.ContractValue.ToMoney() đ</td></tr>
+        <tr><th>@L["Giá trị quyết toán (trước VAT)"]</th><td class="money">@s.FinalValue.ToMoney() đ</td></tr>
+        <tr><th>@L["Thuế GTGT"] @s.VatPercent.ToString("0.#")%</th><td class="money">@((s.FinalGross - s.FinalValue).ToMoney()) đ</td></tr>
+        <tr><th>@L["Giá trị quyết toán (gồm VAT)"]</th><td class="money fw-bold">@s.FinalGross.ToMoney() đ</td></tr>
+        <tr><th>@L["Điều chỉnh giá (gồm VAT)"]</th><td class="money">@s.PriceAdjustment.ToMoney() đ</td></tr>
+        <tr><th>@L["Phạt vi phạm hợp đồng"]</th><td class="money">@s.PenaltyTotal.ToMoney() đ</td></tr>
+        <tr><th>@L["Giảm trừ khác"] @if (!string.IsNullOrEmpty(s.OtherDeductionNote)) { <span class="fw-normal">(@s.OtherDeductionNote)</span> }</th><td class="money">@s.OtherDeduction.ToMoney() đ</td></tr>
+        <tr><th>@L["Bên giao thầu đã thanh toán (gồm tạm ứng)"]</th><td class="money">@s.PaidTotal.ToMoney() đ</td></tr>
+        <tr><th>@(s.Balance >= 0 ? L["Giá trị còn phải thanh toán"] : L["Nhà thầu phải hoàn trả"])</th><td class="money fw-bold">@Math.Abs(s.Balance).ToMoney() đ</td></tr>
+        @if (s.RetentionHeld > 0)
+        {
+            <tr><th class="ps-4 fw-normal">@L["trong đó giữ lại bảo hành, thanh toán khi hết thời hạn bảo hành"] @(s.WarrantyEndDate.HasValue ? "(" + s.WarrantyEndDate.ToDate() + ")" : "")</th><td class="money">@s.RetentionHeld.ToMoney() đ</td></tr>
+        }
+    </table>
+    @if (!string.IsNullOrEmpty(s.Note)) { <p><b>@L["Căn cứ / ghi chú:"]</b> @s.Note</p> }
+    @if (s.LiquidatedAt.HasValue)
+    {
+        <p><b>@L["Thanh lý:"]</b> @L["Hai bên xác nhận đã hoàn thành các nghĩa vụ theo hợp đồng (thanh toán, thu hồi tạm ứng, hoàn trả tiền giữ lại, giải tỏa bảo lãnh). Hợp đồng được thanh lý từ ngày"] @s.LiquidatedAt.ToDate(). @s.LiquidationNote</p>
+    }
+    <p class="small text-muted">@L["Trạng thái:"] @s.Status.GetDisplayName() @if (s.DecidedAt.HasValue) { <span>– @s.DecidedBy?.FullName @s.DecidedAt.ToDateTime()</span> }</p>
+    <div class="row text-center mt-4 small">
+        <div class="col">@L["ĐẠI DIỆN BÊN GIAO THẦU"]<br /><br /><br /><br />@s.DecidedBy?.FullName</div>
+        <div class="col">@L["ĐẠI DIỆN NHÀ THẦU"]<br /><br /><br /><br />@Model.Vendor?.ContactPerson</div>
+    </div>
+</div></div>

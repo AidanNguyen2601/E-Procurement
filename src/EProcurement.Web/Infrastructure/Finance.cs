@@ -18,9 +18,9 @@ public class MatchResult
 }
 
 /// <summary>Đề xuất số tiền cho đề nghị thanh toán theo hóa đơn</summary>
-public record PaymentProposal(decimal Amount, decimal Penalty, int LateDays, decimal AdvanceDeduction, string Note)
+public record PaymentProposal(decimal Amount, decimal Penalty, int LateDays, decimal AdvanceDeduction, string Note, decimal Retention = 0)
 {
-    public decimal Net => Amount - Penalty - AdvanceDeduction;
+    public decimal Net => Amount - Penalty - AdvanceDeduction - Retention;
 }
 
 /// <summary>Nghiệp vụ hóa đơn / thanh toán: đối chiếu 3 bên, hạn thanh toán, phạt chậm giao, khấu trừ tạm ứng</summary>
@@ -71,7 +71,7 @@ public class FinanceService
     /// </summary>
     public async Task<PaymentProposal> ProposeAsync(Invoice inv, PurchaseOrder po)
     {
-        decimal penalty = 0, advance = 0; var late = 0; var notes = new List<string>();
+        decimal penalty = 0, advance = 0, retention = 0; var late = 0; var notes = new List<string>();
         var contract = po.ContractId.HasValue ? await _db.Contracts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == po.ContractId) : null;
         if (contract != null)
         {
@@ -84,18 +84,13 @@ public class FinanceService
                 penalty = Math.Round(inv.SubTotal * pct / 100m, 0);
                 if (penalty > 0) notes.Add($"Phạt chậm giao {late} ngày × {contract.LatePenaltyPercentPerDay:0.###}%/ngày (tối đa {contract.LatePenaltyCapPercent:0.#}%) = {pct:0.###}% tiền hàng");
             }
-            var paidAdvance = await _db.Payments.Where(p => p.ContractId == contract.Id && p.Type == PaymentType.Advance && p.Status == PaymentStatus.Paid).SumAsync(p => (decimal?)p.NetAmount) ?? 0;
-            var recovered = await _db.Payments.Where(p => p.ContractId == contract.Id && p.Status != PaymentStatus.Rejected && p.InvoiceId != inv.Id).SumAsync(p => (decimal?)p.AdvanceDeduction) ?? 0;
-            var outstanding = paidAdvance - recovered;
-            if (outstanding > 0)
-            {
-                var gross = Math.Round(contract.Value * (1 + contract.VatPercent / 100m), 0);
-                var rate = gross == 0 ? 0 : paidAdvance / gross;
-                advance = Math.Min(outstanding, Math.Round(inv.Total * rate, 0));
-                if (advance > 0) notes.Add($"Khấu trừ tạm ứng {rate * 100:0.#}% (còn phải thu hồi {outstanding.ToMoney()} đ)");
-            }
+            // thu hồi tạm ứng theo lộ trình và giữ lại bảo hành theo điều khoản hợp đồng (bỏ qua đề nghị cũ của chính hóa đơn này)
+            var ledger = ContractClose.Ledger(contract, await _db.Payments.AsNoTracking().Where(p => p.ContractId == contract.Id && p.InvoiceId != inv.Id).ToListAsync());
+            var d = ContractClose.Deductions(contract, inv.Total, ledger);
+            advance = d.Advance; retention = d.Retention;
+            if (!string.IsNullOrEmpty(d.Note)) notes.Add(d.Note);
         }
-        return new PaymentProposal(inv.Total, penalty, late, advance, string.Join("; ", notes));
+        return new PaymentProposal(inv.Total, penalty, late, advance, string.Join("; ", notes), retention);
     }
 
     /// <summary>Đã thanh toán / đã cam kết của một hợp đồng (gồm VAT)</summary>

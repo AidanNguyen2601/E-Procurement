@@ -14,7 +14,7 @@ namespace EProcurement.Web.Controllers;
 /// mỗi đợt không vượt khối lượng còn lại. Theo dõi bảo đảm thực hiện hợp đồng và giá trị đã thực hiện.
 /// </summary>
 [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director + "," + AppRoles.Accountant)]
-public class ContractsController : ProcControllerBase
+public partial class ContractsController : ProcControllerBase
 {
     public ContractsController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }
 
@@ -179,9 +179,9 @@ public class ContractsController : ProcControllerBase
         var c = await Db.Contracts.FindAsync(id);
         if (c == null) return NotFound();
         if (c.Status != ContractStatus.Active) return BadRequest();
-        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = I18n.T("Nhập lý do / nội dung thanh lý."); return RedirectToAction(nameof(Details), new { id }); }
+        if (string.IsNullOrWhiteSpace(reason)) { TempData["Error"] = I18n.T("Nhập nội dung hoàn thành / lý do chấm dứt."); return RedirectToAction(nameof(Details), new { id }); }
         c.Status = terminate ? ContractStatus.Terminated : ContractStatus.Completed;
-        Log(DocType.Contract, id, terminate ? "Chấm dứt hợp đồng" : "Thanh lý – hoàn thành hợp đồng", reason);
+        Log(DocType.Contract, id, terminate ? "Chấm dứt hợp đồng" : "Hoàn thành hợp đồng – nghiệm thu bàn giao (chờ quyết toán, thanh lý)", reason);
         await Db.SaveChangesAsync();
         TempData["Success"] = $"{c.Number}: {c.Status.GetDisplayName()}.";
         return RedirectToAction(nameof(Details), new { id });
@@ -393,10 +393,12 @@ public class ContractsController : ProcControllerBase
             var cover = await Db.ContractGuarantees.Where(g => g.ContractId == id && g.Type == GuaranteeType.Advance && g.ReleasedAt == null && g.ExpiryDate >= DateTime.Today).SumAsync(g => (decimal?)g.Amount) ?? 0;
             if (cover < m.Amount) return Back(I18n.T("Tạm ứng {0} đ cần bảo lãnh tạm ứng còn hiệu lực tương ứng (hiện có {1} đ).", m.Amount.ToMoney(), cover.ToMoney()));
         }
+        var ded = m.Type == PaymentType.Advance ? new PaymentDeduction(0, 0, "") : ContractClose.Deductions(c, m.Amount, await ContractClose.LedgerAsync(Db, c));
         var pay = new Payment
         {
             Number = await DocNumbers.NextAsync(Db.Payments.Select(x => x.Number), "TT"), Type = m.Type, VendorId = c.VendorId, ContractId = id, MilestoneId = m.Id,
-            Amount = m.Amount, NetAmount = m.Amount, Note = $"{m.Name} ({m.Percent:0.#}% HĐ {c.Number})" + (string.IsNullOrEmpty(m.Condition) ? "" : " – " + m.Condition),
+            Amount = m.Amount, AdvanceDeduction = ded.Advance, RetentionAmount = ded.Retention, NetAmount = m.Amount - ded.Advance - ded.Retention,
+            Note = $"{m.Name} ({m.Percent:0.#}% HĐ {c.Number})" + (string.IsNullOrEmpty(m.Condition) ? "" : " – " + m.Condition) + (string.IsNullOrEmpty(ded.Note) ? "" : " · " + ded.Note),
             RequestedById = Me, RequestedAt = DateTime.Now
         };
         Db.Payments.Add(pay);

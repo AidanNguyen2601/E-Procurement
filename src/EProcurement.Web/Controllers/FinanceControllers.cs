@@ -196,7 +196,7 @@ public class InvoicesController : ProcControllerBase
         var pay = new Payment
         {
             Number = await DocNumbers.NextAsync(Db.Payments.Select(x => x.Number), "TT"), Type = PaymentType.Invoice, VendorId = inv.VendorId, InvoiceId = inv.Id,
-            ContractId = po.ContractId, Amount = p.Amount, PenaltyAmount = p.Penalty, AdvanceDeduction = p.AdvanceDeduction, NetAmount = p.Net,
+            ContractId = po.ContractId, Amount = p.Amount, PenaltyAmount = p.Penalty, AdvanceDeduction = p.AdvanceDeduction, RetentionAmount = p.Retention, NetAmount = p.Net,
             Note = string.Join(" · ", new[] { $"Thanh toán hóa đơn {inv.Series} {inv.InvoiceNo} – {po.Number}", p.Note, note?.Trim() }.Where(s => !string.IsNullOrEmpty(s))),
             RequestedById = Me, RequestedAt = DateTime.Now
         };

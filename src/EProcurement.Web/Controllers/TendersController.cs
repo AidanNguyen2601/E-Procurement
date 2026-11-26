@@ -50,6 +50,8 @@ public class TendersController : ProcControllerBase
         ViewBag.Contract = await Db.Contracts.FirstOrDefaultAsync(c => c.TenderId == id);
         ViewBag.Attachments = await AttachmentPanelAsync(DocType.Tender, id, User.IsPurchasing() && t.Status is TenderStatus.Draft or TenderStatus.Published);
         ViewBag.Settings = Settings;
+        ViewBag.LegalChecks = t.Status == TenderStatus.Cancelled ? null : LegalTimelines.CheckTender(t, await FieldOfAsync(t), t.Clarifications, await Legal(), DateTime.Now);
+        ViewBag.LegalEnforce = (await Legal()).Enforce;
         if (User.IsPurchasing() && t.Status == TenderStatus.Draft)
             ViewBag.Users = new SelectList(await Db.Users.Where(u => u.IsActive && !t.Committee.Select(m => m.UserId).Contains(u.Id)).OrderBy(u => u.FullName)
                 .Select(u => new { u.Id, Name = u.FullName + " – " + u.Department }).ToListAsync(), "Id", "Name");
@@ -154,10 +156,10 @@ public class TendersController : ProcControllerBase
             Number = "(tự sinh khi lưu)", PurchaseRequestId = pr.Id, PackageId = pkg.Id, PurchaseRequest = pr, Title = pkg.Title, PackageBudget = pkg.Budget,
             EnvelopeMethod = pkg.EnvelopeMethod, ContractType = pkg.ContractType, ContractDurationDays = pkg.ContractDurationDays,
             BidSecurityAmount = Math.Round(pkg.Budget * 0.01m / 1000) * 1000, // gợi ý 1% giá gói thầu
-            ClosingAt = DateTime.Today.AddDays(Settings.TenderMinBiddingDays + 1).AddHours(9),
+            ClosingAt = (await LegalMinBiddingAsync(pkg.Budget, pkg.Field, false)).EarliestFrom(DateTime.Today).AddDays(1).AddHours(9),
             TechnicalRequirements = string.Join("\n", pkg.PurchaseRequests.Select(r => r.Purpose).Where(x => !string.IsNullOrWhiteSpace(x)))
         };
-        ViewBag.Settings = Settings;
+        ViewBag.Settings = Settings; ViewBag.LegalMin = await LegalMinBiddingAsync(vm.PackageBudget, pkg.Field, false);
         return View("Form", vm);
     }
 
@@ -169,11 +171,12 @@ public class TendersController : ProcControllerBase
         if (t.Status != TenderStatus.Draft) { TempData["Error"] = I18n.T("Chỉ sửa KH & HSMT khi gói thầu ở trạng thái Nháp."); return RedirectToAction(nameof(Details), new { id }); }
         ViewBag.Settings = Settings;
         if (t.PackageId.HasValue) ViewBag.Package = await Packages.LoadAsync(Db, t.PackageId.Value);
+        ViewBag.LegalMin = await LegalMinBiddingAsync(t.PackageBudget, await FieldOfAsync(t), t.IsInternational);
         return View("Form", new TenderFormViewModel
         {
             Id = t.Id, Number = t.Number, PurchaseRequestId = t.PurchaseRequestId, PackageId = t.PackageId, PurchaseRequest = t.PurchaseRequest, Title = t.Title,
             PackageBudget = t.PackageBudget, EnvelopeMethod = t.EnvelopeMethod, ContractType = t.ContractType, ContractDurationDays = t.ContractDurationDays,
-            IsFramework = t.IsFramework, TechnicalRequirements = t.TechnicalRequirements, QualificationCriteria = t.QualificationCriteria,
+            IsFramework = t.IsFramework, IsInternational = t.IsInternational, TechnicalRequirements = t.TechnicalRequirements, QualificationCriteria = t.QualificationCriteria,
             ContractTerms = t.ContractTerms, EvaluationMethod = t.EvaluationMethod, MinTechnicalScore = t.MinTechnicalScore,
             TechnicalWeight = t.TechnicalWeight, PriceWeight = t.PriceWeight, BidSecurityAmount = t.BidSecurityAmount,
             BidValidityDays = t.BidValidityDays, PerformanceSecurityPercent = t.PerformanceSecurityPercent, ClosingAt = t.ClosingAt
@@ -207,7 +210,7 @@ public class TendersController : ProcControllerBase
         if (vm.EvaluationMethod == TenderEvaluationMethod.Combined && vm.TechnicalWeight + vm.PriceWeight != 100)
             ModelState.AddModelError(nameof(vm.TechnicalWeight), I18n.T("Trọng số kỹ thuật + giá phải bằng 100%."));
         if (vm.ClosingAt <= DateTime.Now) ModelState.AddModelError(nameof(vm.ClosingAt), I18n.T("Thời điểm đóng thầu phải ở tương lai."));
-        if (!ModelState.IsValid) { vm.PurchaseRequest = pr; ViewBag.Settings = Settings; return View("Form", vm); }
+        if (!ModelState.IsValid) { vm.PurchaseRequest = pr; ViewBag.Settings = Settings; ViewBag.LegalMin = await LegalMinBiddingAsync(vm.PackageBudget, (pkg ?? (ViewBag.Package as ProcurementPackage))?.Field, vm.IsInternational); return View("Form", vm); }
 
         if (t == null)
         {
@@ -226,7 +229,7 @@ public class TendersController : ProcControllerBase
             Db.Tenders.Add(t);
         }
         t.Title = vm.Title; t.PackageBudget = vm.PackageBudget; t.EnvelopeMethod = vm.EnvelopeMethod; t.ContractType = vm.ContractType;
-        t.ContractDurationDays = vm.ContractDurationDays; t.IsFramework = vm.IsFramework; t.TechnicalRequirements = vm.TechnicalRequirements;
+        t.ContractDurationDays = vm.ContractDurationDays; t.IsFramework = vm.IsFramework; t.IsInternational = vm.IsInternational; t.TechnicalRequirements = vm.TechnicalRequirements;
         t.QualificationCriteria = vm.QualificationCriteria; t.ContractTerms = vm.ContractTerms; t.EvaluationMethod = vm.EvaluationMethod;
         t.MinTechnicalScore = vm.MinTechnicalScore; t.TechnicalWeight = vm.TechnicalWeight; t.PriceWeight = vm.PriceWeight;
         t.BidSecurityAmount = vm.BidSecurityAmount; t.BidValidityDays = vm.BidValidityDays; t.PerformanceSecurityPercent = vm.PerformanceSecurityPercent;
@@ -286,7 +289,7 @@ public class TendersController : ProcControllerBase
         var t = await Db.Tenders.Include(x => x.Committee).FirstOrDefaultAsync(x => x.Id == id);
         if (t == null) return NotFound();
         if (t.Status != TenderStatus.Draft) return BadRequest();
-        var problems = PlanProblems(t);
+        var problems = await PlanProblemsAsync(t);
         if (problems.Count > 0) { TempData["Error"] = I18n.T("Chưa trình được: ") + string.Join(" ", problems); return RedirectToAction(nameof(Details), new { id }); }
         t.Status = TenderStatus.PendingPlanApproval;
         Log(DocType.Tender, id, "Trình duyệt kế hoạch & HSMT", $"Đóng thầu {t.ClosingAt.ToDateTime()}, tổ chuyên gia {t.Committee.Count} người");
@@ -313,7 +316,7 @@ public class TendersController : ProcControllerBase
         }
         else
         {
-            var problems = PlanProblems(t);
+            var problems = await PlanProblemsAsync(t);
             if (problems.Count > 0) { TempData["Error"] = I18n.T("Không phát hành được: ") + string.Join(" ", problems) + I18n.T(" Trả lại để bên mời thầu điều chỉnh."); return RedirectToAction(nameof(Details), new { id }); }
             t.Status = TenderStatus.Published;
             t.PublishedAt = DateTime.Now;
@@ -324,9 +327,14 @@ public class TendersController : ProcControllerBase
         return Back();
     }
 
-    private List<string> PlanProblems(Tender t)
+    private async Task<List<string>> PlanProblemsAsync(Tender t)
     {
         var p = new List<string>();
+        // mốc thời gian theo luật (thời gian chuẩn bị HSDT tối thiểu), áp cùng mức tối thiểu nội bộ – lấy mức chặt hơn
+        var legal = await Legal();
+        var lm = await LegalMinBiddingAsync(t.PackageBudget, await FieldOfAsync(t), t.IsInternational);
+        if (legal.Enforce && t.ClosingAt.Date < lm.EarliestFrom(DateTime.Today))
+            p.Add(I18n.T("Thời gian chuẩn bị HSDT tối thiểu {0} ({1}): phát hành hôm nay thì đóng thầu sớm nhất ngày {2}.", lm.Text, lm.Basis, lm.EarliestFrom(DateTime.Today).ToDate()));
         if (t.Committee.Count < Settings.TenderMinCommittee) p.Add($"Tổ chuyên gia cần tối thiểu {Settings.TenderMinCommittee} thành viên.");
         if (!t.Committee.Any(m => m.IsLeader)) p.Add("Chỉ định tổ trưởng tổ chuyên gia.");
         if (t.ClosingAt < DateTime.Now.AddDays(Settings.TenderMinBiddingDays))
@@ -377,6 +385,14 @@ public class TendersController : ProcControllerBase
         if (newClosingAt.HasValue && newClosingAt > t.ClosingAt) t.ClosingAt = newClosingAt.Value;
         if (isAmendment && t.ClosingAt < DateTime.Now.AddDays(Settings.TenderAmendmentMinDays))
             return Fail(I18n.T("Sửa đổi HSMT phải trước thời điểm đóng thầu tối thiểu {0} ngày – gia hạn đóng thầu đến sau {1}.", Settings.TenderAmendmentMinDays, DateTime.Now.AddDays(Settings.TenderAmendmentMinDays).ToDateTime()));
+        if (isAmendment)
+        {
+            var legal = await Legal();
+            var am = LegalTimelines.MinAmendment(t.PackageBudget, await FieldOfAsync(t), legal);
+            var latest = am.LatestBefore(t.ClosingAt);
+            if (legal.Enforce && DateTime.Today > latest)
+                return Fail(I18n.T("Sửa đổi HSMT phải gửi trước ngày đóng thầu tối thiểu {0} ({1}). Gia hạn đóng thầu đến sau ngày {2}.", am.Text, am.Basis, am.EarliestFrom(DateTime.Today).ToDate()));
+        }
         var clar = new TenderClarification
         {
             TenderId = id, IsAmendment = isAmendment, Question = string.IsNullOrWhiteSpace(question) ? null : question.Trim(),
@@ -935,6 +951,19 @@ public class TendersController : ProcControllerBase
     }
 
     private static string? Cut(string? s, int max) => string.IsNullOrWhiteSpace(s) ? null : s.Trim() is var x && x.Length > max ? x[..max] : s.Trim();
+
+    private async Task<LegalTimelineSettings> Legal() => await HttpContext.RequestServices.GetRequiredService<SettingsStore>().LegalAsync();
+
+    /// <summary>Lĩnh vực của gói (xây lắp / hàng hóa / tư vấn…) để áp mốc thời gian theo luật</summary>
+    private async Task<string?> FieldOfAsync(Tender t) => t.Package?.Field ?? (t.PackageId.HasValue ? await Db.ProcurementPackages.Where(p => p.Id == t.PackageId).Select(p => p.Field).FirstOrDefaultAsync() : null);
+
+    /// <summary>Thời gian chuẩn bị HSDT tối thiểu: theo luật (nếu bật) và không ít hơn mức nội bộ trong cấu hình</summary>
+    private async Task<LegalMin> LegalMinBiddingAsync(decimal budget, string? field, bool international)
+    {
+        var legal = await Legal();
+        var lm = LegalTimelines.MinBidding(budget, field, international, legal);
+        return Settings.TenderMinBiddingDays > lm.Days ? new LegalMin(Settings.TenderMinBiddingDays, false, I18n.T("quy định nội bộ")) : lm;
+    }
 
     private async Task<Tender?> LoadAsync(int id, bool track = false)
     {

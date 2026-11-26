@@ -25,7 +25,7 @@
     <a class="btn btn-primary ms-auto" asp-action="Create">@L["+ Tạo đề nghị"]</a>
 </form>
 <div class="card"><div class="card-body p-0">
-<table class="table table-hover mb-0">
+<table class="table table-hover mb-0" data-paging="off">
     <thead><tr><th>@L["Số PR"]</th><th>@L["Nội dung"]</th><th>@L["Người đề nghị"]</th><th>@L["Phòng ban"]</th><th>@L["Ngày đề nghị"]</th><th>@L["Cần hàng"]</th><th>@L["Mức độ"]</th><th class="money">@L["Dự toán"]</th><th>@L["Trạng thái"]</th></tr></thead>
     <tbody>
     @foreach (var p in Model.Items)

@@ -12,6 +12,7 @@
             <tr><td>@L["Số tiền đề nghị"]</td><td class="money">@Model.Amount.ToMoney()</td></tr>
             @if (Model.PenaltyAmount > 0) { <tr><td>@L["Phạt chậm giao"]</td><td class="money text-danger">−@Model.PenaltyAmount.ToMoney()</td></tr> }
             @if (Model.AdvanceDeduction > 0) { <tr><td>@L["Khấu trừ tạm ứng"]</td><td class="money">−@Model.AdvanceDeduction.ToMoney()</td></tr> }
+            @if (Model.RetentionAmount > 0) { <tr><td>@L["Giữ lại bảo hành"]</td><td class="money">−@Model.RetentionAmount.ToMoney()</td></tr> }
             <tr class="fw-semibold"><td>@L["Thực chi"]</td><td class="money">@Model.NetAmount.ToMoney()</td></tr>
         </table>
         <div class="small mt-2">
