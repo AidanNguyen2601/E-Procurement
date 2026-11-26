@@ -179,6 +179,8 @@ public enum VendorDocumentType
     [Display(Name = "Ủy quyền / giấy phép bán hàng của hãng")] Authorization = 4,
     [Display(Name = "Báo cáo tài chính")] Financial = 5,
     [Display(Name = "Hồ sơ năng lực / hợp đồng tương tự")] Experience = 6,
+    [Display(Name = "Chứng nhận môi trường / sản phẩm xanh (ISO 14001, nhãn sinh thái, tiết kiệm năng lượng)")] Environmental = 7,
+    [Display(Name = "An toàn lao động / trách nhiệm xã hội (ISO 45001, SA8000…)")] SocialResponsibility = 8,
     [Display(Name = "Khác")] Other = 9
 }
 

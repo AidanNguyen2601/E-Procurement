@@ -37,6 +37,10 @@
         <div class="col-12"><h6 class="mb-0 mt-2">@L["Nhận biết lĩnh vực của gói"]</h6><div class="text-muted">@L["Từ khóa (cách nhau dấu phẩy) so với Lĩnh vực của gói mua sắm. Không khớp → hàng hóa, phi tư vấn."]</div></div>
         <div class="col-md-6"><label class="form-label">@L["Xây lắp, hỗn hợp"]</label><input name="ConstructionKeywords" value="@Model.ConstructionKeywords" class="form-control form-control-sm" /></div>
         <div class="col-md-6"><label class="form-label">@L["Tư vấn"]</label><input name="ConsultingKeywords" value="@Model.ConsultingKeywords" class="form-control form-control-sm" /></div>
+
+        <div class="col-12"><h6 class="mb-0 mt-2">@L["Lưu trữ hồ sơ"]</h6></div>
+        <div class="col-6 col-md-3"><label class="form-label">@L["Thời hạn lưu trữ (năm)"]</label><input name="ArchiveYears" type="number" min="1" max="100" value="@Model.ArchiveYears" class="form-control form-control-sm" /></div>
+        <div class="col-md-9 d-flex align-items-end text-muted">@L["Tính từ khi đóng hồ sơ (gói hoàn tất / hủy, hợp đồng thanh lý). Kiểm tra theo quy định hiện hành về lưu trữ hồ sơ lựa chọn nhà thầu."]</div>
     </div>
 </div>
 <div class="card-footer d-flex gap-2">

@@ -126,7 +126,8 @@ public static class NavMenu
 
             finance ? G("rpt", "Báo cáo", "bar-chart",
                 L("Reports", "Báo cáo mua sắm", "bar-chart", "Reports"),
-                L("ReportBuilder", "Báo cáo động", "sliders", "ReportBuilder")) : null,
+                L("ReportBuilder", "Báo cáo động", "sliders", "ReportBuilder"),
+                pd || accountant ? L("Archive", "Lưu trữ hồ sơ", "database", "Archive") : null) : null,
 
             G("cat", "Danh mục", "book",
                 L("OrgUnits", "Cơ cấu tổ chức", "network", "OrgUnits"),

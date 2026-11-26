@@ -16,7 +16,7 @@
 
 <div class="card"><div class="card-header d-flex">@L["Tiêu chí"] <span class="ms-auto small text-muted">@L["Tổng điểm:"] <b id="c-total">0</b></span></div>
     <div class="table-responsive"><table class="table table-sm align-middle mb-0" id="c-table">
-        <thead><tr><th style="width:24%">@L["Tiêu chí *"]</th><th>@L["Yêu cầu / cách đánh giá"]</th><th style="width:90px">@L["Bắt buộc"]</th><th style="width:100px">@L["Điểm tối đa"]</th><th style="width:190px">@L["Hồ sơ chứng minh"]</th><th style="width:70px"></th></tr></thead>
+        <thead><tr><th style="width:24%">@L["Tiêu chí *"]</th><th>@L["Yêu cầu / cách đánh giá"]</th><th style="width:90px">@L["Bắt buộc"]</th><th style="width:80px" title="@L["Tiêu chí mua sắm xanh / ESG (môi trường, xã hội, quản trị)"]">@L["Xanh / ESG"]</th><th style="width:100px">@L["Điểm tối đa"]</th><th style="width:190px">@L["Hồ sơ chứng minh"]</th><th style="width:70px"></th></tr></thead>
         <tbody>
         @for (var i = 0; i < Model.Items.Count; i++)
         {
@@ -25,6 +25,7 @@
                 <td><input name="Items[@i].Name" value="@it.Name" maxlength="200" class="form-control form-control-sm" /></td>
                 <td><textarea name="Items[@i].Requirement" rows="1" maxlength="1000" class="form-control form-control-sm">@it.Requirement</textarea></td>
                 <td class="text-center"><input type="checkbox" class="form-check-input c-mand" name="Items[@i].IsMandatory" value="true" checked="@it.IsMandatory" /><input type="hidden" name="Items[@i].IsMandatory" value="false" /></td>
+                <td class="text-center"><input type="checkbox" class="form-check-input" name="Items[@i].IsSustainability" value="true" checked="@it.IsSustainability" /><input type="hidden" name="Items[@i].IsSustainability" value="false" /></td>
                 <td><input name="Items[@i].MaxScore" type="number" min="0" max="100" value="@it.MaxScore" class="form-control form-control-sm c-score" /></td>
                 <td><select name="Items[@i].DocumentType" class="form-select form-select-sm"><option value="">—</option>
                     @foreach (var d in docTypes) { <option value="@d.Value" selected="@(it.DocumentType != null && ((int)it.DocumentType.Value).ToString() == d.Value)">@d.Text</option> }</select></td>

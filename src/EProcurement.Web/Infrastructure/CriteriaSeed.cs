@@ -9,7 +9,7 @@ public static class CriteriaSeed
 {
     public static async Task EnsureAsync(EProcDbContext db)
     {
-        if (await db.CriteriaSets.AnyAsync()) return;
+        if (await db.CriteriaSets.AnyAsync(s => s.Name != GreenSetName)) { await EnsureGreenAsync(db); return; }
         var owner = await db.Users.Where(u => u.Role == AppRoles.Admin || u.Role == AppRoles.Buyer).OrderBy(u => u.Role == AppRoles.Buyer ? 0 : 1).Select(u => (int?)u.Id).FirstOrDefaultAsync();
         if (owner == null) return;
         CriteriaSet S(string name, CriteriaKind kind, string desc, params (string Name, string Req, bool Mand, int Score, VendorDocumentType? Doc)[] items)
@@ -42,6 +42,33 @@ public static class CriteriaSeed
                 ("Hiệu lực báo giá", "Báo giá còn hiệu lực ≥ 30 ngày", true, 0, null),
                 ("Đáp ứng yêu cầu kỹ thuật", "Hàng hóa chào đáp ứng mô tả, số lượng yêu cầu", true, 0, null),
                 ("Điều kiện thương mại", "Điều kiện giao hàng, thanh toán, bảo hành phù hợp yêu cầu", true, 0, null)));
+        await db.SaveChangesAsync();
+        await EnsureGreenAsync(db);
+    }
+
+    public const string GreenSetName = "Mua sắm xanh – ESG (tiêu chí kỹ thuật bổ sung)";
+
+    /// <summary>Bộ tiêu chí mua sắm xanh / ESG mẫu – thêm một lần nếu thư viện chưa có</summary>
+    public static async Task EnsureGreenAsync(EProcDbContext db)
+    {
+        if (await db.CriteriaSets.AnyAsync(s => s.Name == GreenSetName)) return;
+        var owner = await db.Users.Where(u => u.Role == AppRoles.Admin || u.Role == AppRoles.Buyer).OrderBy(u => u.Role == AppRoles.Buyer ? 0 : 1).Select(u => (int?)u.Id).FirstOrDefaultAsync();
+        if (owner == null) return;
+        var s = new CriteriaSet { Name = GreenSetName, Kind = CriteriaKind.TenderTechnical, CreatedById = owner.Value,
+            Description = "Chèn vào phần chấm điểm kỹ thuật: môi trường – an toàn lao động – trách nhiệm xã hội – quản trị. Điều chỉnh điểm theo tính chất gói." };
+        var i = 0;
+        foreach (var (n, req, score, doc) in new (string, string, int, VendorDocumentType?)[]
+        {
+            ("Hệ thống quản lý môi trường", "Nhà thầu có chứng nhận ISO 14001 hoặc tương đương còn hiệu lực", 5, VendorDocumentType.Environmental),
+            ("Sản phẩm tiết kiệm năng lượng / nhãn sinh thái", "Hàng hóa chính có nhãn năng lượng, nhãn sinh thái hoặc tiêu chuẩn tiết kiệm năng lượng tương đương", 5, VendorDocumentType.Environmental),
+            ("Vật liệu tái chế, giảm phát thải", "Tỷ lệ vật liệu tái chế / phát thải thấp; phương án giảm khí thải, bụi, tiếng ồn khi thi công, vận chuyển", 4, null),
+            ("Thu hồi bao bì, xử lý chất thải", "Cam kết thu hồi bao bì, thiết bị thải bỏ; xử lý chất thải theo quy định về bảo vệ môi trường", 3, null),
+            ("An toàn, vệ sinh lao động", "Có chứng nhận ISO 45001 hoặc kế hoạch an toàn lao động chi tiết; không có tai nạn lao động nghiêm trọng 3 năm gần nhất", 4, VendorDocumentType.SocialResponsibility),
+            ("Tuân thủ lao động & trách nhiệm xã hội", "Cam kết không sử dụng lao động trẻ em / cưỡng bức, đóng bảo hiểm đầy đủ; ưu tiên lao động địa phương", 2, VendorDocumentType.SocialResponsibility),
+            ("Quản trị & liêm chính", "Cam kết chống tham nhũng, không xung đột lợi ích; minh bạch nguồn gốc hàng hóa", 2, null),
+        })
+            s.Items.Add(new CriteriaItem { Name = n, Requirement = req, MaxScore = score, DocumentType = doc, IsSustainability = true, SortOrder = ++i });
+        db.CriteriaSets.Add(s);
         await db.SaveChangesAsync();
     }
 }

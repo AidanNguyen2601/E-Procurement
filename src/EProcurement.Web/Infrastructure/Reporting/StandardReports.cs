@@ -24,6 +24,8 @@ public partial class StandardReports
         new("price-vs-standard", "Giá mua so với bảng giá tiêu chuẩn", "Đơn giá thực tế so với giá tiêu chuẩn / giá trần đang hiệu lực, các dòng vượt trần và lý do.", "tag"),
         new("prequal", "Kết quả sơ tuyển nhà cung cấp", "Các đợt sơ tuyển, tỷ lệ đạt, danh sách NCC đạt còn hiệu lực theo nhóm hàng.", "shield-check"),
         new("risk", "Cảnh báo rủi ro mua sắm", "Nghi chia nhỏ gói, NCC chi phối nhóm hàng, trúng liên tục, báo giá sát nhau, gói thầu một hồ sơ, mua không cạnh tranh.", "alert"),
+        new("bidding", "Tình hình thực hiện công tác lựa chọn nhà thầu", "Báo cáo kỳ / năm: số gói, giá gói, giá trúng thầu, tiết kiệm theo hình thức và lĩnh vực; đấu thầu: số HSDT, liên danh, kiến nghị, tuân thủ mốc thời gian theo luật; gói hủy.", "gavel"),
+        new("green", "Mua sắm xanh – ESG", "Tỷ trọng chi tiêu với nhà cung cấp có chứng nhận môi trường / xã hội, chứng nhận sắp hết hạn, bộ tiêu chí có tiêu chí xanh.", "shield-check"),
     };
 
     private readonly EProcDbContext _db;
@@ -46,6 +48,8 @@ public partial class StandardReports
         "budget" => BudgetAsync(f),
         "prices" => PricesAsync(f),
         "risk" => RiskAsync(f),
+        "bidding" => BiddingAsync(f),
+        "green" => GreenAsync(f),
         "supplier-grades" => SupplierGradesAsync(f),
         "price-vs-standard" => PriceVsStandardAsync(f),
         "prequal" => PrequalAsync(f),

@@ -1,0 +1,37 @@
+@model ProcurementPackage
+@{
+    var r = (PackageRiskResult)ViewBag.Risk;
+    var edit = (bool)ViewBag.CanEdit;
+    var manual = PackageRisk.ParseChecklist(Model.RiskChecklist);
+}
+<div class="toolbar"><a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">← @L["Gói"] @Model.Number</a></div>
+<h5>@L["Đánh giá rủi ro gói trước khi mời thầu"] – @Model.Title</h5>
+<div class="small text-muted mb-3">@L["Hệ thống tự chấm các dấu hiệu từ dữ liệu (ngưỡng hình thức, chia nhỏ gói, căn cứ dự toán, giá thị trường, hình thức, số nhà cung cấp) và cộng các yếu tố người lập gói xác định. Thấp < 20 ≤ Trung bình < 40 ≤ Cao. Gói rủi ro cao phải nêu biện pháp kiểm soát trước khi trình KHLCNT. Đây là dấu hiệu cần lưu ý, không phải kết luận vi phạm."]</div>
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Điểm rủi ro"]</div><div class="value @(r.IsHigh ? "text-danger" : "")">@r.Score</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Mức"]</div><div class="value">@L[r.Level]</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Giá gói"]</div><div class="value">@Model.Budget.ToShortMoney()</div></div></div>
+    <div class="col-6 col-md-3"><div class="card stat"><div class="label">@L["Hình thức"]</div><div class="value" style="font-size:1rem">@Model.Method.GetDisplayName()</div></div></div>
+</div>
+<form asp-action="SaveRisk" asp-route-id="@Model.Id" method="post">
+<div class="card mb-3"><div class="table-responsive"><table class="table table-sm mb-0 small align-middle" data-grid="off">
+    <thead><tr><th style="width:40px"></th><th>@L["Yếu tố"]</th><th>@L["Căn cứ"]</th><th class="money">@L["Điểm"]</th></tr></thead><tbody>
+    @foreach (var f in r.Factors)
+    {
+        <tr class="@(f.Hit ? "table-danger" : "")">
+            <td>@if (f.Manual) { <input type="checkbox" name="factors" value="@f.Key" class="form-check-input" checked="@manual.Contains(f.Key)" disabled="@(!edit)" /> } else { <span title="@L["Tự động"]">@(f.Hit ? "⚠" : "✓")</span> }</td>
+            <td>@f.Name @if (f.Manual) { <span class="badge bg-light text-dark border">@L["đánh giá thủ công"]</span> }</td>
+            <td class="text-muted">@f.Detail</td>
+            <td class="money">@(f.Hit ? "+" + f.Weight : "0")</td>
+        </tr>
+    }
+    </tbody>
+    <tfoot><tr class="fw-bold"><td></td><td colspan="2">@L["Tổng điểm"]</td><td class="money">@r.Score</td></tr></tfoot>
+</table></div></div>
+<div class="card mb-3"><div class="card-body small">
+    <label class="form-label fw-semibold">@L["Biện pháp kiểm soát rủi ro"] @if (r.IsHigh) { <span class="text-danger">*</span> }</label>
+    <textarea name="mitigation" rows="3" maxlength="1000" class="form-control form-control-sm" readonly="@(!edit)" placeholder="@L["VD: mở rộng thông báo mời thầu, bỏ yêu cầu nhãn hiệu, tách / gộp gói hợp lý, thẩm định giá độc lập, thành viên tổ chuyên gia ký cam kết không xung đột lợi ích…"]">@Model.RiskMitigation</textarea>
+    <div class="text-muted mt-1">@(Model.RiskAssessedAt.HasValue ? L["Đánh giá lần cuối {0} – {1}", Model.RiskAssessedAt.ToDateTime(), (string?)ViewBag.Assessor ?? ""] : L["Chưa đánh giá thủ công"])</div>
+    @if (edit) { <button class="btn btn-primary btn-sm mt-2">@L["Lưu đánh giá"]</button> }
+</div></div>
+</form>

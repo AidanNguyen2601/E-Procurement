@@ -124,6 +124,18 @@
     }
 </div>
 <div class="col-lg-4">
+    @if (ViewBag.Risk is PackageRiskResult risk)
+    {
+        <div class="card mb-3 @(risk.IsHigh ? "border-danger" : "")"><div class="card-header d-flex align-items-center">@L["Rủi ro gói"]
+            <span class="ms-auto badge @(risk.IsHigh ? "bg-danger" : risk.Score >= PackageRisk.MediumFrom ? "bg-warning text-dark" : "bg-success")">@risk.Score @L["điểm"] · @L[risk.Level]</span></div>
+            <div class="card-body small">
+                @foreach (var f in risk.Factors.Where(x => x.Hit)) { <div class="text-danger">• @f.Name (+@f.Weight)</div> }
+                @if (!risk.Factors.Any(x => x.Hit)) { <div class="text-success">@L["Không phát hiện yếu tố rủi ro."]</div> }
+                <div class="mt-1 text-muted">@(Model.RiskAssessedAt.HasValue ? L["Đánh giá lúc {0}", Model.RiskAssessedAt.ToDateTime()] : L["Chưa đánh giá thủ công"])</div>
+                <a asp-action="Risk" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary mt-2">@L["Đánh giá rủi ro"]</a>
+                <a asp-controller="Archive" asp-action="Dossier" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-secondary mt-2">@L["Xuất hồ sơ lưu trữ (ZIP)"]</a>
+            </div></div>
+    }
     <div class="card mb-3"><div class="card-header d-flex">@L["Quyền theo gói"] <a asp-controller="Settings" asp-action="PackageAccess" asp-route-id="@Model.Id" class="ms-auto small">@L["Phân quyền"]</a></div>
         @if (members.Count == 0) { <div class="card-body small text-muted">@L["Chưa phân thành viên – mọi nhân viên mua hàng được chỉnh sửa. Phụ trách:"] @Model.Buyer?.FullName</div> }
         else

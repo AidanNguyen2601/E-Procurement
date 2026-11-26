@@ -1,0 +1,30 @@
+@model List<ArchiveRow>
+@using EProcurement.Web.Controllers
+@{
+    ViewData["Title"] = L["Lưu trữ hồ sơ"];
+    var counts = (Dictionary<string, int>)ViewBag.Counts;
+    var state = ViewBag.State as string;
+    string[] states = { "Đang thực hiện", "Đang lưu trữ", "Sắp hết thời hạn", "Hết thời hạn lưu trữ" };
+    string Size(long b) => b >= 1_048_576 ? (b / 1_048_576m).ToString("0.#") + " MB" : (b / 1024m).ToString("0") + " KB";
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <h5 class="mb-0">@L["Lưu trữ hồ sơ"]</h5>
+    <a asp-action="Index" class="btn btn-sm @(state == null ? "btn-primary" : "btn-outline-secondary")">@L["Tất cả"] (@counts.Values.Sum())</a>
+    @foreach (var s in states) { <a asp-action="Index" asp-route-state="@s" class="btn btn-sm @(state == s ? "btn-primary" : "btn-outline-secondary")">@L[s] (@counts.GetValueOrDefault(s))</a> }
+    <form method="get" class="ms-auto d-flex gap-1"><input type="hidden" name="state" value="@state" /><input name="year" type="number" min="2000" max="2100" value="@ViewBag.Year" class="form-control form-control-sm" style="width:100px" placeholder="@L["Năm"]" /><button class="btn btn-sm btn-outline-secondary">@L["Lọc"]</button></form>
+</div>
+<div class="small text-muted mb-3">@L["Hồ sơ theo gói mua sắm: gói, đề nghị mua hàng, hồ sơ lựa chọn nhà cung cấp, hợp đồng, đơn hàng, hóa đơn, thanh toán. Hồ sơ đóng khi gói hoàn tất / hủy và mọi hợp đồng đã thanh lý / chấm dứt; thời hạn lưu trữ {0} năm từ ngày đóng (Thiết lập › Mốc thời gian theo luật). Xuất ZIP gồm mục lục, nhật ký từng chứng từ và toàn bộ file đính kèm.", (int)ViewBag.Years]</div>
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0 small align-middle">
+    <thead><tr><th>@L["Gói"]</th><th>@L["Hình thức"]</th><th class="money">@L["Giá gói"]</th><th class="money">@L["Chứng từ"]</th><th class="money">@L["File"]</th><th>@L["Đóng hồ sơ"]</th><th>@L["Lưu trữ đến"]</th><th>@L["Tình trạng"]</th><th></th></tr></thead><tbody>
+    @foreach (var r in Model)
+    {
+        <tr><td><a asp-controller="Packages" asp-action="Details" asp-route-id="@r.Package.Id">@r.Package.Number</a><div class="text-muted">@r.Package.Title</div></td>
+            <td>@r.Package.Method.GetDisplayName()</td><td class="money">@r.Package.Budget.ToMoney()</td>
+            <td class="money">@r.Documents</td><td class="money">@r.Attachments<div class="text-muted">@Size(r.Bytes)</div></td>
+            <td>@r.ClosedAt.ToDate()</td><td>@r.KeepUntil.ToDate()</td>
+            <td><span class="badge @(r.State == "Hết thời hạn lưu trữ" ? "bg-secondary" : r.State == "Sắp hết thời hạn" ? "bg-warning text-dark" : r.State == "Đang lưu trữ" ? "bg-success" : "bg-primary-subtle text-primary-emphasis")">@L[r.State]</span>
+                @if (r.OpenReason != null) { <div class="text-muted">@r.OpenReason</div> }</td>
+            <td class="text-end"><a asp-action="Dossier" asp-route-id="@r.Package.Id" class="btn btn-sm btn-outline-secondary py-0">ZIP</a></td></tr>
+    }
+    @if (!Model.Any()) { <tr><td colspan="9" class="text-muted p-3">@L["Không có hồ sơ."]</td></tr> }
+</tbody></table></div></div>

@@ -33,7 +33,7 @@
                 <ol class="mb-2 ps-3">
                     @foreach (var i in s.Items.OrderBy(i => i.SortOrder))
                     {
-                        <li>@i.Name @if (i.IsMandatory) { <span class="badge bg-warning-subtle text-warning-emphasis">@L["Bắt buộc"]</span> } else if (i.MaxScore > 0) { <span class="text-muted">· @i.MaxScore @L["điểm"]</span> }
+                        <li>@i.Name @if (i.IsSustainability) { <span class="badge bg-success-subtle text-success">@L["Xanh"]</span> } @if (i.IsMandatory) { <span class="badge bg-warning-subtle text-warning-emphasis">@L["Bắt buộc"]</span> } else if (i.MaxScore > 0) { <span class="text-muted">· @i.MaxScore @L["điểm"]</span> }
                             @if (i.DocumentType != null) { <span class="text-muted">@L["· hồ sơ:"] @i.DocumentType.Value.GetDisplayName()</span> }</li>
                     }
                 </ol>

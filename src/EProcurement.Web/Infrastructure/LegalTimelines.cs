@@ -30,6 +30,8 @@ public class LegalTimelineSettings
     /// <summary>Từ khóa nhận biết lĩnh vực của gói (danh mục Lĩnh vực) thuộc nhóm xây lắp / tư vấn; còn lại là hàng hóa – phi tư vấn</summary>
     public string ConstructionKeywords { get; set; } = "xây lắp, xây dựng, thi công, hỗn hợp, EPC";
     public string ConsultingKeywords { get; set; } = "tư vấn";
+    /// <summary>Thời hạn lưu trữ hồ sơ lựa chọn nhà thầu / hợp đồng (năm, tính từ khi đóng hồ sơ) – kiểm tra theo quy định hiện hành</summary>
+    public int ArchiveYears { get; set; } = 10;
 
     public List<string> Validate()
     {
@@ -37,6 +39,7 @@ public class LegalTimelineSettings
         foreach (var (v, n) in new[] { (OpenDomesticDays, "đấu thầu trong nước"), (OpenInternationalDays, "đấu thầu quốc tế"), (SmallDomesticDays, "gói nhỏ trong nước"),
                      (SmallInternationalDays, "gói nhỏ quốc tế"), (CompetitiveQuotationWorkingDays, "chào hàng cạnh tranh"), (AmendmentDays, "sửa đổi HSMT"), (AmendmentSmallWorkingDays, "sửa đổi HSMT gói nhỏ") })
             if (v is < 0 or > 365) e.Add(I18n.T("Số ngày {0} phải từ 0 đến 365.", I18n.T(n)));
+        if (ArchiveYears is < 1 or > 100) e.Add(I18n.T("Thời hạn lưu trữ phải từ 1 đến 100 năm."));
         if (SmallConstructionMax < 0 || SmallGoodsMax < 0) e.Add(I18n.T("Ngưỡng gói quy mô nhỏ không được âm."));
         return e;
     }

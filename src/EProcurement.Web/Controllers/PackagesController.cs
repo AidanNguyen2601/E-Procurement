@@ -36,7 +36,7 @@ public class PackageForm
 
 /// <summary>Quản lý gói mua sắm: gom PR đã duyệt → gói (giá gói, hình thức, phương thức…) → đưa vào KHLCNT → lập hồ sơ lựa chọn NCC</summary>
 [Authorize(Roles = AppRoles.Purchasing + "," + AppRoles.Director)]
-public class PackagesController : ProcControllerBase
+public partial class PackagesController : ProcControllerBase
 {
     public PackagesController(EProcDbContext db, IOptions<ProcurementSettings> s) : base(db, s) { }
 
@@ -223,6 +223,7 @@ public class PackagesController : ProcControllerBase
         ViewBag.Progress = (await HttpContext.RequestServices.GetRequiredService<PackageProgressService>().ComputeAsync(new[] { id })).Select(x => x.Progress).FirstOrDefault();
         var boq = await Db.BoqItems.AsNoTracking().Where(b => b.PackageId == id).ToListAsync();
         ViewBag.BoqCount = boq.Count; ViewBag.BoqTotal = BoqCost.Summary(boq, p.BoqOverheadPercent, p.BoqProfitPercent, p.BoqContingencyPercent, p.BoqVatPercent).TotalExVat;
+        ViewBag.Risk = await PackageRisk.AssessAsync(Db, p, Settings);
         ViewBag.OpenPlans = User.IsPurchasing() && p.Status == PackageStatus.Draft
             ? await Db.SelectionPlans.Where(x => x.Status == SelectionPlanStatus.Draft || x.Status == SelectionPlanStatus.Returned).OrderByDescending(x => x.CreatedAt).ToListAsync()
             : new List<SelectionPlan>();

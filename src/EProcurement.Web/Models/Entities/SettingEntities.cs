@@ -44,6 +44,8 @@ public class CriteriaItem
     [Display(Name = "Bắt buộc (đạt / không đạt)")] public bool IsMandatory { get; set; }
     [Range(0, 100)][Display(Name = "Điểm tối đa")] public int MaxScore { get; set; }
     [Display(Name = "Hồ sơ chứng minh")] public VendorDocumentType? DocumentType { get; set; }
+    /// <summary>Tiêu chí mua sắm xanh / ESG (môi trường, xã hội, quản trị) – thống kê tỷ trọng điểm xanh</summary>
+    [Display(Name = "Tiêu chí xanh / ESG")] public bool IsSustainability { get; set; }
     public int SortOrder { get; set; }
 }
 

@@ -128,6 +128,13 @@ public class SelectionPlansController : ProcControllerBase
         if (plan.Packages.Count == 0) return Fail(I18n.T("Kế hoạch chưa có gói mua sắm nào."));
         if (plan.Packages.Any(p => p.Status != PackageStatus.Draft)) return Fail(I18n.T("Chỉ trình các gói ở trạng thái Nháp."));
         if (plan.Packages.FirstOrDefault(p => p.PurchaseRequests.Count == 0) is { } empty) return Fail(I18n.T("Gói {0} không còn đề nghị mua hàng nào.", empty.Number));
+        foreach (var pk in plan.Packages)
+        {
+            var full = await Packages.LoadAsync(Db, pk.Id);
+            var risk = await PackageRisk.AssessAsync(Db, full!, Settings);
+            if (risk.IsHigh && string.IsNullOrWhiteSpace(pk.RiskMitigation))
+                return Fail(I18n.T("Gói {0} có rủi ro cao ({1} điểm) – đánh giá rủi ro và nêu biện pháp kiểm soát trước khi trình.", pk.Number, risk.Score));
+        }
         plan.Status = SelectionPlanStatus.Submitted; plan.SubmittedAt = DateTime.Now;
         foreach (var p in plan.Packages) { p.Status = PackageStatus.InPlan; Log(DocType.Package, p.Id, $"Trình duyệt trong {plan.Number}"); }
         Log(DocType.SelectionPlan, id, "Trình Giám đốc phê duyệt KHLCNT", $"{plan.Packages.Count} gói · tổng giá gói {plan.Packages.Sum(p => p.Budget).ToMoney()} đ");

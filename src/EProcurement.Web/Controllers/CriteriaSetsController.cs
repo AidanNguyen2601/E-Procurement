@@ -91,7 +91,7 @@ public class CriteriaSetsController : Controller
         s.Description = T(f.Description, 1000); s.IsActive = f.IsActive; s.UpdatedAt = DateTime.Now;
         var order = 0;
         foreach (var i in f.Items)
-            s.Items.Add(new CriteriaItem { Name = T(i.Name, 200)!, Requirement = T(i.Requirement, 1000), IsMandatory = i.IsMandatory, MaxScore = i.IsMandatory ? 0 : i.MaxScore, DocumentType = i.DocumentType, SortOrder = ++order });
+            s.Items.Add(new CriteriaItem { Name = T(i.Name, 200)!, Requirement = T(i.Requirement, 1000), IsMandatory = i.IsMandatory, MaxScore = i.IsMandatory ? 0 : i.MaxScore, DocumentType = i.DocumentType, IsSustainability = i.IsSustainability, SortOrder = ++order });
         await _db.SaveChangesAsync();
         TempData["Success"] = I18n.T("Đã lưu bộ tiêu chí \"{0}\" ({1} tiêu chí).", s.Name, s.Items.Count);
         return RedirectToAction(nameof(Index), new { group = TenderKinds.Contains(s.Kind) ? "tender" : null });

@@ -384,6 +384,11 @@ public static class DbSeeder
             "IF COL_LENGTH('TenderBidders','DomesticPreferred') IS NULL ALTER TABLE TenderBidders ADD DomesticPreferred bit NOT NULL CONSTRAINT DF_TenderBidders_DomPref DEFAULT 0",
             "IF COL_LENGTH('TenderBidders','PreferenceNote') IS NULL ALTER TABLE TenderBidders ADD PreferenceNote nvarchar(300) NULL",
             "IF COL_LENGTH('BoqItems','Norms') IS NULL ALTER TABLE BoqItems ADD Norms nvarchar(max) NULL",
+            "IF COL_LENGTH('ProcurementPackages','RiskChecklist') IS NULL ALTER TABLE ProcurementPackages ADD RiskChecklist nvarchar(300) NULL",
+            "IF COL_LENGTH('ProcurementPackages','RiskMitigation') IS NULL ALTER TABLE ProcurementPackages ADD RiskMitigation nvarchar(1000) NULL",
+            "IF COL_LENGTH('ProcurementPackages','RiskAssessedAt') IS NULL ALTER TABLE ProcurementPackages ADD RiskAssessedAt datetime2 NULL",
+            "IF COL_LENGTH('ProcurementPackages','RiskAssessedById') IS NULL ALTER TABLE ProcurementPackages ADD RiskAssessedById int NULL",
+            "IF COL_LENGTH('CriteriaItems','IsSustainability') IS NULL ALTER TABLE CriteriaItems ADD IsSustainability bit NOT NULL CONSTRAINT DF_CriteriaItems_IsSust DEFAULT 0",
             // Dữ liệu cũ: chứng từ đã đi qua RFQ coi là chào hàng cạnh tranh
             "UPDATE PurchaseRequests SET Method = 3 WHERE Method IS NULL AND Id IN (SELECT PurchaseRequestId FROM Rfqs WHERE PurchaseRequestId IS NOT NULL)",
             "UPDATE PurchaseOrders SET Method = 3 WHERE Method IS NULL AND RfqId IS NOT NULL"

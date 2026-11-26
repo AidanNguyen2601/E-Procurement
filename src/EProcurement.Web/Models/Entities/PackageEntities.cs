@@ -36,6 +36,11 @@ public class ProcurementPackage
     [Column(TypeName = "decimal(5,2)")][Range(0, 100)][Display(Name = "VAT (%)")] public decimal BoqVatPercent { get; set; } = 10;
 
     [StringLength(1000)][Display(Name = "Ghi chú")] public string? Note { get; set; }
+    /// <summary>Đánh giá rủi ro trước khi trình KHLCNT: khóa các yếu tố người lập gói xác định là có (cách nhau dấu phẩy)</summary>
+    [StringLength(300)] public string? RiskChecklist { get; set; }
+    [StringLength(1000)][Display(Name = "Biện pháp kiểm soát rủi ro")] public string? RiskMitigation { get; set; }
+    public DateTime? RiskAssessedAt { get; set; }
+    public int? RiskAssessedById { get; set; }
 
     [Display(Name = "KHLCNT")] public int? SelectionPlanId { get; set; }
     public SelectionPlan? SelectionPlan { get; set; }
